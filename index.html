@@ -14,7 +14,7 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Text', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -96,14 +96,12 @@
             box-shadow: 0 8px 32px rgba(15,23,42,.06);
         }
         .tab-btn, button, input, select, textarea, label, a {
-            transition: background-color .25s cubic-bezier(.22,1,.36,1), color .25s cubic-bezier(.22,1,.36,1), border-color .25s cubic-bezier(.22,1,.36,1),
-                        box-shadow .25s cubic-bezier(.22,1,.36,1), transform .35s cubic-bezier(.22,1,.36,1), opacity .25s cubic-bezier(.22,1,.36,1), filter .25s cubic-bezier(.22,1,.36,1);
+            transition: background-color .22s ease, color .22s ease, border-color .22s ease,
+                        box-shadow .22s ease, transform .22s ease, opacity .22s ease, filter .22s ease;
         }
         button:not(:disabled), label.cursor-pointer { transform: translateZ(0); }
         button:not(:disabled):hover, label.cursor-pointer:hover { transform: translateY(-1px); }
-        button:not(:disabled):active, label.cursor-pointer:active { transform: translateY(0) scale(.96); transition-duration: .12s; }
-        .mobile-tab-btn { transition: color .25s cubic-bezier(.22,1,.36,1), transform .25s cubic-bezier(.22,1,.36,1); }
-        .mobile-tab-btn:active { transform: scale(.9); }
+        button:not(:disabled):active, label.cursor-pointer:active { transform: translateY(0) scale(.985); }
         button:focus-visible, input:focus-visible, select:focus-visible {
             outline: 3px solid rgba(99,102,241,.22) !important;
             outline-offset: 2px;
@@ -119,7 +117,7 @@
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
         }
-        .rounded-2xl, .rounded-xl { box-shadow: var(--ui-shadow-sm); transition: box-shadow .35s cubic-bezier(.22,1,.36,1), transform .35s cubic-bezier(.22,1,.36,1); }
+        .rounded-2xl, .rounded-xl { box-shadow: var(--ui-shadow-sm); }
         .border-slate-100, .border-slate-200, .border-indigo-100, .border-rose-100, .border-emerald-100 {
             border-color: var(--ui-border) !important;
         }
@@ -149,11 +147,11 @@
         tbody tr:hover { background: rgba(238,242,255,.62) !important; box-shadow: inset 3px 0 0 var(--ui-primary); }
         @keyframes uiRowIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .fixed.inset-0:not(.hidden) { animation: uiOverlayIn .22s ease both; }
-        .fixed.inset-0:not(.hidden) > div { animation: uiModalIn .38s cubic-bezier(.16,1,.3,1) both; }
+        .fixed.inset-0:not(.hidden) > div { animation: uiModalIn .28s cubic-bezier(.2,.8,.2,1) both; }
         @keyframes uiOverlayIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes uiModalIn { from { opacity: 0; transform: translateY(18px) scale(.94); } to { opacity: 1; transform: translateY(0) scale(1); } }
-        #toast { border: 1px solid rgba(255,255,255,.10); box-shadow: 0 22px 50px rgba(15,23,42,.28); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); animation: uiToastIn .38s cubic-bezier(.16,1,.3,1) both; }
-        @keyframes uiToastIn { from { opacity: 0; transform: translateY(20px) scale(.92); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes uiModalIn { from { opacity: 0; transform: translateY(14px) scale(.975); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        #toast { border: 1px solid rgba(255,255,255,.10); box-shadow: 0 22px 50px rgba(15,23,42,.28); animation: uiToastIn .26s cubic-bezier(.2,.8,.2,1) both; }
+        @keyframes uiToastIn { from { opacity: 0; transform: translateY(16px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
         #dash-budget-bar, #category-budgets-container [class*="bg-indigo-600"], #category-budgets-container [class*="bg-amber-500"], #category-budgets-container [class*="bg-rose-600"] { position: relative; overflow: hidden; }
         #dash-budget-bar::after, #category-budgets-container [class*="bg-indigo-600"]::after, #category-budgets-container [class*="bg-amber-500"]::after, #category-budgets-container [class*="bg-rose-600"]::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent); transform: translateX(-100%); animation: uiShimmer 2.4s ease-in-out infinite; }
         @keyframes uiShimmer { 55%,100% { transform: translateX(100%); } }
@@ -784,11 +782,9 @@
                             <div class="bg-slate-50 border border-slate-150 p-6 rounded-2xl space-y-4">
                                 <div class="flex items-center space-x-3"><div class="bg-indigo-100 text-indigo-700 p-2.5 rounded-xl"><i class="fa-brands fa-google text-xl"></i></div><h4 class="font-bold text-slate-900 text-base">Thiết Lập Đồng Bộ Tự Động</h4></div>
                                 <ol class="space-y-4 text-xs text-slate-600 list-decimal pl-4">
-                                    <li>Deploy app lên Netlify hoặc Vercel để có 1 domain cố định (vd: <code>https://ten-app.vercel.app</code>).</li>
-                                    <li>Vào <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="text-indigo-600 underline">Google Cloud Console → Credentials</a>, tạo <b>OAuth Client ID</b> loại "Web application".</li>
-                                    <li>Ở mục "Authorized JavaScript origins", thêm đúng domain Netlify/Vercel của bạn (không thêm dấu / ở cuối).</li>
-                                    <li>Dán Client ID vừa tạo vào biến <code>GOOGLE_CLIENT_ID</code> trong file <code>index.html</code> (đầu phần Drive Sync) rồi deploy lại — chỉ làm 1 lần.</li>
-                                    <li>Từ đây, mọi thiết bị chỉ cần bấm "Đăng nhập với Google" và chọn đúng tài khoản là dữ liệu cũ tự hiện lại.</li>
+                                    <li>Mở file trên Local Server (không chạy trực tiếp file://) hoặc up lên Github Pages.</li>
+                                    <li>Tạo Google Cloud Project + OAuth Client ID.</li>
+                                    <li>Dán Client ID vào ứng dụng để kết nối.</li>
                                 </ol>
                             </div>
                         </div>
@@ -885,18 +881,7 @@
     <div id="initialBalanceModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[70]"><div class="bg-white rounded-2xl w-full max-w-md flex flex-col max-h-[90vh]"><div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center rounded-t-2xl"><h3 class="font-bold text-lg">Ví / Tài Khoản</h3><button onclick="closeModal('initialBalanceModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-6 overflow-y-auto space-y-4" id="account-setup-list"></div><div class="p-4 border-t bg-slate-50 rounded-b-2xl"><div class="flex space-x-2 mb-4"><input type="text" id="new-account-input" class="flex-1 bg-white border rounded-lg p-2 text-sm" placeholder="Tên ví mới..."><button onclick="handleAddAccount()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium">Thêm</button></div><div class="flex justify-end space-x-2"><button onclick="saveAllAccounts()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium w-full">Lưu Thay Đổi</button></div></div></div></div>
 
     <!-- Drive Sync -->
-    <div id="driveSyncModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[80]"><div class="bg-white rounded-2xl w-full max-w-md flex flex-col overflow-hidden"><div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center rounded-t-2xl"><h3 class="font-bold text-lg"><i class="fa-brands fa-google mr-2"></i>Đồng Bộ Tài Khoản</h3><button onclick="closeModal('driveSyncModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-6 space-y-4">
-        <div class="flex items-center space-x-2 bg-slate-50 border rounded-lg px-3 py-2.5"><span id="drive-status-dot" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span><span id="drive-status-text" class="text-slate-700 font-medium text-sm">Chưa đăng nhập</span></div>
-        <p class="text-xs text-slate-500 leading-relaxed">Đăng nhập bằng tài khoản Google để tự động lưu dữ liệu. Mở app này trên máy khác hoặc trình duyệt khác, đăng nhập <b>cùng tài khoản Google</b> là dữ liệu sẽ tự động hiện lại — không cần cấu hình gì thêm.</p>
-        <div id="drive-no-config-warning" class="hidden text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-lg px-3 py-2">
-            Ứng dụng chưa được cấu hình Google Client ID. Người quản trị cần điền <code>GOOGLE_CLIENT_ID</code> trong file để bật tính năng này.
-        </div>
-        <button id="drive-signin-btn" onclick="signInGoogleClick()" class="w-full flex items-center justify-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 py-2.5 rounded-lg text-sm font-semibold shadow-sm">
-            <i class="fa-brands fa-google text-[#4285F4]"></i> Đăng nhập với Google
-        </button>
-        <button id="drive-signout-btn" onclick="signOutGoogle()" class="hidden w-full bg-slate-100 hover:bg-slate-200 text-slate-600 py-2.5 rounded-lg text-sm font-medium">Đăng xuất</button>
-        <button onclick="manualSyncNow()" class="w-full bg-emerald-50 text-emerald-700 border border-emerald-200 py-2 rounded-lg text-sm font-medium">Đồng bộ ngay</button>
-    </div></div></div>
+    <div id="driveSyncModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[80]"><div class="bg-white rounded-2xl w-full max-w-md flex flex-col"><div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center rounded-t-2xl"><h3 class="font-bold text-lg"><i class="fa-brands fa-google mr-2"></i>Đồng Bộ Drive</h3><button onclick="closeModal('driveSyncModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-6 space-y-4"><div class="flex items-center space-x-2 bg-slate-50 border rounded-lg px-3 py-2.5"><span id="drive-status-dot" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span><span id="drive-status-text" class="text-slate-700 font-medium text-sm">Chưa đăng nhập</span></div><div><label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Google Client ID</label><input type="text" id="drive-client-id-input" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm"></div><div class="flex space-x-2"><button id="drive-signin-btn" onclick="signInGoogleClick()" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-medium">Lưu & Đăng nhập</button><button id="drive-signout-btn" onclick="signOutGoogle()" class="hidden flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-lg text-sm font-medium">Đăng xuất</button></div><button onclick="manualSyncNow()" class="w-full bg-emerald-50 text-emerald-700 border border-emerald-200 py-2 rounded-lg text-sm font-medium">Đồng bộ ngay</button></div></div></div>
 
     <!-- Transaction form -->
     <div id="transactionModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-2 md:p-4 z-[70]"><div class="bg-white rounded-2xl w-full max-w-lg flex flex-col max-h-[95vh]"><div class="bg-slate-950 text-white px-4 py-4 md:px-6 flex justify-between items-center rounded-t-2xl"><h3 id="tx-modal-title" class="font-bold md:text-lg text-base">Ghi Chép</h3><button onclick="closeModal('transactionModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-4 md:p-6 overflow-y-auto"><form id="transaction-form" onsubmit="handleTransactionSubmit(event)" class="space-y-4"><div class="grid grid-cols-3 gap-2"><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&:has(:checked)]:border-rose-500 [&:has(:checked)]:bg-rose-50 [&:has(:checked)]:text-rose-600 transition"><input type="radio" name="txType" value="expense" checked class="hidden" onchange="updateFormCategories()"><i class="fa-solid fa-minus mb-1 text-sm"></i><span>Chi Tiêu</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&:has(:checked)]:border-emerald-500 [&:has(:checked)]:bg-emerald-50 [&:has(:checked)]:text-emerald-600 transition"><input type="radio" name="txType" value="income" class="hidden" onchange="updateFormCategories()"><i class="fa-solid fa-plus mb-1 text-sm"></i><span>Thu Nhập</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&:has(:checked)]:border-blue-500 [&:has(:checked)]:bg-blue-50 [&:has(:checked)]:text-blue-600 transition"><input type="radio" name="txType" value="transfer" class="hidden" onchange="updateFormCategories()"><i class="fa-solid fa-arrow-right-arrow-left mb-1 text-sm"></i><span>Chuyển</span></label></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-slate-500 mb-1">SỐ TIỀN</label><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" id="txAmount" required class="w-full bg-slate-50 border rounded-lg p-2.5 text-base font-bold text-indigo-600 outline-none"></div><div><label class="block text-xs font-bold text-slate-500 mb-1">NGÀY</label><input type="date" id="txDate" required class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm outline-none"></div></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label id="lbl-tx-account" class="block text-xs font-bold text-slate-500 mb-1">TỪ TÀI KHOẢN</label><select id="txAccount" required class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm"></select></div><div id="tx-category-wrapper"><label class="block text-xs font-bold text-slate-500 mb-1">DANH MỤC</label><select id="txCategory" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm"></select></div><div id="tx-to-account-wrapper" class="hidden"><label class="block text-xs font-bold text-blue-600 mb-1">ĐẾN TÀI KHOẢN</label><select id="txToAccount" class="w-full bg-blue-50 border-blue-200 border rounded-lg p-2.5 text-sm"></select></div></div><div><label class="block text-xs font-bold text-slate-500 mb-1">GHI CHÚ</label><input type="text" id="txNotes" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm outline-none"></div><div class="pt-4"><button type="submit" id="tx-submit-btn" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl text-sm shadow-md">Lưu Giao Dịch</button></div></form></div></div></div>
@@ -924,7 +909,7 @@
 
         // ================== GOOGLE DRIVE SYNC: STATE (bị thiếu, gây lỗi "gDriveState is not defined") ==================
         let gDriveState = {
-            clientId: GOOGLE_CLIENT_ID.includes('DÁN_CLIENT_ID') ? '' : GOOGLE_CLIENT_ID,
+            clientId: localStorage.getItem('financepro_google_client_id') || '',
             tokenClient: null,
             accessToken: null,
             tokenExpiresAt: 0,
@@ -934,10 +919,8 @@
         };
 
         function openDriveSyncModal() {
-            const warn = document.getElementById('drive-no-config-warning');
-            const signInBtn = document.getElementById('drive-signin-btn');
-            if (warn) warn.classList.toggle('hidden', !!gDriveState.clientId);
-            if (signInBtn) signInBtn.disabled = !gDriveState.clientId;
+            const input = document.getElementById('drive-client-id-input');
+            if (input) input.value = gDriveState.clientId;
             updateSyncStatusUI(isDriveSignedIn() ? 'connected' : 'signed-out');
             openModal('driveSyncModal');
         }
@@ -1757,14 +1740,6 @@
         }
 
         // ================== GOOGLE DRIVE SYNC ==================
-        // ================== GOOGLE SIGN-IN CONFIG ==================
-        // Điền Client ID của BẠN vào đây (tạo 1 lần trong Google Cloud Console, xem hướng dẫn trong
-        // thẻ "Đồng Bộ Google Drive" ở phần Hướng Dẫn Sử Dụng). Vì đây là app tĩnh không có backend,
-        // Client ID là thông tin công khai — chỉ cần khai đúng "Authorized JavaScript origins" là domain
-        // bạn deploy (vd: https://ten-app-cua-ban.vercel.app) thì mọi thiết bị/trình duyệt đăng nhập
-        // cùng 1 tài khoản Google sẽ tự thấy lại dữ liệu, không cần nhập lại Client ID nữa.
-        const GOOGLE_CLIENT_ID = 'DÁN_CLIENT_ID_CỦA_BẠN_VÀO_ĐÂY.apps.googleusercontent.com';
-
         const GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
         const DRIVE_FILE_NAME = 'FinancePro_SyncData.json';
 
@@ -1811,7 +1786,9 @@
         }
 
         async function signInGoogleClick() {
-            if (!gDriveState.clientId) { showToast('Ứng dụng chưa được cấu hình Google Client ID.', 'fa-info-circle', 'text-amber-500'); return; }
+            const input = document.getElementById('drive-client-id-input');
+            if (input && input.value.trim()) { gDriveState.clientId = input.value.trim(); localStorage.setItem('financepro_google_client_id', gDriveState.clientId); }
+            if (!gDriveState.clientId) { showToast('Vui lòng nhập Client ID.', 'fa-info-circle', 'text-amber-500'); return; }
             updateSyncStatusUI('connecting');
             try {
                 await getValidAccessToken(true);
