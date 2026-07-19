@@ -1298,6 +1298,9 @@
             updateAccountEmailUI();
 
             // ============ BẮT BUỘC ĐĂNG NHẬP GOOGLE TRƯỚC KHI DÙNG APP ============
+            // Lưu ý: cờ đăng nhập lưu trong localStorage nên dùng chung cho MỌI tab/lần mở lại
+            // trên cùng trình duyệt. Chỉ cần cờ này còn -> mở app ngay, KHÔNG bắt đăng nhập lại
+            // chỉ vì việc lấy access token "âm thầm" (silent) bị trình duyệt chặn.
             if (isDriveSignedIn() && gDriveState.clientId) {
                 hideLoginGate();
                 setTimeout(() => {
@@ -1308,7 +1311,12 @@
                             updateSyncStatusUI('connected');
                             syncOnLogin();
                         })
-                        .catch(() => forceReLogin('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.'));
+                        .catch(() => {
+                            // Lấy token âm thầm thất bại (thường do trình duyệt chặn iframe/cookie bên thứ 3).
+                            // KHÔNG đăng xuất, KHÔNG che app - chỉ báo trạng thái, đồng bộ sẽ tự thử lại
+                            // ở lần lưu tiếp theo, hoặc người dùng có thể bấm "Đồng bộ ngay".
+                            updateSyncStatusUI('error', 'Cần xác thực lại để đồng bộ - bấm "Đồng Bộ Google Drive"');
+                        });
                 }, 600);
             } else {
                 showLoginGate('');
