@@ -935,6 +935,8 @@
             tokenExpiresAt: Number(localStorage.getItem('financepro_shared_token_expires_at') || 0),
             fileId: localStorage.getItem('financepro_drive_file_id') || null,
             syncTimer: null,
+            retryTimer: null,
+            pendingUpload: false,
             isSyncing: false,
             email: localStorage.getItem(ACTIVE_ACCOUNT_KEY) || null
         };
@@ -952,8 +954,8 @@
                 else { gDriveState.accessToken = null; gDriveState.tokenExpiresAt = 0; }
             }
             if (e.key === 'financepro_drive_signed_in') {
-                if (localStorage.getItem('financepro_drive_signed_in') === '1') { hideLoginGate(); updateSyncStatusUI(gDriveState.accessToken ? 'connected' : 'error'); }
-                else { gDriveState.accessToken = null; gDriveState.tokenExpiresAt = 0; showLoginGate(''); }
+                if (localStorage.getItem('financepro_drive_signed_in') === '1') { hideLoginGate(); updateSyncStatusUI(gDriveState.accessToken ? 'connected' : 'error'); startDrivePolling(); }
+                else { gDriveState.accessToken = null; gDriveState.tokenExpiresAt = 0; stopDrivePolling(); showLoginGate(''); }
             }
         });
 
@@ -1321,6 +1323,7 @@
             // chỉ vì việc lấy access token "âm thầm" (silent) bị trình duyệt chặn.
             if (isDriveSignedIn() && gDriveState.clientId) {
                 hideLoginGate();
+                startDrivePolling();
                 setTimeout(() => {
                     getValidAccessToken(false)
                         .then(async (token) => {
@@ -1947,6 +1950,7 @@
             localStorage.removeItem('financepro_drive_signed_in');
             localStorage.removeItem('financepro_shared_access_token');
             localStorage.removeItem('financepro_shared_token_expires_at');
+            stopDrivePolling();
             updateSyncStatusUI('signed-out');
             updateAccountEmailUI();
             closeModal('driveSyncModal');
@@ -1973,6 +1977,8 @@
             const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, { headers: { Authorization: 'Bearer ' + token } }); return res.text();
         }
 
+        const DRIVE_MODIFIED_KEY = 'financepro_last_drive_modified_time';
+
         function gatherLocalDataForSync() {
             return JSON.stringify({
                 transactions: JSON.parse(localStorage.getItem('personal_transactions_v4') || '[]'), categories: JSON.parse(localStorage.getItem('personal_categories_v4') || 'null'),
@@ -1987,7 +1993,7 @@
             if (data.idealBudget !== undefined) _origLocalStorageSetItem('personal_ideal_budget_v4', data.idealBudget);
             if (data.idealCategoryBudgets) _origLocalStorageSetItem('personal_ideal_cat_budgets_v4', JSON.stringify(data.idealCategoryBudgets));
             _origLocalStorageSetItem('financepro_last_synced_at', data.savedAt || new Date().toISOString());
-            showToast('Đã tải dữ liệu từ Google Drive! Đang tải lại...', 'fa-check', 'text-emerald-400');
+            showToast('Đã tải dữ liệu mới từ Google Drive! Đang tải lại...', 'fa-check', 'text-emerald-400');
             setTimeout(() => window.location.reload(), 900);
         }
 
@@ -1999,25 +2005,80 @@
                 if (!fileId) { const existing = await driveFindFile(token); fileId = existing ? existing.id : null; }
                 const result = fileId ? await driveUpdateFile(token, fileId, content) : await driveCreateFile(token, content);
                 if (result.id) { gDriveState.fileId = result.id; _origLocalStorageSetItem('financepro_drive_file_id', result.id); }
+                if (result.modifiedTime) _origLocalStorageSetItem(DRIVE_MODIFIED_KEY, result.modifiedTime);
                 _origLocalStorageSetItem('financepro_last_synced_at', new Date().toISOString());
+                gDriveState.pendingUpload = false;
                 updateSyncStatusUI('connected', 'Đã lưu lúc ' + new Date().toLocaleTimeString('vi-VN'));
-            } catch (err) { updateSyncStatusUI('error'); } finally { gDriveState.isSyncing = false; }
+            } catch (err) {
+                updateSyncStatusUI('error', 'Lưu thất bại, sẽ tự thử lại...');
+                // Giữ nguyên pendingUpload = true trong lúc chờ thử lại, để việc kiểm tra dữ liệu mới
+                // (poll) không lỡ tay ghi đè lên thay đổi vừa nhập nhưng chưa lưu lên Drive được.
+                clearTimeout(gDriveState.retryTimer);
+                gDriveState.retryTimer = setTimeout(saveToDrive, 8000);
+            } finally { gDriveState.isSyncing = false; }
         }
-        function scheduleDriveSync() { if (!isDriveSignedIn()) return; clearTimeout(gDriveState.syncTimer); gDriveState.syncTimer = setTimeout(saveToDrive, 2500); }
+        function scheduleDriveSync() {
+            if (!isDriveSignedIn()) return;
+            gDriveState.pendingUpload = true;
+            clearTimeout(gDriveState.syncTimer);
+            gDriveState.syncTimer = setTimeout(saveToDrive, 2500);
+        }
 
         async function syncOnLogin() {
             try {
                 const token = await getValidAccessToken(false); const existing = await driveFindFile(token);
                 if (!existing) { await saveToDrive(); return; }
                 gDriveState.fileId = existing.id; _origLocalStorageSetItem('financepro_drive_file_id', existing.id);
+                if (existing.modifiedTime) _origLocalStorageSetItem(DRIVE_MODIFIED_KEY, existing.modifiedTime);
                 const remoteContent = await driveDownloadFile(token, existing.id); const remoteData = JSON.parse(remoteContent);
                 const localSavedAt = localStorage.getItem('financepro_last_synced_at'); const remoteSavedAt = remoteData.savedAt || existing.modifiedTime;
                 if (!localSavedAt || new Date(remoteSavedAt) > new Date(localSavedAt)) {
                     openConfirm('Tìm thấy dữ liệu trên Google Drive', `Có dữ liệu lúc ${new Date(remoteSavedAt).toLocaleString('vi-VN')} trên Drive. Bạn có muốn tải về và THAY THẾ dữ liệu trên máy này không?`, () => applyRemoteData(remoteData));
                 } else { updateSyncStatusUI('connected', 'Dữ liệu đã đồng bộ'); }
             } catch (err) { console.error('syncOnLogin error', err); }
+            startDrivePolling();
         }
         async function manualSyncNow() { if (!isDriveSignedIn()) { showToast('Vui lòng đăng nhập Google trước.', 'fa-info-circle', 'text-amber-500'); return; } await syncOnLogin(); await saveToDrive(); }
+
+        // ================== ĐỒNG BỘ NHIỀU THIẾT BỊ / TRÌNH DUYỆT KHÁC NHAU ==================
+        // localStorage không dùng chung được giữa các trình duyệt/máy khác nhau, nên phần này
+        // định kỳ hỏi Google Drive "có gì mới không" để tự kéo dữ liệu về, thay vì chỉ đồng bộ lúc đăng nhập.
+        function isUserActivelyTypingInField() {
+            const el = document.activeElement;
+            if (!el) return false;
+            const tag = (el.tagName || '').toLowerCase();
+            return tag === 'input' || tag === 'textarea' || tag === 'select';
+        }
+
+        async function pollForRemoteChanges() {
+            if (!isDriveSignedIn() || gDriveState.isSyncing || gDriveState.pendingUpload) return;
+            try {
+                const token = await getValidAccessToken(false);
+                const existing = await driveFindFile(token);
+                if (!existing || !existing.modifiedTime) return;
+                const knownModified = localStorage.getItem(DRIVE_MODIFIED_KEY);
+                if (knownModified && !(new Date(existing.modifiedTime) > new Date(knownModified))) return; // không có gì mới
+                if (isUserActivelyTypingInField()) return; // đang nhập liệu -> để vòng poll sau xử lý, tránh mất dữ liệu đang gõ
+                gDriveState.fileId = existing.id;
+                const remoteContent = await driveDownloadFile(token, existing.id);
+                const remoteData = JSON.parse(remoteContent);
+                _origLocalStorageSetItem(DRIVE_MODIFIED_KEY, existing.modifiedTime);
+                applyRemoteData(remoteData);
+            } catch (err) { /* im lặng, vòng poll kế tiếp sẽ tự thử lại */ }
+        }
+
+        let drivePollTimer = null;
+        function startDrivePolling() {
+            stopDrivePolling();
+            drivePollTimer = setInterval(() => { if (document.visibilityState === 'visible') pollForRemoteChanges(); }, 15000);
+        }
+        function stopDrivePolling() { if (drivePollTimer) clearInterval(drivePollTimer); drivePollTimer = null; }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && isDriveSignedIn()) pollForRemoteChanges();
+        });
+        // Khi mạng vừa có lại (mất mạng tạm thời), thử đồng bộ ngay cả 2 chiều
+        window.addEventListener('online', () => { if (isDriveSignedIn()) { if (gDriveState.pendingUpload) saveToDrive(); pollForRemoteChanges(); } });
     </script>
 </body>
 </html>
