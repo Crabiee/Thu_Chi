@@ -915,10 +915,14 @@
         let charts = {};
 
         // ================== DRIVE SYNC PATCH ==================
-        const DRIVE_SYNC_KEYS = ['personal_transactions_v4', 'personal_categories_v4', 'personal_accounts_v4', 'personal_ideal_budget_v4', 'personal_ideal_cat_budgets_v4'];
+        const DRIVE_SYNC_KEYS = ['personal_transactions_v4', 'personal_deleted_tx_v4', 'personal_categories_v4', 'personal_accounts_v4', 'personal_ideal_budget_v4', 'personal_ideal_cat_budgets_v4'];
+        // Các khóa "cài đặt" (không phải danh sách giao dịch) được gộp theo kiểu "bản mới nhất thắng"
+        // dựa trên dấu thời gian financepro_settings_updated_at, cập nhật mỗi khi 1 trong các khóa này thay đổi.
+        const SETTINGS_SYNC_KEYS = ['personal_categories_v4', 'personal_accounts_v4', 'personal_ideal_budget_v4', 'personal_ideal_cat_budgets_v4'];
         const _origLocalStorageSetItem = localStorage.setItem.bind(localStorage);
         localStorage.setItem = function (key, value) {
             _origLocalStorageSetItem(key, value);
+            if (SETTINGS_SYNC_KEYS.includes(key)) _origLocalStorageSetItem('financepro_settings_updated_at', new Date().toISOString());
             if (DRIVE_SYNC_KEYS.includes(key) && typeof scheduleDriveSync === 'function') scheduleDriveSync();
         };
         
@@ -1300,6 +1304,12 @@
             const savedCats = localStorage.getItem('personal_categories_v4');
             const savedAccs = localStorage.getItem('personal_accounts_v4');
             if (savedTxs) transactions = JSON.parse(savedTxs);
+            // Dữ liệu cũ (trước bản cập nhật đồng bộ) chưa có updatedAt -> gán tạm mốc thời gian hiện tại
+            // để logic hợp nhất (merge) sau này có cơ sở so sánh; các chỉnh sửa mới sau đó sẽ tự có
+            // dấu thời gian chính xác và luôn "thắng" so với dữ liệu cũ chưa từng được sửa lại.
+            let migratedLegacyTx = false;
+            transactions.forEach(tx => { if (!tx.updatedAt) { tx.updatedAt = new Date(0).toISOString(); migratedLegacyTx = true; } });
+            if (migratedLegacyTx) localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions));
             if (localStorage.getItem('personal_ideal_budget_v4')) idealBudget = Number(localStorage.getItem('personal_ideal_budget_v4'));
             if (localStorage.getItem('personal_ideal_cat_budgets_v4')) idealCategoryBudgets = JSON.parse(localStorage.getItem('personal_ideal_cat_budgets_v4'));
             
@@ -1410,13 +1420,31 @@
             const acc = document.getElementById('txAccount').value, toAcc = document.getElementById('txToAccount').value, cat = document.getElementById('txCategory').value;
             if(type==='transfer' && acc===toAcc) return showToast("Khác tài khoản", "fa-xmark", "text-rose-500");
             
-            const newData = { id: editingTxId||'tx-'+Date.now(), type, amount:amt, date:document.getElementById('txDate').value, account:acc, category:type==='transfer'?'Chuyển tiền':cat, toAccount:type==='transfer'?toAcc:"", notes:document.getElementById('txNotes').value };
+            const newData = { id: editingTxId||'tx-'+Date.now(), type, amount:amt, date:document.getElementById('txDate').value, account:acc, category:type==='transfer'?'Chuyển tiền':cat, toAccount:type==='transfer'?toAcc:"", notes:document.getElementById('txNotes').value, updatedAt: new Date().toISOString() };
             if(editingTxId) transactions[transactions.findIndex(t=>t.id===editingTxId)] = newData; else transactions.push(newData);
+            // Nếu giao dịch này từng bị xóa ở thiết bị khác trước đó rồi được tạo lại ở đây, gỡ tombstone
+            // để lần đồng bộ tới không bị máy khác xóa mất bản ghi vừa tạo.
+            clearTombstone(newData.id);
             
             localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions)); showToast("Lưu thành công", "fa-check", "text-emerald-400");
             closeModal('transactionModal'); updateDashboard(); applyFilters(); renderCategoryBudgets();
         }
-        function handleDeleteTxClick(id) { openConfirm("Xóa", "Không khôi phục được", () => { transactions = transactions.filter(t=>t.id!==id); localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions)); updateDashboard(); applyFilters(); renderCategoryBudgets(); showToast("Đã xóa", "fa-trash", "text-rose-400"); }); }
+        function handleDeleteTxClick(id) { openConfirm("Xóa", "Không khôi phục được", () => { transactions = transactions.filter(t=>t.id!==id); recordTombstone(id); localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions)); updateDashboard(); applyFilters(); renderCategoryBudgets(); showToast("Đã xóa", "fa-trash", "text-rose-400"); }); }
+
+        // ================== TOMBSTONE (đánh dấu đã xóa) CHO ĐỒNG BỘ NHIỀU THIẾT BỊ ==================
+        // Vì mỗi thiết bị lưu localStorage riêng, khi hợp nhất (merge) dữ liệu giữa các thiết bị ta không
+        // thể chỉ dựa vào "giao dịch có mặt hay không" (vì thiết bị A xóa 1 giao dịch không đồng nghĩa nó
+        // biến mất trên Drive nếu thiết bị B chưa kịp đồng bộ). Do đó ta ghi lại "đã xóa lúc nào" để khi
+        // gộp dữ liệu, biết được nên giữ hay bỏ 1 bản ghi.
+        function recordTombstone(id) {
+            const tomb = JSON.parse(localStorage.getItem('personal_deleted_tx_v4') || '{}');
+            tomb[id] = new Date().toISOString();
+            localStorage.setItem('personal_deleted_tx_v4', JSON.stringify(tomb));
+        }
+        function clearTombstone(id) {
+            const tomb = JSON.parse(localStorage.getItem('personal_deleted_tx_v4') || '{}');
+            if (tomb[id]) { delete tomb[id]; localStorage.setItem('personal_deleted_tx_v4', JSON.stringify(tomb)); }
+        }
 
         // ================== GIAO DIỆN SỔ SÁCH (TABLE + CARDS) ==================
         function applyFilters() {
@@ -1760,7 +1788,7 @@
             });
         }
         function handleAddCategory(t) { const n = document.getElementById(`new-${t}-cat-input`).value.trim(); if(n&&!categories[t].includes(n)) { categories[t].push(n); localStorage.setItem('personal_categories_v4', JSON.stringify(categories)); document.getElementById(`new-${t}-cat-input`).value=''; renderCategoryManager(); showToast("Đã thêm danh mục!", "fa-check", "text-emerald-400"); } }
-        function handleEditCategoryClick(type, oldName) { openPrompt("Đổi tên danh mục", oldName, (newName) => { const trimmedName = newName.trim(); if (!trimmedName || trimmedName === oldName || categories[type].includes(trimmedName)) return; categories[type][categories[type].indexOf(oldName)] = trimmedName; if (CATEGORY_ICONS[oldName]) CATEGORY_ICONS[trimmedName] = CATEGORY_ICONS[oldName]; let isUpdated = false; transactions.forEach(tx => { if (tx.type === type && tx.category === oldName) { tx.category = trimmedName; isUpdated = true; } }); if (type === 'expense' && idealCategoryBudgets[oldName] !== undefined) { idealCategoryBudgets[trimmedName] = idealCategoryBudgets[oldName]; delete idealCategoryBudgets[oldName]; localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); } if (isUpdated) localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions)); localStorage.setItem('personal_categories_v4', JSON.stringify(categories)); renderCategoryManager(); updateFormCategories(); updateDashboard(); showToast("Đổi tên thành công", "fa-check", "text-emerald-400"); }); }
+        function handleEditCategoryClick(type, oldName) { openPrompt("Đổi tên danh mục", oldName, (newName) => { const trimmedName = newName.trim(); if (!trimmedName || trimmedName === oldName || categories[type].includes(trimmedName)) return; categories[type][categories[type].indexOf(oldName)] = trimmedName; if (CATEGORY_ICONS[oldName]) CATEGORY_ICONS[trimmedName] = CATEGORY_ICONS[oldName]; let isUpdated = false; transactions.forEach(tx => { if (tx.type === type && tx.category === oldName) { tx.category = trimmedName; tx.updatedAt = new Date().toISOString(); isUpdated = true; } }); if (type === 'expense' && idealCategoryBudgets[oldName] !== undefined) { idealCategoryBudgets[trimmedName] = idealCategoryBudgets[oldName]; delete idealCategoryBudgets[oldName]; localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); } if (isUpdated) localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions)); localStorage.setItem('personal_categories_v4', JSON.stringify(categories)); renderCategoryManager(); updateFormCategories(); updateDashboard(); showToast("Đổi tên thành công", "fa-check", "text-emerald-400"); }); }
         function handleDeleteCategoryClick(type, cat) { if (categories[type].length <= 1) return showToast("Phải giữ lại ít nhất 1", "fa-xmark", "text-rose-500"); openConfirm("Xóa Danh Mục", `Xóa "${cat}"?`, () => { categories[type] = categories[type].filter(c => c !== cat); localStorage.setItem('personal_categories_v4', JSON.stringify(categories)); if (type === 'expense') { delete idealCategoryBudgets[cat]; localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); } renderCategoryManager(); updateFormCategories(); updateDashboard(); showToast("Đã xóa", "fa-trash", "text-rose-400"); }); }
 
         // ================== GUIDE & EXPORT ==================
@@ -1849,12 +1877,15 @@
         // để tránh dữ liệu của tài khoản cũ bị ghi đè lên Drive của tài khoản mới.
         function clearLocalSyncedDataForAccountSwitch() {
             _origLocalStorageSetItem('personal_transactions_v4', '[]');
+            _origLocalStorageSetItem('personal_deleted_tx_v4', '{}');
             _origLocalStorageSetItem('personal_categories_v4', 'null');
             _origLocalStorageSetItem('personal_accounts_v4', 'null');
             _origLocalStorageSetItem('personal_ideal_budget_v4', '0');
             _origLocalStorageSetItem('personal_ideal_cat_budgets_v4', 'null');
             localStorage.removeItem('financepro_last_synced_at');
             localStorage.removeItem('financepro_drive_file_id');
+            localStorage.removeItem('financepro_settings_updated_at');
+            localStorage.removeItem(DRIVE_MODIFIED_KEY);
             gDriveState.fileId = null;
         }
         
@@ -1958,10 +1989,34 @@
             showLoginGate('');
         }
 
+        // driveFindFile: tìm file qua Drive Search API (q=). CHỈ dùng khi chưa có fileId trong tay,
+        // vì API search này có độ trễ index (eventual consistency) - vừa tạo/sửa file xong tìm lại có
+        // thể ra kết quả CŨ. Một khi đã biết fileId, luôn dùng driveGetFileMeta/driveDownloadFile theo
+        // ID trực tiếp vì các API đó nhất quán ngay lập tức.
         async function driveFindFile(token) {
             const q = encodeURIComponent(`name='${DRIVE_FILE_NAME}' and trashed=false`);
             const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,modifiedTime)&spaces=drive`, { headers: { Authorization: 'Bearer ' + token } });
             const data = await res.json(); return (data.files && data.files.length) ? data.files[0] : null;
+        }
+        // Lấy metadata (modifiedTime) trực tiếp theo fileId - nhất quán, không bị trễ như search.
+        async function driveGetFileMeta(token, fileId) {
+            try {
+                const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,modifiedTime,trashed`, { headers: { Authorization: 'Bearer ' + token } });
+                if (!res.ok) return null; // file bị xóa / không còn quyền truy cập -> coi như không có, sẽ tìm lại qua search
+                const data = await res.json();
+                if (data.trashed) return null;
+                return data;
+            } catch (err) { return null; }
+        }
+        // Luôn ưu tiên fileId đã biết (từ Drive gốc, đáng tin cậy). Chỉ search lại khi chưa từng biết fileId.
+        async function driveResolveFile(token) {
+            if (gDriveState.fileId) {
+                const meta = await driveGetFileMeta(token, gDriveState.fileId);
+                if (meta) return meta;
+            }
+            const found = await driveFindFile(token);
+            if (found) { gDriveState.fileId = found.id; _origLocalStorageSetItem('financepro_drive_file_id', found.id); }
+            return found;
         }
         async function driveCreateFile(token, content) {
             const metadata = { name: DRIVE_FILE_NAME, mimeType: 'application/json' }; const boundary = 'financepro_boundary_' + Date.now();
@@ -1979,43 +2034,133 @@
 
         const DRIVE_MODIFIED_KEY = 'financepro_last_drive_modified_time';
 
+        // ================== HÀNG ĐỢI THAO TÁC DRIVE (chống chạy chồng chéo) ==================
+        // saveToDrive / pollForRemoteChanges / syncOnLogin đều có thể được gọi gần như cùng lúc (ví dụ:
+        // người dùng bấm "Đồng bộ ngay" trong khi vòng poll định kỳ đang chạy). Nếu để chúng chạy song
+        // song, có thể xảy ra tình huống đọc/ghi chồng lên nhau khiến dữ liệu mới nhất bị lỡ. Hàng đợi
+        // này đảm bảo mọi thao tác đọc/ghi Drive luôn chạy TUẦN TỰ, từng cái một.
+        let driveOpChain = Promise.resolve();
+        function withDriveLock(fn) {
+            const run = driveOpChain.then(fn, fn);
+            driveOpChain = run.then(() => {}, () => {});
+            return run;
+        }
+
+        function pruneOldTombstones(tomb) {
+            const cutoff = Date.now() - 180 * 24 * 60 * 60 * 1000; // giữ tombstone tối đa 180 ngày
+            const pruned = {};
+            Object.keys(tomb || {}).forEach(id => { if (new Date(tomb[id]).getTime() > cutoff) pruned[id] = tomb[id]; });
+            return pruned;
+        }
+
         function gatherLocalDataForSync() {
             return JSON.stringify({
-                transactions: JSON.parse(localStorage.getItem('personal_transactions_v4') || '[]'), categories: JSON.parse(localStorage.getItem('personal_categories_v4') || 'null'),
+                transactions: JSON.parse(localStorage.getItem('personal_transactions_v4') || '[]'),
+                deletedTx: pruneOldTombstones(JSON.parse(localStorage.getItem('personal_deleted_tx_v4') || '{}')),
+                categories: JSON.parse(localStorage.getItem('personal_categories_v4') || 'null'),
                 userAccounts: JSON.parse(localStorage.getItem('personal_accounts_v4') || 'null'), idealBudget: localStorage.getItem('personal_ideal_budget_v4') ? Number(localStorage.getItem('personal_ideal_budget_v4')) : 0,
-                idealCategoryBudgets: JSON.parse(localStorage.getItem('personal_ideal_cat_budgets_v4') || 'null'), savedAt: new Date().toISOString()
+                idealCategoryBudgets: JSON.parse(localStorage.getItem('personal_ideal_cat_budgets_v4') || 'null'),
+                settingsUpdatedAt: localStorage.getItem('financepro_settings_updated_at') || null,
+                savedAt: new Date().toISOString()
             });
         }
-        function applyRemoteData(data) {
-            if (data.transactions) _origLocalStorageSetItem('personal_transactions_v4', JSON.stringify(data.transactions));
-            if (data.categories) _origLocalStorageSetItem('personal_categories_v4', JSON.stringify(data.categories));
-            if (data.userAccounts) _origLocalStorageSetItem('personal_accounts_v4', JSON.stringify(data.userAccounts));
-            if (data.idealBudget !== undefined) _origLocalStorageSetItem('personal_ideal_budget_v4', data.idealBudget);
-            if (data.idealCategoryBudgets) _origLocalStorageSetItem('personal_ideal_cat_budgets_v4', JSON.stringify(data.idealCategoryBudgets));
-            _origLocalStorageSetItem('financepro_last_synced_at', data.savedAt || new Date().toISOString());
-            showToast('Đã tải dữ liệu mới từ Google Drive! Đang tải lại...', 'fa-check', 'text-emerald-400');
-            setTimeout(() => window.location.reload(), 900);
+
+        // Hợp nhất danh sách giao dịch cục bộ + từ xa theo từng giao dịch (không ghi đè cả khối):
+        // - Nếu cùng id, giữ bản có updatedAt mới hơn.
+        // - Nếu chỉ có ở 1 bên, giữ lại (trừ khi đã bị đánh dấu xóa - tombstone - sau thời điểm bản đó được sửa).
+        function mergeTransactions(localTx, remoteTx, localTomb, remoteTomb) {
+            const mergedTomb = Object.assign({}, localTomb || {});
+            Object.keys(remoteTomb || {}).forEach(id => {
+                if (!mergedTomb[id] || new Date(remoteTomb[id]) > new Date(mergedTomb[id])) mergedTomb[id] = remoteTomb[id];
+            });
+            const byId = new Map();
+            (localTx || []).forEach(t => byId.set(t.id, t));
+            (remoteTx || []).forEach(rt => {
+                const lt = byId.get(rt.id);
+                if (!lt) { byId.set(rt.id, rt); return; }
+                const lu = lt.updatedAt ? new Date(lt.updatedAt).getTime() : 0;
+                const ru = rt.updatedAt ? new Date(rt.updatedAt).getTime() : 0;
+                if (ru > lu) byId.set(rt.id, rt);
+            });
+            const merged = [];
+            byId.forEach((tx, id) => {
+                const delAt = mergedTomb[id];
+                if (delAt) {
+                    const txUpdated = tx.updatedAt ? new Date(tx.updatedAt).getTime() : 0;
+                    if (txUpdated > new Date(delAt).getTime()) merged.push(tx); // được sửa/tạo lại SAU khi bị xóa -> giữ
+                    // ngược lại: bỏ qua, giữ nguyên trạng thái đã xóa
+                } else {
+                    merged.push(tx);
+                }
+            });
+            return { transactions: merged, deletedTx: mergedTomb };
+        }
+
+        // Gộp dữ liệu từ Drive vào dữ liệu máy này (KHÔNG reload trang, KHÔNG ghi đè toàn bộ).
+        // Trả về true nếu dữ liệu cục bộ có thay đổi cần render lại.
+        function mergeRemoteData(remoteData) {
+            const localTxRaw = localStorage.getItem('personal_transactions_v4');
+            const localTx = JSON.parse(localTxRaw || '[]');
+            const localTomb = JSON.parse(localStorage.getItem('personal_deleted_tx_v4') || '{}');
+            const { transactions: mergedTx, deletedTx: mergedTomb } = mergeTransactions(localTx, remoteData.transactions, localTomb, remoteData.deletedTx);
+
+            let changed = false;
+            const mergedTxJson = JSON.stringify(mergedTx);
+            if (mergedTxJson !== JSON.stringify(localTx)) {
+                transactions = mergedTx; _origLocalStorageSetItem('personal_transactions_v4', mergedTxJson); changed = true;
+            }
+            const mergedTombJson = JSON.stringify(mergedTomb);
+            if (mergedTombJson !== JSON.stringify(localTomb)) { _origLocalStorageSetItem('personal_deleted_tx_v4', mergedTombJson); }
+
+            const localSettingsAt = localStorage.getItem('financepro_settings_updated_at');
+            const remoteSettingsAt = remoteData.settingsUpdatedAt;
+            const remoteSettingsNewer = !!remoteSettingsAt && (!localSettingsAt || new Date(remoteSettingsAt) > new Date(localSettingsAt));
+            if (remoteSettingsNewer) {
+                if (remoteData.categories) { categories = remoteData.categories; _origLocalStorageSetItem('personal_categories_v4', JSON.stringify(categories)); }
+                if (remoteData.userAccounts) { userAccounts = remoteData.userAccounts; _origLocalStorageSetItem('personal_accounts_v4', JSON.stringify(userAccounts)); }
+                if (remoteData.idealBudget !== undefined) { idealBudget = remoteData.idealBudget; _origLocalStorageSetItem('personal_ideal_budget_v4', remoteData.idealBudget); }
+                if (remoteData.idealCategoryBudgets) { idealCategoryBudgets = remoteData.idealCategoryBudgets; _origLocalStorageSetItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); }
+                _origLocalStorageSetItem('financepro_settings_updated_at', remoteSettingsAt);
+                changed = true;
+            }
+
+            _origLocalStorageSetItem('financepro_last_synced_at', new Date().toISOString());
+
+            // Nếu dữ liệu đã gộp khác với dữ liệu trên Drive (ví dụ máy này có giao dịch mới hơn mà
+            // Drive chưa có), đẩy bản đã gộp lên lại để các thiết bị khác cũng nhận được.
+            const localAheadOfRemote = mergedTxJson !== JSON.stringify(remoteData.transactions || []) || mergedTombJson !== JSON.stringify(remoteData.deletedTx || {});
+            if (localAheadOfRemote) scheduleDriveSync();
+
+            if (changed) {
+                populateAccountSelects(); updateDashboard(); applyFilters(); renderCategoryBudgets();
+                if (typeof renderCategoryManager === 'function') renderCategoryManager();
+                showToast('Đã cập nhật dữ liệu mới nhất', 'fa-check', 'text-emerald-400');
+            }
+            return changed;
         }
 
         async function saveToDrive() {
-            if (!gDriveState.clientId || gDriveState.isSyncing || !isDriveSignedIn()) return;
-            gDriveState.isSyncing = true; updateSyncStatusUI('syncing');
-            try {
-                const token = await getValidAccessToken(false); const content = gatherLocalDataForSync(); let fileId = gDriveState.fileId;
-                if (!fileId) { const existing = await driveFindFile(token); fileId = existing ? existing.id : null; }
-                const result = fileId ? await driveUpdateFile(token, fileId, content) : await driveCreateFile(token, content);
-                if (result.id) { gDriveState.fileId = result.id; _origLocalStorageSetItem('financepro_drive_file_id', result.id); }
-                if (result.modifiedTime) _origLocalStorageSetItem(DRIVE_MODIFIED_KEY, result.modifiedTime);
-                _origLocalStorageSetItem('financepro_last_synced_at', new Date().toISOString());
-                gDriveState.pendingUpload = false;
-                updateSyncStatusUI('connected', 'Đã lưu lúc ' + new Date().toLocaleTimeString('vi-VN'));
-            } catch (err) {
-                updateSyncStatusUI('error', 'Lưu thất bại, sẽ tự thử lại...');
-                // Giữ nguyên pendingUpload = true trong lúc chờ thử lại, để việc kiểm tra dữ liệu mới
-                // (poll) không lỡ tay ghi đè lên thay đổi vừa nhập nhưng chưa lưu lên Drive được.
-                clearTimeout(gDriveState.retryTimer);
-                gDriveState.retryTimer = setTimeout(saveToDrive, 8000);
-            } finally { gDriveState.isSyncing = false; }
+            return withDriveLock(async () => {
+                if (!gDriveState.clientId || !isDriveSignedIn()) return;
+                gDriveState.isSyncing = true; updateSyncStatusUI('syncing');
+                try {
+                    const token = await getValidAccessToken(false);
+                    const existing = await driveResolveFile(token);
+                    const content = gatherLocalDataForSync();
+                    const result = existing ? await driveUpdateFile(token, existing.id, content) : await driveCreateFile(token, content);
+                    if (result.id) { gDriveState.fileId = result.id; _origLocalStorageSetItem('financepro_drive_file_id', result.id); }
+                    if (result.modifiedTime) _origLocalStorageSetItem(DRIVE_MODIFIED_KEY, result.modifiedTime);
+                    _origLocalStorageSetItem('financepro_last_synced_at', new Date().toISOString());
+                    gDriveState.pendingUpload = false;
+                    updateSyncStatusUI('connected', 'Đã lưu lúc ' + new Date().toLocaleTimeString('vi-VN'));
+                } catch (err) {
+                    updateSyncStatusUI('error', 'Lưu thất bại, sẽ tự thử lại...');
+                    // Giữ nguyên pendingUpload = true trong lúc chờ thử lại, để việc kiểm tra dữ liệu mới
+                    // (poll) không lỡ tay ghi đè lên thay đổi vừa nhập nhưng chưa lưu lên Drive được.
+                    clearTimeout(gDriveState.retryTimer);
+                    gDriveState.retryTimer = setTimeout(saveToDrive, 8000);
+                } finally { gDriveState.isSyncing = false; }
+            });
         }
         function scheduleDriveSync() {
             if (!isDriveSignedIn()) return;
@@ -2025,20 +2170,26 @@
         }
 
         async function syncOnLogin() {
-            try {
-                const token = await getValidAccessToken(false); const existing = await driveFindFile(token);
-                if (!existing) { await saveToDrive(); return; }
-                gDriveState.fileId = existing.id; _origLocalStorageSetItem('financepro_drive_file_id', existing.id);
-                if (existing.modifiedTime) _origLocalStorageSetItem(DRIVE_MODIFIED_KEY, existing.modifiedTime);
-                const remoteContent = await driveDownloadFile(token, existing.id); const remoteData = JSON.parse(remoteContent);
-                const localSavedAt = localStorage.getItem('financepro_last_synced_at'); const remoteSavedAt = remoteData.savedAt || existing.modifiedTime;
-                if (!localSavedAt || new Date(remoteSavedAt) > new Date(localSavedAt)) {
-                    openConfirm('Tìm thấy dữ liệu trên Google Drive', `Có dữ liệu lúc ${new Date(remoteSavedAt).toLocaleString('vi-VN')} trên Drive. Bạn có muốn tải về và THAY THẾ dữ liệu trên máy này không?`, () => applyRemoteData(remoteData));
-                } else { updateSyncStatusUI('connected', 'Dữ liệu đã đồng bộ'); }
-            } catch (err) { console.error('syncOnLogin error', err); }
+            await withDriveLock(async () => {
+                try {
+                    const token = await getValidAccessToken(false);
+                    const existing = await driveResolveFile(token);
+                    if (!existing) { updateSyncStatusUI('connected'); return; } // chưa có file trên Drive -> lần lưu tiếp theo sẽ tự tạo
+                    if (existing.modifiedTime) _origLocalStorageSetItem(DRIVE_MODIFIED_KEY, existing.modifiedTime);
+                    const remoteContent = await driveDownloadFile(token, existing.id);
+                    const remoteData = JSON.parse(remoteContent);
+                    mergeRemoteData(remoteData); // gộp trực tiếp, an toàn (không mất dữ liệu của bên nào) -> không cần hỏi xác nhận
+                    updateSyncStatusUI('connected', 'Dữ liệu đã đồng bộ');
+                } catch (err) { console.error('syncOnLogin error', err); }
+            });
+            if (!gDriveState.pendingUpload) await saveToDrive(); // đảm bảo Drive luôn có đúng bản đã gộp của máy này
             startDrivePolling();
         }
-        async function manualSyncNow() { if (!isDriveSignedIn()) { showToast('Vui lòng đăng nhập Google trước.', 'fa-info-circle', 'text-amber-500'); return; } await syncOnLogin(); await saveToDrive(); }
+        async function manualSyncNow() {
+            if (!isDriveSignedIn()) { showToast('Vui lòng đăng nhập Google trước.', 'fa-info-circle', 'text-amber-500'); return; }
+            updateSyncStatusUI('syncing');
+            await syncOnLogin();
+        }
 
         // ================== ĐỒNG BỘ NHIỀU THIẾT BỊ / TRÌNH DUYỆT KHÁC NHAU ==================
         // localStorage không dùng chung được giữa các trình duyệt/máy khác nhau, nên phần này
@@ -2051,26 +2202,29 @@
         }
 
         async function pollForRemoteChanges() {
-            if (!isDriveSignedIn() || gDriveState.isSyncing || gDriveState.pendingUpload) return;
-            try {
-                const token = await getValidAccessToken(false);
-                const existing = await driveFindFile(token);
-                if (!existing || !existing.modifiedTime) return;
-                const knownModified = localStorage.getItem(DRIVE_MODIFIED_KEY);
-                if (knownModified && !(new Date(existing.modifiedTime) > new Date(knownModified))) return; // không có gì mới
-                if (isUserActivelyTypingInField()) return; // đang nhập liệu -> để vòng poll sau xử lý, tránh mất dữ liệu đang gõ
-                gDriveState.fileId = existing.id;
-                const remoteContent = await driveDownloadFile(token, existing.id);
-                const remoteData = JSON.parse(remoteContent);
-                _origLocalStorageSetItem(DRIVE_MODIFIED_KEY, existing.modifiedTime);
-                applyRemoteData(remoteData);
-            } catch (err) { /* im lặng, vòng poll kế tiếp sẽ tự thử lại */ }
+            if (!isDriveSignedIn() || gDriveState.pendingUpload) return;
+            await withDriveLock(async () => {
+                try {
+                    const token = await getValidAccessToken(false);
+                    const existing = await driveResolveFile(token);
+                    if (!existing || !existing.modifiedTime) return;
+                    const knownModified = localStorage.getItem(DRIVE_MODIFIED_KEY);
+                    if (knownModified && !(new Date(existing.modifiedTime) > new Date(knownModified))) return; // không có gì mới
+                    if (isUserActivelyTypingInField()) return; // đang nhập liệu -> để vòng poll sau xử lý, tránh mất dữ liệu đang gõ
+                    const remoteContent = await driveDownloadFile(token, existing.id);
+                    const remoteData = JSON.parse(remoteContent);
+                    _origLocalStorageSetItem(DRIVE_MODIFIED_KEY, existing.modifiedTime);
+                    mergeRemoteData(remoteData);
+                } catch (err) { /* im lặng, vòng poll kế tiếp sẽ tự thử lại */ }
+            });
         }
 
         let drivePollTimer = null;
         function startDrivePolling() {
             stopDrivePolling();
-            drivePollTimer = setInterval(() => { if (document.visibilityState === 'visible') pollForRemoteChanges(); }, 15000);
+            // Poll mỗi 10s khi tab đang mở - đủ nhanh để cảm giác gần như tức thời giữa các thiết bị,
+            // nhưng vẫn tôn trọng giới hạn tần suất gọi API của Google Drive.
+            drivePollTimer = setInterval(() => { if (document.visibilityState === 'visible') pollForRemoteChanges(); }, 10000);
         }
         function stopDrivePolling() { if (drivePollTimer) clearInterval(drivePollTimer); drivePollTimer = null; }
 
