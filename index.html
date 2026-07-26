@@ -10,8 +10,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Google Identity Services (dùng cho đồng bộ Google Drive) -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- Firebase (miễn phí - gói Spark): Auth để đăng nhập Google, Firestore để lưu & đồng bộ real-time -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -345,7 +347,7 @@
                     <i class="fa-solid fa-key w-5 text-center"></i><span>Đổi mã PIN</span>
                 </button>
                 <button onclick="openDriveSyncModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium py-2 px-3 rounded-lg flex items-center space-x-2 transition relative">
-                    <i class="fa-brands fa-google w-5 text-center"></i><span>Đồng Bộ Google Drive</span>
+                    <i class="fa-brands fa-google w-5 text-center"></i><span>Đồng Bộ Dữ Liệu</span>
                     <span id="drive-sidebar-dot" class="w-2 h-2 rounded-full bg-slate-500 absolute right-3 top-1/2 -translate-y-1/2"></span>
                 </button>
                 <button onclick="exportDataJSON()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2 px-3 rounded-lg flex items-center space-x-2 transition">
@@ -727,7 +729,7 @@
                             <button onclick="switchSubGuide('demo')" id="subguide-btn-demo" class="subguide-btn py-2.5 px-4 text-sm font-semibold border-b-2 border-indigo-600 text-indigo-600 whitespace-nowrap transition-all duration-200"><i class="fa-solid fa-play mr-2"></i>1. Mô Phỏng Dòng Tiền</button>
                             <button onclick="switchSubGuide('rules')" id="subguide-btn-rules" class="subguide-btn py-2.5 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap transition-all duration-200"><i class="fa-solid fa-chart-pie mr-2"></i>2. Phân Bổ Ngân Sách</button>
                             <button onclick="switchSubGuide('savings')" id="subguide-btn-savings" class="subguide-btn py-2.5 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap transition-all duration-200"><i class="fa-solid fa-piggy-bank mr-2"></i>3. Tiết Kiệm & Chi Tiêu</button>
-                            <button onclick="switchSubGuide('sync')" id="subguide-btn-sync" class="subguide-btn py-2.5 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap transition-all duration-200"><i class="fa-brands fa-google mr-2"></i>4. Đồng Bộ Google Drive</button>
+                            <button onclick="switchSubGuide('sync')" id="subguide-btn-sync" class="subguide-btn py-2.5 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap transition-all duration-200"><i class="fa-brands fa-google mr-2"></i>4. Đồng Bộ Dữ Liệu</button>
                         </div>
 
                         <!-- Panel 1: Demo -->
@@ -798,11 +800,12 @@
 
                         <div id="subguide-panel-sync" class="subguide-panel space-y-6 hidden">
                             <div class="bg-slate-50 border border-slate-150 p-6 rounded-2xl space-y-4">
-                                <div class="flex items-center space-x-3"><div class="bg-indigo-100 text-indigo-700 p-2.5 rounded-xl"><i class="fa-brands fa-google text-xl"></i></div><h4 class="font-bold text-slate-900 text-base">Thiết Lập Đồng Bộ Tự Động</h4></div>
+                                <div class="flex items-center space-x-3"><div class="bg-indigo-100 text-indigo-700 p-2.5 rounded-xl"><i class="fa-solid fa-cloud-arrow-up text-xl"></i></div><h4 class="font-bold text-slate-900 text-base">Thiết Lập Đồng Bộ Tự Động (Firebase - miễn phí)</h4></div>
                                 <ol class="space-y-4 text-xs text-slate-600 list-decimal pl-4">
-                                    <li>Mở file trên Local Server (không chạy trực tiếp file://) hoặc up lên Github Pages.</li>
-                                    <li>Tạo Google Cloud Project + OAuth Client ID.</li>
-                                    <li>Dán Client ID vào ứng dụng để kết nối.</li>
+                                    <li>Tạo project miễn phí tại Firebase Console, bật Authentication (nhà cung cấp Google) và Firestore Database.</li>
+                                    <li>Điền thông tin cấu hình (firebaseConfig) và thiết lập Security Rules theo hướng dẫn đi kèm mã nguồn.</li>
+                                    <li>Deploy lên Vercel như bình thường, sau đó thêm domain Vercel vào danh sách "Authorized domains" trong Firebase Authentication.</li>
+                                    <li>Mở app, bấm "Đăng nhập với Google" - từ đó dữ liệu tự đồng bộ real-time trên mọi thiết bị đã đăng nhập, không cần thao tác gì thêm.</li>
                                 </ol>
                             </div>
                         </div>
@@ -851,7 +854,7 @@
             </div>
             <div class="space-y-3 pt-4 border-t border-slate-100">
                 <button onclick="closeMobileMenuModal(); openChangePinFlow();" class="w-full flex items-center justify-between p-3 bg-slate-50 rounded-xl text-slate-700 text-sm font-medium"><div class="flex items-center gap-3"><i class="fa-solid fa-key text-slate-400 w-5"></i> Cài đặt mã PIN (Bảo mật)</div><i class="fa-solid fa-chevron-right text-xs text-slate-400"></i></button>
-                <button onclick="closeMobileMenuModal(); openDriveSyncModal();" class="w-full flex items-center justify-between p-3 bg-slate-50 rounded-xl text-slate-700 text-sm font-medium"><div class="flex items-center gap-3"><i class="fa-brands fa-google text-slate-400 w-5"></i> Đồng bộ Google Drive</div><i class="fa-solid fa-chevron-right text-xs text-slate-400"></i></button>
+                <button onclick="closeMobileMenuModal(); openDriveSyncModal();" class="w-full flex items-center justify-between p-3 bg-slate-50 rounded-xl text-slate-700 text-sm font-medium"><div class="flex items-center gap-3"><i class="fa-brands fa-google text-slate-400 w-5"></i> Đồng bộ Dữ Liệu</div><i class="fa-solid fa-chevron-right text-xs text-slate-400"></i></button>
                 <button onclick="closeMobileMenuModal(); exportDataJSON();" class="w-full flex items-center justify-between p-3 bg-slate-50 rounded-xl text-slate-700 text-sm font-medium"><div class="flex items-center gap-3"><i class="fa-solid fa-cloud-arrow-down text-slate-400 w-5"></i> Sao lưu (Tải file JSON)</div><i class="fa-solid fa-chevron-right text-xs text-slate-400"></i></button>
             </div>
             <button onclick="closeMobileMenuModal()" class="w-full mt-6 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl pb-safe">Đóng</button>
@@ -899,7 +902,7 @@
     <div id="initialBalanceModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[70]"><div class="bg-white rounded-2xl w-full max-w-md flex flex-col max-h-[90vh]"><div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center rounded-t-2xl"><h3 class="font-bold text-lg">Ví / Tài Khoản</h3><button onclick="closeModal('initialBalanceModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-6 overflow-y-auto space-y-4" id="account-setup-list"></div><div class="p-4 border-t bg-slate-50 rounded-b-2xl"><div class="flex space-x-2 mb-4"><input type="text" id="new-account-input" class="flex-1 bg-white border rounded-lg p-2 text-sm" placeholder="Tên ví mới..."><button onclick="handleAddAccount()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium">Thêm</button></div><div class="flex justify-end space-x-2"><button onclick="saveAllAccounts()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium w-full">Lưu Thay Đổi</button></div></div></div></div>
 
     <!-- Drive Sync -->
-    <div id="driveSyncModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[80]"><div class="bg-white rounded-2xl w-full max-w-md flex flex-col"><div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center rounded-t-2xl"><h3 class="font-bold text-lg"><i class="fa-brands fa-google mr-2"></i>Đồng Bộ Drive</h3><button onclick="closeModal('driveSyncModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-6 space-y-4"><div class="flex items-center space-x-2 bg-slate-50 border rounded-lg px-3 py-2.5"><span id="drive-status-dot" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span><span id="drive-status-text" class="text-slate-700 font-medium text-sm">Chưa đăng nhập</span></div><div id="drive-account-email-wrap" class="hidden flex items-center space-x-2 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2.5"><i class="fa-solid fa-user-circle text-indigo-400"></i><span id="drive-account-email" class="text-indigo-700 font-medium text-xs truncate"></span></div><div class="flex space-x-2"><button id="drive-signin-btn" onclick="signInGoogleClick()" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-medium">Đăng nhập với Google</button><button id="drive-signout-btn" onclick="signOutGoogle()" class="hidden flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-lg text-sm font-medium">Đăng xuất</button></div><button onclick="manualSyncNow()" class="w-full bg-emerald-50 text-emerald-700 border border-emerald-200 py-2 rounded-lg text-sm font-medium">Đồng bộ ngay</button></div></div></div>
+    <div id="driveSyncModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[80]"><div class="bg-white rounded-2xl w-full max-w-md flex flex-col"><div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center rounded-t-2xl"><h3 class="font-bold text-lg"><i class="fa-solid fa-cloud-arrow-up mr-2"></i>Đồng Bộ Dữ Liệu</h3><button onclick="closeModal('driveSyncModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-6 space-y-4"><div class="flex items-center space-x-2 bg-slate-50 border rounded-lg px-3 py-2.5"><span id="drive-status-dot" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span><span id="drive-status-text" class="text-slate-700 font-medium text-sm">Chưa đăng nhập</span></div><div id="drive-account-email-wrap" class="hidden flex items-center space-x-2 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2.5"><i class="fa-solid fa-user-circle text-indigo-400"></i><span id="drive-account-email" class="text-indigo-700 font-medium text-xs truncate"></span></div><div class="flex space-x-2"><button id="drive-signin-btn" onclick="signInGoogleClick()" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-medium">Đăng nhập với Google</button><button id="drive-signout-btn" onclick="signOutGoogle()" class="hidden flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-lg text-sm font-medium">Đăng xuất</button></div><button onclick="manualSyncNow()" class="w-full bg-emerald-50 text-emerald-700 border border-emerald-200 py-2 rounded-lg text-sm font-medium">Đồng bộ ngay</button></div></div></div>
 
     <!-- Transaction form -->
     <div id="transactionModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-2 md:p-4 z-[70]"><div class="bg-white rounded-2xl w-full max-w-lg flex flex-col max-h-[95vh]"><div class="bg-slate-950 text-white px-4 py-4 md:px-6 flex justify-between items-center rounded-t-2xl"><h3 id="tx-modal-title" class="font-bold md:text-lg text-base">Ghi Chép</h3><button onclick="closeModal('transactionModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-4 md:p-6 overflow-y-auto"><form id="transaction-form" onsubmit="handleTransactionSubmit(event)" class="space-y-4"><div class="grid grid-cols-3 gap-2"><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&:has(:checked)]:border-rose-500 [&:has(:checked)]:bg-rose-50 [&:has(:checked)]:text-rose-600 transition"><input type="radio" name="txType" value="expense" checked class="hidden" onchange="updateFormCategories()"><i class="fa-solid fa-minus mb-1 text-sm"></i><span>Chi Tiêu</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&:has(:checked)]:border-emerald-500 [&:has(:checked)]:bg-emerald-50 [&:has(:checked)]:text-emerald-600 transition"><input type="radio" name="txType" value="income" class="hidden" onchange="updateFormCategories()"><i class="fa-solid fa-plus mb-1 text-sm"></i><span>Thu Nhập</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&:has(:checked)]:border-blue-500 [&:has(:checked)]:bg-blue-50 [&:has(:checked)]:text-blue-600 transition"><input type="radio" name="txType" value="transfer" class="hidden" onchange="updateFormCategories()"><i class="fa-solid fa-arrow-right-arrow-left mb-1 text-sm"></i><span>Chuyển</span></label></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-slate-500 mb-1">SỐ TIỀN</label><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" id="txAmount" required class="w-full bg-slate-50 border rounded-lg p-2.5 text-base font-bold text-indigo-600 outline-none"></div><div><label class="block text-xs font-bold text-slate-500 mb-1">NGÀY</label><input type="date" id="txDate" required class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm outline-none"></div></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label id="lbl-tx-account" class="block text-xs font-bold text-slate-500 mb-1">TỪ TÀI KHOẢN</label><select id="txAccount" required class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm"></select></div><div id="tx-category-wrapper"><label class="block text-xs font-bold text-slate-500 mb-1">DANH MỤC</label><select id="txCategory" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm"></select></div><div id="tx-to-account-wrapper" class="hidden"><label class="block text-xs font-bold text-blue-600 mb-1">ĐẾN TÀI KHOẢN</label><select id="txToAccount" class="w-full bg-blue-50 border-blue-200 border rounded-lg p-2.5 text-sm"></select></div></div><div><label class="block text-xs font-bold text-slate-500 mb-1">GHI CHÚ</label><input type="text" id="txNotes" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm outline-none"></div><div class="pt-4"><button type="submit" id="tx-submit-btn" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl text-sm shadow-md">Lưu Giao Dịch</button></div></form></div></div></div>
@@ -914,7 +917,7 @@
         let idealCategoryBudgets = {}; 
         let charts = {};
 
-        // ================== DRIVE SYNC PATCH ==================
+        // ================== SYNC PATCH (áp dụng cho mọi thay đổi dữ liệu cục bộ) ==================
         const DRIVE_SYNC_KEYS = ['personal_transactions_v4', 'personal_deleted_tx_v4', 'personal_categories_v4', 'personal_accounts_v4', 'personal_ideal_budget_v4', 'personal_ideal_cat_budgets_v4'];
         // Các khóa "cài đặt" (không phải danh sách giao dịch) được gộp theo kiểu "bản mới nhất thắng"
         // dựa trên dấu thời gian financepro_settings_updated_at, cập nhật mỗi khi 1 trong các khóa này thay đổi.
@@ -929,39 +932,20 @@
         let isBalanceHidden = true; 
         let editingTxId = null;
 
-        // ================== GOOGLE DRIVE SYNC: STATE ==================
-        const FIXED_GOOGLE_CLIENT_ID = '897870666035-pgg94q1322l7ursqnon9jllb4uv504ej.apps.googleusercontent.com';
+        // ================== ĐỒNG BỘ (FIREBASE - MIỄN PHÍ): STATE ==================
+        // Dùng Firebase Authentication (đăng nhập Google) + Firestore (lưu trữ dữ liệu real-time)
+        // thay cho Google Drive API. Lý do: Firebase Auth SDK tự quản lý việc làm mới token vĩnh viễn
+        // ở phía client (lưu trong IndexedDB), không phụ thuộc việc trình duyệt có cho phép truy cập
+        // cookie "accounts.google.com" hay không -> hết hẳn tình trạng phải bấm nút mới đồng bộ được.
+        // Firestore onSnapshot() đẩy dữ liệu real-time, không cần polling định kỳ.
         const ACTIVE_ACCOUNT_KEY = 'financepro_active_account_email';
-        let gDriveState = {
-            clientId: FIXED_GOOGLE_CLIENT_ID,
-            tokenClient: null,
-            accessToken: localStorage.getItem('financepro_shared_access_token') || null,
-            tokenExpiresAt: Number(localStorage.getItem('financepro_shared_token_expires_at') || 0),
-            fileId: localStorage.getItem('financepro_drive_file_id') || null,
-            syncTimer: null,
-            retryTimer: null,
-            pendingUpload: false,
-            isSyncing: false,
-            email: localStorage.getItem(ACTIVE_ACCOUNT_KEY) || null
-        };
-        // Token hết hạn ngay khi nạp trang -> bỏ qua để không dùng token cũ chết
-        if (!(gDriveState.accessToken && Date.now() < gDriveState.tokenExpiresAt)) {
-            gDriveState.accessToken = null; gDriveState.tokenExpiresAt = 0;
-        }
-        // Khi tab khác (cùng trình duyệt) lấy được token mới hoặc đăng xuất -> đồng bộ ngay trong tab này,
-        // không cần mỗi tab tự xin token Google riêng (hay bị chặn do silent request).
-        window.addEventListener('storage', (e) => {
-            if (e.key === 'financepro_shared_access_token') {
-                const tok = localStorage.getItem('financepro_shared_access_token');
-                const exp = Number(localStorage.getItem('financepro_shared_token_expires_at') || 0);
-                if (tok && Date.now() < exp) { gDriveState.accessToken = tok; gDriveState.tokenExpiresAt = exp; if (isDriveSignedIn()) { hideLoginGate(); updateSyncStatusUI('connected'); } }
-                else { gDriveState.accessToken = null; gDriveState.tokenExpiresAt = 0; }
-            }
-            if (e.key === 'financepro_drive_signed_in') {
-                if (localStorage.getItem('financepro_drive_signed_in') === '1') { hideLoginGate(); updateSyncStatusUI(gDriveState.accessToken ? 'connected' : 'error'); startDrivePolling(); }
-                else { gDriveState.accessToken = null; gDriveState.tokenExpiresAt = 0; stopDrivePolling(); showLoginGate(''); }
-            }
-        });
+        let gDriveState = { email: localStorage.getItem(ACTIVE_ACCOUNT_KEY) || null, isSyncing: false };
+        let fbApp = null, fbAuth = null, fbDb = null;
+        let fbCurrentUid = null;
+        let fbUnsubscribeDoc = null;
+        let fbSaveTimer = null;
+        let fbSaveRetryTimer = null;
+        let fbAuthReady = false;
 
         function openDriveSyncModal() {
             updateSyncStatusUI(isDriveSignedIn() ? 'connected' : 'signed-out');
@@ -1323,35 +1307,12 @@
             populateAccountSelects();
             updateDashboard(); applyFilters(); renderCategoryBudgets();
             
-            // Khởi tạo Drive Sync UI
-            updateSyncStatusUI(isDriveSignedIn() ? 'connected' : 'signed-out');
-            updateAccountEmailUI();
-
-            // ============ BẮT BUỘC ĐĂNG NHẬP GOOGLE TRƯỚC KHI DÙNG APP ============
-            // Lưu ý: cờ đăng nhập lưu trong localStorage nên dùng chung cho MỌI tab/lần mở lại
-            // trên cùng trình duyệt. Chỉ cần cờ này còn -> mở app ngay, KHÔNG bắt đăng nhập lại
-            // chỉ vì việc lấy access token "âm thầm" (silent) bị trình duyệt chặn.
-            if (isDriveSignedIn() && gDriveState.clientId) {
-                hideLoginGate();
-                startDrivePolling();
-                setTimeout(() => {
-                    getValidAccessToken(false)
-                        .then(async (token) => {
-                            const email = await fetchGoogleUserEmail(token);
-                            if (email) { _origLocalStorageSetItem(ACTIVE_ACCOUNT_KEY, email); gDriveState.email = email; updateAccountEmailUI(); }
-                            updateSyncStatusUI('connected');
-                            syncOnLogin();
-                        })
-                        .catch(() => {
-                            // Lấy token âm thầm thất bại (thường do trình duyệt chặn iframe/cookie bên thứ 3).
-                            // KHÔNG đăng xuất, KHÔNG che app - chỉ báo trạng thái, đồng bộ sẽ tự thử lại
-                            // ở lần lưu tiếp theo, hoặc người dùng có thể bấm "Đồng bộ ngay".
-                            updateSyncStatusUI('error', 'Cần xác thực lại để đồng bộ - bấm "Đồng Bộ Google Drive"');
-                        });
-                }, 600);
-            } else {
-                showLoginGate('');
-            }
+            // Trạng thái ban đầu trong lúc chờ Firebase khôi phục phiên đăng nhập đã lưu trước đó.
+            // Firebase Auth tự lưu phiên đăng nhập trong IndexedDB của trình duyệt và tự làm mới token
+            // ở hậu trường - không phụ thuộc việc trình duyệt có chặn cookie bên thứ 3 hay không, nên
+            // việc khôi phục đăng nhập này LUÔN tự động, không cần người dùng thao tác gì thêm.
+            updateSyncStatusUI('connecting', 'Đang kiểm tra đăng nhập...');
+            initFirebaseSync();
         });
 
         // ================== TÀI KHOẢN ==================
@@ -1836,11 +1797,8 @@
             reader.readAsText(file);
         }
 
-        // ================== GOOGLE DRIVE SYNC ==================
-        const GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email openid';
-        const DRIVE_FILE_NAME = 'FinancePro_SyncData.json';
-
-        function isDriveSignedIn() { return localStorage.getItem('financepro_drive_signed_in') === '1'; }
+        // ================== ĐỒNG BỘ (FIREBASE - MIỄN PHÍ, THAY CHO GOOGLE DRIVE) ==================
+        function isDriveSignedIn() { return !!fbCurrentUid; }
 
         // ============ LOGIN GATE (bắt buộc đăng nhập Google trước khi dùng app) ============
         function showLoginGate(statusText) {
@@ -1857,24 +1815,9 @@
             if (gate) gate.classList.add('hidden');
             if (app) app.classList.remove('hidden');
         }
-        function forceReLogin(msg) {
-            localStorage.removeItem('financepro_drive_signed_in');
-            gDriveState.accessToken = null; gDriveState.tokenExpiresAt = 0;
-            updateSyncStatusUI('signed-out');
-            showLoginGate(msg || '');
-        }
 
-        async function fetchGoogleUserEmail(token) {
-            try {
-                const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + token } });
-                if (!res.ok) return null;
-                const data = await res.json();
-                return data.email || null;
-            } catch (e) { return null; }
-        }
-
-        // Xoá dữ liệu cục bộ (KHÔNG đụng tới Drive) khi phát hiện chuyển sang tài khoản Google khác,
-        // để tránh dữ liệu của tài khoản cũ bị ghi đè lên Drive của tài khoản mới.
+        // Xoá dữ liệu cục bộ (KHÔNG đụng tới dữ liệu trên server) khi phát hiện chuyển sang tài khoản
+        // Google khác trên cùng máy này, để tránh dữ liệu của tài khoản cũ bị ghi đè lên tài khoản mới.
         function clearLocalSyncedDataForAccountSwitch() {
             _origLocalStorageSetItem('personal_transactions_v4', '[]');
             _origLocalStorageSetItem('personal_deleted_tx_v4', '{}');
@@ -1883,14 +1826,11 @@
             _origLocalStorageSetItem('personal_ideal_budget_v4', '0');
             _origLocalStorageSetItem('personal_ideal_cat_budgets_v4', 'null');
             localStorage.removeItem('financepro_last_synced_at');
-            localStorage.removeItem('financepro_drive_file_id');
             localStorage.removeItem('financepro_settings_updated_at');
-            localStorage.removeItem(DRIVE_MODIFIED_KEY);
-            gDriveState.fileId = null;
         }
-        
+
         function updateSyncStatusUI(state, text) {
-            const map = { 'signed-out': { color: 'bg-slate-500', text: 'Chưa đăng nhập Google Drive' }, 'connecting': { color: 'bg-amber-400 animate-pulse', text: 'Đang kết nối...' }, 'connected':  { color: 'bg-emerald-400', text: 'Đã kết nối Google Drive' }, 'syncing':    { color: 'bg-amber-400 animate-pulse', text: 'Đang đồng bộ...' }, 'error':      { color: 'bg-rose-500', text: 'Lỗi kết nối Google Drive' } };
+            const map = { 'signed-out': { color: 'bg-slate-500', text: 'Chưa đăng nhập' }, 'connecting': { color: 'bg-amber-400 animate-pulse', text: 'Đang kết nối...' }, 'connected': { color: 'bg-emerald-400', text: 'Đã kết nối - đồng bộ real-time' }, 'syncing': { color: 'bg-amber-400 animate-pulse', text: 'Đang đồng bộ...' }, 'error': { color: 'bg-rose-500', text: 'Lỗi kết nối' } };
             const info = map[state] || map['signed-out'];
             const dotIds = ['drive-status-dot', 'drive-sidebar-dot'];
             dotIds.forEach(id => { const el = document.getElementById(id); if (el) el.className = el.id === 'drive-status-dot' ? `w-2.5 h-2.5 rounded-full shrink-0 ${info.color}` : `w-2 h-2 rounded-full absolute right-3 top-1/2 -translate-y-1/2 ${info.color}`; });
@@ -1901,72 +1841,94 @@
             if (signOutBtn) signOutBtn.classList.toggle('hidden', !connectedLike);
         }
 
-        function ensureTokenClient() {
-            if (!window.google || !google.accounts) return null;
-            if (!gDriveState.clientId) return null;
-            if (!gDriveState.tokenClient || gDriveState.tokenClient.__clientId !== gDriveState.clientId) {
-                gDriveState.tokenClient = google.accounts.oauth2.initTokenClient({ client_id: gDriveState.clientId, scope: GOOGLE_DRIVE_SCOPE, callback: '' });
-                gDriveState.tokenClient.__clientId = gDriveState.clientId;
+        // ============ CẤU HÌNH FIREBASE (ĐIỀN THÔNG TIN DỰ ÁN CỦA BẠN) ============
+        // Lấy tại: Firebase Console > (chọn project) > biểu tượng bánh răng > Project settings >
+        // cuộn xuống "Your apps" > chọn app Web (biểu tượng </>) > mục "SDK setup and configuration"
+        // > chọn "Config". Xem hướng dẫn tạo project đầy đủ ở cuối tin nhắn.
+        const firebaseConfig = {
+            apiKey: "ĐIỀN_API_KEY_CỦA_BẠN",
+            authDomain: "ĐIỀN_PROJECT_ID.firebaseapp.com",
+            projectId: "ĐIỀN_PROJECT_ID",
+            storageBucket: "ĐIỀN_PROJECT_ID.appspot.com",
+            messagingSenderId: "ĐIỀN_SENDER_ID",
+            appId: "ĐIỀN_APP_ID"
+        };
+        const FIRESTORE_COLLECTION = 'financepro_users'; // mỗi người dùng 1 văn bản (document), id = uid Google
+
+        function initFirebaseSync() {
+            if (!firebaseConfig.apiKey || firebaseConfig.apiKey.indexOf('ĐIỀN_') === 0) {
+                updateSyncStatusUI('error', 'Chưa cấu hình Firebase - điền firebaseConfig trong code');
+                showLoginGate('Ứng dụng chưa được cấu hình đồng bộ. Vui lòng điền firebaseConfig trong file, xem hướng dẫn đi kèm.');
+                return;
             }
-            return gDriveState.tokenClient;
-        }
+            try {
+                fbApp = firebase.initializeApp(firebaseConfig);
+                fbAuth = firebase.auth();
+                fbDb = firebase.firestore();
+                // Cho phép app hoạt động cả khi mất mạng tạm thời (đọc/ghi cache cục bộ, tự đồng bộ lại
+                // khi có mạng trở lại) và giữ dữ liệu nhất quán giữa nhiều tab cùng trình duyệt.
+                fbDb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
+            } catch (err) {
+                console.error('Firebase init error', err);
+                updateSyncStatusUI('error', 'Lỗi khởi tạo Firebase - kiểm tra lại firebaseConfig');
+                showLoginGate('Không khởi tạo được kết nối đồng bộ. Kiểm tra lại cấu hình Firebase.');
+                return;
+            }
 
-        function requestDriveAccessToken(interactive) {
-            return new Promise((resolve, reject) => {
-                const tc = ensureTokenClient(); if (!tc) { reject(new Error('no-client')); return; }
-                tc.callback = (resp) => {
-                    if (resp.error) { reject(resp); return; }
-                    gDriveState.accessToken = resp.access_token; gDriveState.tokenExpiresAt = Date.now() + (resp.expires_in * 1000 - 60000);
-                    _origLocalStorageSetItem('financepro_shared_access_token', gDriveState.accessToken);
-                    _origLocalStorageSetItem('financepro_shared_token_expires_at', String(gDriveState.tokenExpiresAt));
-                    resolve(resp.access_token);
-                };
-                tc.error_callback = (err) => reject(err);
-                tc.requestAccessToken({ prompt: interactive ? 'consent' : '' });
+            // onAuthStateChanged tự fire ngay khi Firebase khôi phục xong phiên đăng nhập đã lưu trước
+            // đó (nếu có) - HOÀN TOÀN TỰ ĐỘNG, không cần thao tác gì, kể cả sau khi đóng hẳn trình duyệt/app,
+            // vì Firebase Auth tự quản lý việc làm mới token ở hậu trường, không phụ thuộc cookie bên thứ 3.
+            fbAuth.onAuthStateChanged(async (user) => {
+                if (user) {
+                    const prevAccount = localStorage.getItem(ACTIVE_ACCOUNT_KEY);
+                    const currentAccount = user.email || user.uid;
+                    if (prevAccount && prevAccount !== currentAccount) {
+                        clearLocalSyncedDataForAccountSwitch();
+                        showToast('Đã chuyển sang tài khoản Google khác. Đang tải dữ liệu riêng của tài khoản này...', 'fa-right-left', 'text-indigo-400');
+                    }
+                    _origLocalStorageSetItem(ACTIVE_ACCOUNT_KEY, currentAccount);
+                    gDriveState.email = currentAccount;
+                    fbCurrentUid = user.uid;
+                    hideLoginGate();
+                    updateAccountEmailUI();
+                    updateSyncStatusUI('connected');
+                    attachFirestoreListener(user.uid);
+                } else {
+                    fbCurrentUid = null;
+                    detachFirestoreListener();
+                    updateSyncStatusUI('signed-out');
+                    showLoginGate('');
+                }
             });
-        }
 
-        async function getValidAccessToken(interactive) {
-            if (gDriveState.accessToken && Date.now() < gDriveState.tokenExpiresAt) return gDriveState.accessToken;
-            // Có thể tab khác (cùng trình duyệt) vừa lấy được token mới -> dùng lại, khỏi xin Google lần nữa
-            const sharedTok = localStorage.getItem('financepro_shared_access_token');
-            const sharedExp = Number(localStorage.getItem('financepro_shared_token_expires_at') || 0);
-            if (sharedTok && Date.now() < sharedExp) { gDriveState.accessToken = sharedTok; gDriveState.tokenExpiresAt = sharedExp; return sharedTok; }
-            return requestDriveAccessToken(interactive);
+            // Trường hợp đăng nhập kiểu "redirect" (chuyển hẳn sang trang Google rồi quay lại) - bắt lỗi
+            // nếu có, để không bị treo ở trạng thái "đang kết nối" trong im lặng.
+            fbAuth.getRedirectResult().catch((err) => { if (err && err.code) console.error('getRedirectResult error', err); });
         }
 
         async function signInGoogleClick() {
-            gDriveState.clientId = FIXED_GOOGLE_CLIENT_ID;
             updateSyncStatusUI('connecting');
             const gateStatus = document.getElementById('gate-status-text');
             if (gateStatus) gateStatus.innerText = 'Đang kết nối với Google...';
             const gateBtn = document.getElementById('gate-signin-btn');
             if (gateBtn) gateBtn.disabled = true;
             try {
-                const token = await getValidAccessToken(true);
-                const email = await fetchGoogleUserEmail(token);
-                const prevEmail = localStorage.getItem(ACTIVE_ACCOUNT_KEY);
-
-                _origLocalStorageSetItem('financepro_drive_signed_in', '1');
-
-                if (email && prevEmail && email !== prevEmail) {
-                    // Tài khoản Google khác với lần đăng nhập trước -> tách biệt dữ liệu, không ghi đè chéo
-                    clearLocalSyncedDataForAccountSwitch();
-                    _origLocalStorageSetItem(ACTIVE_ACCOUNT_KEY, email);
-                    gDriveState.email = email;
-                    showToast('Đã chuyển sang tài khoản Google khác. Đang tải dữ liệu riêng của tài khoản này...', 'fa-right-left', 'text-indigo-400');
-                    setTimeout(() => window.location.reload(), 700);
-                    return;
+                const provider = new firebase.auth.GoogleAuthProvider();
+                try {
+                    await fbAuth.signInWithPopup(provider);
+                    showToast('Đăng nhập thành công!', 'fa-check', 'text-emerald-400');
+                } catch (popupErr) {
+                    // Popup bị chặn (hay gặp trên trình duyệt trong app hoặc Safari di động) -> chuyển
+                    // sang kiểu đăng nhập "redirect". Trang sẽ tải lại sau khi Google chuyển hướng về,
+                    // và onAuthStateChanged ở trên sẽ tự xử lý phần còn lại.
+                    if (['auth/popup-blocked', 'auth/cancelled-popup-request', 'auth/popup-closed-by-user', 'auth/operation-not-supported-in-this-environment'].includes(popupErr.code)) {
+                        await fbAuth.signInWithRedirect(provider);
+                        return;
+                    }
+                    throw popupErr;
                 }
-
-                if (email) { _origLocalStorageSetItem(ACTIVE_ACCOUNT_KEY, email); gDriveState.email = email; }
-
-                hideLoginGate();
-                updateSyncStatusUI('connected');
-                updateAccountEmailUI();
-                showToast('Đăng nhập thành công! Đang kiểm tra dữ liệu...', 'fa-check', 'text-emerald-400');
-                await syncOnLogin();
             } catch (err) {
+                console.error('signInGoogleClick error', err);
                 updateSyncStatusUI('error');
                 if (gateStatus) gateStatus.innerText = 'Đăng nhập thất bại, vui lòng thử lại.';
                 showToast('Đăng nhập thất bại.', 'fa-xmark', 'text-rose-500');
@@ -1976,76 +1938,19 @@
         }
 
         function signOutGoogle() {
-            if (gDriveState.accessToken && window.google && google.accounts) google.accounts.oauth2.revoke(gDriveState.accessToken, () => {});
-            gDriveState.accessToken = null; gDriveState.tokenExpiresAt = 0;
-            localStorage.removeItem('financepro_drive_signed_in');
-            localStorage.removeItem('financepro_shared_access_token');
-            localStorage.removeItem('financepro_shared_token_expires_at');
-            stopDrivePolling();
-            updateSyncStatusUI('signed-out');
-            updateAccountEmailUI();
+            detachFirestoreListener();
+            if (fbAuth) fbAuth.signOut();
             closeModal('driveSyncModal');
             showToast('Đã đăng xuất khỏi Google.', 'fa-info-circle', 'text-slate-400');
-            showLoginGate('');
         }
 
-        // driveFindFile: tìm file qua Drive Search API (q=). CHỈ dùng khi chưa có fileId trong tay,
-        // vì API search này có độ trễ index (eventual consistency) - vừa tạo/sửa file xong tìm lại có
-        // thể ra kết quả CŨ. Một khi đã biết fileId, luôn dùng driveGetFileMeta/driveDownloadFile theo
-        // ID trực tiếp vì các API đó nhất quán ngay lập tức.
-        async function driveFindFile(token) {
-            const q = encodeURIComponent(`name='${DRIVE_FILE_NAME}' and trashed=false`);
-            const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,modifiedTime)&spaces=drive`, { headers: { Authorization: 'Bearer ' + token } });
-            const data = await res.json(); return (data.files && data.files.length) ? data.files[0] : null;
-        }
-        // Lấy metadata (modifiedTime) trực tiếp theo fileId - nhất quán, không bị trễ như search.
-        async function driveGetFileMeta(token, fileId) {
-            try {
-                const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,modifiedTime,trashed`, { headers: { Authorization: 'Bearer ' + token } });
-                if (!res.ok) return null; // file bị xóa / không còn quyền truy cập -> coi như không có, sẽ tìm lại qua search
-                const data = await res.json();
-                if (data.trashed) return null;
-                return data;
-            } catch (err) { return null; }
-        }
-        // Luôn ưu tiên fileId đã biết (từ Drive gốc, đáng tin cậy). Chỉ search lại khi chưa từng biết fileId.
-        async function driveResolveFile(token) {
-            if (gDriveState.fileId) {
-                const meta = await driveGetFileMeta(token, gDriveState.fileId);
-                if (meta) return meta;
-            }
-            const found = await driveFindFile(token);
-            if (found) { gDriveState.fileId = found.id; _origLocalStorageSetItem('financepro_drive_file_id', found.id); }
-            return found;
-        }
-        async function driveCreateFile(token, content) {
-            const metadata = { name: DRIVE_FILE_NAME, mimeType: 'application/json' }; const boundary = 'financepro_boundary_' + Date.now();
-            const body = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${content}\r\n--${boundary}--`;
-            const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,modifiedTime', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': `multipart/related; boundary=${boundary}` }, body });
-            return res.json();
-        }
-        async function driveUpdateFile(token, fileId, content) {
-            const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media&fields=id,modifiedTime`, { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: content });
-            return res.json();
-        }
-        async function driveDownloadFile(token, fileId) {
-            const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, { headers: { Authorization: 'Bearer ' + token } }); return res.text();
+        async function manualSyncNow() {
+            if (!fbCurrentUid) { showToast('Vui lòng đăng nhập Google trước.', 'fa-info-circle', 'text-amber-500'); return; }
+            await pushLocalDataToFirestore();
+            showToast('Đã đồng bộ.', 'fa-check', 'text-emerald-400');
         }
 
-        const DRIVE_MODIFIED_KEY = 'financepro_last_drive_modified_time';
-
-        // ================== HÀNG ĐỢI THAO TÁC DRIVE (chống chạy chồng chéo) ==================
-        // saveToDrive / pollForRemoteChanges / syncOnLogin đều có thể được gọi gần như cùng lúc (ví dụ:
-        // người dùng bấm "Đồng bộ ngay" trong khi vòng poll định kỳ đang chạy). Nếu để chúng chạy song
-        // song, có thể xảy ra tình huống đọc/ghi chồng lên nhau khiến dữ liệu mới nhất bị lỡ. Hàng đợi
-        // này đảm bảo mọi thao tác đọc/ghi Drive luôn chạy TUẦN TỰ, từng cái một.
-        let driveOpChain = Promise.resolve();
-        function withDriveLock(fn) {
-            const run = driveOpChain.then(fn, fn);
-            driveOpChain = run.then(() => {}, () => {});
-            return run;
-        }
-
+        // ============ HỢP NHẤT DỮ LIỆU (giống bản trước, giữ nguyên logic đã kiểm chứng) ============
         function pruneOldTombstones(tomb) {
             const cutoff = Date.now() - 180 * 24 * 60 * 60 * 1000; // giữ tombstone tối đa 180 ngày
             const pruned = {};
@@ -2054,15 +1959,16 @@
         }
 
         function gatherLocalDataForSync() {
-            return JSON.stringify({
+            return {
                 transactions: JSON.parse(localStorage.getItem('personal_transactions_v4') || '[]'),
                 deletedTx: pruneOldTombstones(JSON.parse(localStorage.getItem('personal_deleted_tx_v4') || '{}')),
                 categories: JSON.parse(localStorage.getItem('personal_categories_v4') || 'null'),
-                userAccounts: JSON.parse(localStorage.getItem('personal_accounts_v4') || 'null'), idealBudget: localStorage.getItem('personal_ideal_budget_v4') ? Number(localStorage.getItem('personal_ideal_budget_v4')) : 0,
+                userAccounts: JSON.parse(localStorage.getItem('personal_accounts_v4') || 'null'),
+                idealBudget: localStorage.getItem('personal_ideal_budget_v4') ? Number(localStorage.getItem('personal_ideal_budget_v4')) : 0,
                 idealCategoryBudgets: JSON.parse(localStorage.getItem('personal_ideal_cat_budgets_v4') || 'null'),
                 settingsUpdatedAt: localStorage.getItem('financepro_settings_updated_at') || null,
                 savedAt: new Date().toISOString()
-            });
+            };
         }
 
         // Hợp nhất danh sách giao dịch cục bộ + từ xa theo từng giao dịch (không ghi đè cả khối):
@@ -2096,11 +2002,10 @@
             return { transactions: merged, deletedTx: mergedTomb };
         }
 
-        // Gộp dữ liệu từ Drive vào dữ liệu máy này (KHÔNG reload trang, KHÔNG ghi đè toàn bộ).
+        // Gộp dữ liệu từ server vào dữ liệu máy này (KHÔNG reload trang, KHÔNG ghi đè toàn bộ).
         // Trả về true nếu dữ liệu cục bộ có thay đổi cần render lại.
         function mergeRemoteData(remoteData) {
-            const localTxRaw = localStorage.getItem('personal_transactions_v4');
-            const localTx = JSON.parse(localTxRaw || '[]');
+            const localTx = JSON.parse(localStorage.getItem('personal_transactions_v4') || '[]');
             const localTomb = JSON.parse(localStorage.getItem('personal_deleted_tx_v4') || '{}');
             const { transactions: mergedTx, deletedTx: mergedTomb } = mergeTransactions(localTx, remoteData.transactions, localTomb, remoteData.deletedTx);
 
@@ -2126,8 +2031,8 @@
 
             _origLocalStorageSetItem('financepro_last_synced_at', new Date().toISOString());
 
-            // Nếu dữ liệu đã gộp khác với dữ liệu trên Drive (ví dụ máy này có giao dịch mới hơn mà
-            // Drive chưa có), đẩy bản đã gộp lên lại để các thiết bị khác cũng nhận được.
+            // Nếu dữ liệu đã gộp khác với dữ liệu trên server (ví dụ máy này có giao dịch mới hơn mà
+            // server chưa có), đẩy bản đã gộp lên lại để các thiết bị khác cũng nhận được.
             const localAheadOfRemote = mergedTxJson !== JSON.stringify(remoteData.transactions || []) || mergedTombJson !== JSON.stringify(remoteData.deletedTx || {});
             if (localAheadOfRemote) scheduleDriveSync();
 
@@ -2139,100 +2044,57 @@
             return changed;
         }
 
-        async function saveToDrive() {
-            return withDriveLock(async () => {
-                if (!gDriveState.clientId || !isDriveSignedIn()) return;
-                gDriveState.isSyncing = true; updateSyncStatusUI('syncing');
-                try {
-                    const token = await getValidAccessToken(false);
-                    const existing = await driveResolveFile(token);
-                    const content = gatherLocalDataForSync();
-                    const result = existing ? await driveUpdateFile(token, existing.id, content) : await driveCreateFile(token, content);
-                    if (result.id) { gDriveState.fileId = result.id; _origLocalStorageSetItem('financepro_drive_file_id', result.id); }
-                    if (result.modifiedTime) _origLocalStorageSetItem(DRIVE_MODIFIED_KEY, result.modifiedTime);
-                    _origLocalStorageSetItem('financepro_last_synced_at', new Date().toISOString());
-                    gDriveState.pendingUpload = false;
-                    updateSyncStatusUI('connected', 'Đã lưu lúc ' + new Date().toLocaleTimeString('vi-VN'));
-                } catch (err) {
-                    updateSyncStatusUI('error', 'Lưu thất bại, sẽ tự thử lại...');
-                    // Giữ nguyên pendingUpload = true trong lúc chờ thử lại, để việc kiểm tra dữ liệu mới
-                    // (poll) không lỡ tay ghi đè lên thay đổi vừa nhập nhưng chưa lưu lên Drive được.
-                    clearTimeout(gDriveState.retryTimer);
-                    gDriveState.retryTimer = setTimeout(saveToDrive, 8000);
-                } finally { gDriveState.isSyncing = false; }
-            });
-        }
+        // ============ FIRESTORE: GHI + LẮNG NGHE REAL-TIME ============
+        // Gộp nhiều thay đổi liên tiếp (gõ nhanh nhiều giao dịch) thành 1 lần ghi lên server sau 1.2s
+        // ngừng thao tác, để tiết kiệm số lượt ghi (vẫn nằm rất xa hạn mức miễn phí của Firestore).
         function scheduleDriveSync() {
-            if (!isDriveSignedIn()) return;
-            gDriveState.pendingUpload = true;
-            clearTimeout(gDriveState.syncTimer);
-            gDriveState.syncTimer = setTimeout(saveToDrive, 2500);
+            if (!fbCurrentUid) return;
+            clearTimeout(fbSaveTimer);
+            fbSaveTimer = setTimeout(pushLocalDataToFirestore, 1200);
         }
 
-        async function syncOnLogin() {
-            await withDriveLock(async () => {
-                try {
-                    const token = await getValidAccessToken(false);
-                    const existing = await driveResolveFile(token);
-                    if (!existing) { updateSyncStatusUI('connected'); return; } // chưa có file trên Drive -> lần lưu tiếp theo sẽ tự tạo
-                    if (existing.modifiedTime) _origLocalStorageSetItem(DRIVE_MODIFIED_KEY, existing.modifiedTime);
-                    const remoteContent = await driveDownloadFile(token, existing.id);
-                    const remoteData = JSON.parse(remoteContent);
-                    mergeRemoteData(remoteData); // gộp trực tiếp, an toàn (không mất dữ liệu của bên nào) -> không cần hỏi xác nhận
-                    updateSyncStatusUI('connected', 'Dữ liệu đã đồng bộ');
-                } catch (err) { console.error('syncOnLogin error', err); }
+        async function pushLocalDataToFirestore() {
+            if (!fbCurrentUid || !fbDb) return;
+            gDriveState.isSyncing = true; updateSyncStatusUI('syncing');
+            try {
+                const data = gatherLocalDataForSync();
+                await fbDb.collection(FIRESTORE_COLLECTION).doc(fbCurrentUid).set(data);
+                _origLocalStorageSetItem('financepro_last_synced_at', new Date().toISOString());
+                updateSyncStatusUI('connected', 'Đã lưu lúc ' + new Date().toLocaleTimeString('vi-VN'));
+            } catch (err) {
+                console.error('pushLocalDataToFirestore error', err);
+                updateSyncStatusUI('error', 'Lưu thất bại, sẽ tự thử lại...');
+                clearTimeout(fbSaveRetryTimer);
+                fbSaveRetryTimer = setTimeout(pushLocalDataToFirestore, 8000);
+            } finally { gDriveState.isSyncing = false; }
+        }
+
+        // Lắng nghe real-time: mỗi khi dữ liệu trên Firestore thay đổi (kể cả từ thiết bị/trình duyệt
+        // khác), Firestore tự động đẩy về NGAY LẬP TỨC - không cần dò hỏi định kỳ (polling) như trước.
+        function attachFirestoreListener(uid) {
+            detachFirestoreListener();
+            fbUnsubscribeDoc = fbDb.collection(FIRESTORE_COLLECTION).doc(uid).onSnapshot({ includeMetadataChanges: true }, (snap) => {
+                if (!snap.exists) { pushLocalDataToFirestore(); return; } // chưa có dữ liệu trên server -> đẩy dữ liệu máy này lên làm bản đầu tiên
+                if (snap.metadata.hasPendingWrites) return; // đây là do CHÍNH máy này vừa ghi -> đã có sẵn, khỏi gộp lại chính mình
+                applyRemoteSnapshotWhenIdle(snap.data());
+            }, (err) => {
+                console.error('Firestore onSnapshot error', err);
+                updateSyncStatusUI('error', 'Mất kết nối đồng bộ, đang tự thử lại...');
             });
-            if (!gDriveState.pendingUpload) await saveToDrive(); // đảm bảo Drive luôn có đúng bản đã gộp của máy này
-            startDrivePolling();
         }
-        async function manualSyncNow() {
-            if (!isDriveSignedIn()) { showToast('Vui lòng đăng nhập Google trước.', 'fa-info-circle', 'text-amber-500'); return; }
-            updateSyncStatusUI('syncing');
-            await syncOnLogin();
+        function detachFirestoreListener() { if (fbUnsubscribeDoc) { fbUnsubscribeDoc(); fbUnsubscribeDoc = null; } }
+        // Nếu người dùng đang gõ dở 1 ô nhập liệu, hoãn việc gộp dữ liệu mới về để tránh làm gián đoạn/
+        // mất nội dung đang gõ; tự kiểm tra lại mỗi 1.5s cho đến khi rảnh tay.
+        function applyRemoteSnapshotWhenIdle(remoteData) {
+            if (isUserActivelyTypingInField()) { setTimeout(() => applyRemoteSnapshotWhenIdle(remoteData), 1500); return; }
+            mergeRemoteData(remoteData);
         }
-
-        // ================== ĐỒNG BỘ NHIỀU THIẾT BỊ / TRÌNH DUYỆT KHÁC NHAU ==================
-        // localStorage không dùng chung được giữa các trình duyệt/máy khác nhau, nên phần này
-        // định kỳ hỏi Google Drive "có gì mới không" để tự kéo dữ liệu về, thay vì chỉ đồng bộ lúc đăng nhập.
         function isUserActivelyTypingInField() {
             const el = document.activeElement;
             if (!el) return false;
             const tag = (el.tagName || '').toLowerCase();
             return tag === 'input' || tag === 'textarea' || tag === 'select';
         }
-
-        async function pollForRemoteChanges() {
-            if (!isDriveSignedIn() || gDriveState.pendingUpload) return;
-            await withDriveLock(async () => {
-                try {
-                    const token = await getValidAccessToken(false);
-                    const existing = await driveResolveFile(token);
-                    if (!existing || !existing.modifiedTime) return;
-                    const knownModified = localStorage.getItem(DRIVE_MODIFIED_KEY);
-                    if (knownModified && !(new Date(existing.modifiedTime) > new Date(knownModified))) return; // không có gì mới
-                    if (isUserActivelyTypingInField()) return; // đang nhập liệu -> để vòng poll sau xử lý, tránh mất dữ liệu đang gõ
-                    const remoteContent = await driveDownloadFile(token, existing.id);
-                    const remoteData = JSON.parse(remoteContent);
-                    _origLocalStorageSetItem(DRIVE_MODIFIED_KEY, existing.modifiedTime);
-                    mergeRemoteData(remoteData);
-                } catch (err) { /* im lặng, vòng poll kế tiếp sẽ tự thử lại */ }
-            });
-        }
-
-        let drivePollTimer = null;
-        function startDrivePolling() {
-            stopDrivePolling();
-            // Poll mỗi 10s khi tab đang mở - đủ nhanh để cảm giác gần như tức thời giữa các thiết bị,
-            // nhưng vẫn tôn trọng giới hạn tần suất gọi API của Google Drive.
-            drivePollTimer = setInterval(() => { if (document.visibilityState === 'visible') pollForRemoteChanges(); }, 10000);
-        }
-        function stopDrivePolling() { if (drivePollTimer) clearInterval(drivePollTimer); drivePollTimer = null; }
-
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && isDriveSignedIn()) pollForRemoteChanges();
-        });
-        // Khi mạng vừa có lại (mất mạng tạm thời), thử đồng bộ ngay cả 2 chiều
-        window.addEventListener('online', () => { if (isDriveSignedIn()) { if (gDriveState.pendingUpload) saveToDrive(); pollForRemoteChanges(); } });
     </script>
 </body>
 </html>
