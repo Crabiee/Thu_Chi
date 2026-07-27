@@ -730,6 +730,7 @@
                             <button onclick="switchSubGuide('rules')" id="subguide-btn-rules" class="subguide-btn py-2.5 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap transition-all duration-200"><i class="fa-solid fa-chart-pie mr-2"></i>2. Phân Bổ Ngân Sách</button>
                             <button onclick="switchSubGuide('savings')" id="subguide-btn-savings" class="subguide-btn py-2.5 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap transition-all duration-200"><i class="fa-solid fa-piggy-bank mr-2"></i>3. Tiết Kiệm & Chi Tiêu</button>
                             <button onclick="switchSubGuide('sync')" id="subguide-btn-sync" class="subguide-btn py-2.5 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap transition-all duration-200"><i class="fa-brands fa-google mr-2"></i>4. Đồng Bộ Dữ Liệu</button>
+                            <button onclick="switchSubGuide('invest')" id="subguide-btn-invest" class="subguide-btn py-2.5 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap transition-all duration-200"><i class="fa-solid fa-chart-line mr-2"></i>5. Đầu Tư & Tiết Kiệm Kỳ Hạn</button>
                         </div>
 
                         <!-- Panel 1: Demo -->
@@ -807,6 +808,34 @@
                                     <li>Deploy lên Vercel như bình thường, sau đó thêm domain Vercel vào danh sách "Authorized domains" trong Firebase Authentication.</li>
                                     <li>Mở app, bấm "Đăng nhập với Google" - từ đó dữ liệu tự đồng bộ real-time trên mọi thiết bị đã đăng nhập, không cần thao tác gì thêm.</li>
                                 </ol>
+                            </div>
+                        </div>
+
+                        <!-- Panel 5: Đầu tư & Tiết kiệm có kỳ hạn -->
+                        <div id="subguide-panel-invest" class="subguide-panel space-y-6 hidden">
+                            <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-xl text-sm text-indigo-900">
+                                Tiền đầu tư (chứng khoán, chứng chỉ quỹ) hay gửi tiết kiệm có 2 đặc điểm mà "Chi Tiêu" thông thường không có: <strong>có kỳ hạn</strong> (giữ một thời gian rồi mới rút/bán) và <strong>có thể lời hoặc lỗ</strong> khi tất toán. Ứng dụng ghi nhận việc này bằng 3 bước dưới đây — không cần công cụ nào khác.
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-5 pt-1">
+                                <div class="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
+                                    <div class="bg-blue-50 text-blue-600 w-11 h-11 rounded-xl flex items-center justify-center mb-3"><i class="fa-solid fa-vault text-lg"></i></div>
+                                    <h4 class="font-bold text-slate-900 text-sm">Bước 1 — Khi mua/gửi</h4>
+                                    <p class="text-xs text-slate-500 mt-2">Vào <strong>Ví/Tài Khoản</strong>, tạo 1 tài khoản riêng cho từng khoản, ví dụ "CK - VNDIRECT" hoặc "Tiết kiệm TCB 6T". Sau đó ghi 1 giao dịch <strong>Chuyển Tiền (⇄)</strong> từ Tiền mặt/Ngân hàng sang tài khoản đó, số tiền = đúng vốn gốc bỏ ra.</p>
+                                </div>
+                                <div class="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
+                                    <div class="bg-amber-50 text-amber-600 w-11 h-11 rounded-xl flex items-center justify-center mb-3"><i class="fa-solid fa-hourglass-half text-lg"></i></div>
+                                    <h4 class="font-bold text-slate-900 text-sm">Bước 2 — Trong lúc nắm giữ</h4>
+                                    <p class="text-xs text-slate-500 mt-2">Không cần cập nhật giá thị trường hàng ngày trong app này — số dư tài khoản đó cứ đứng yên bằng vốn gốc. App này ghi sổ dòng tiền thực tế, không phải công cụ định giá danh mục theo thời gian thực.</p>
+                                </div>
+                                <div class="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
+                                    <div class="bg-emerald-50 text-emerald-600 w-11 h-11 rounded-xl flex items-center justify-center mb-3"><i class="fa-solid fa-flag-checkered text-lg"></i></div>
+                                    <h4 class="font-bold text-slate-900 text-sm">Bước 3 — Khi bán/tất toán</h4>
+                                    <p class="text-xs text-slate-500 mt-2">Ghi 2 giao dịch cùng ngày: (1) <strong>Chuyển Tiền</strong> đúng phần vốn gốc từ tài khoản đó về lại Tiền mặt, cho tài khoản về 0; (2) ghi thêm 1 giao dịch <strong>Thu Nhập</strong> danh mục "Lãi Đầu tư/Tiết kiệm" (nếu lời) hoặc <strong>Chi Tiêu</strong> danh mục "Lỗ Đầu tư/Tất toán sớm" (nếu lỗ), số tiền = đúng phần chênh lệch.</p>
+                                </div>
+                            </div>
+                            <div class="bg-slate-50 border border-slate-150 p-5 rounded-2xl">
+                                <h5 class="font-bold text-slate-800 text-sm mb-2"><i class="fa-solid fa-lightbulb text-amber-500 mr-1.5"></i>Ví dụ minh họa</h5>
+                                <p class="text-xs text-slate-600 leading-relaxed">Gửi tiết kiệm 100 triệu vào "Tiết kiệm TCB 6T" (Chuyển Tiền: Tiền mặt → Tiết kiệm TCB 6T, 100tr). Hết 6 tháng, tất toán nhận về 103 triệu. Ghi: (1) Chuyển Tiền 100tr từ Tiết kiệm TCB 6T → Tiền mặt; (2) Thu Nhập 3tr, danh mục "Lãi Đầu tư/Tiết kiệm", vào Tiền mặt. Kết quả: Tiết kiệm TCB 6T về 0, Tiền mặt tăng đúng 103tr, và báo cáo thu nhập tháng đó hiện đúng 3tr tiền lãi — không lẫn với lương hay các khoản thu khác.</p>
                             </div>
                         </div>
 
@@ -908,7 +937,7 @@
     <div id="transactionModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-2 md:p-4 z-[70]"><div class="bg-white rounded-2xl w-full max-w-lg flex flex-col max-h-[95vh]"><div class="bg-slate-950 text-white px-4 py-4 md:px-6 flex justify-between items-center rounded-t-2xl"><h3 id="tx-modal-title" class="font-bold md:text-lg text-base">Ghi Chép</h3><button onclick="closeModal('transactionModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-4 md:p-6 overflow-y-auto"><form id="transaction-form" onsubmit="handleTransactionSubmit(event)" class="space-y-4"><div class="grid grid-cols-3 gap-2"><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&:has(:checked)]:border-rose-500 [&:has(:checked)]:bg-rose-50 [&:has(:checked)]:text-rose-600 transition"><input type="radio" name="txType" value="expense" checked class="hidden" onchange="updateFormCategories()"><i class="fa-solid fa-minus mb-1 text-sm"></i><span>Chi Tiêu</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&:has(:checked)]:border-emerald-500 [&:has(:checked)]:bg-emerald-50 [&:has(:checked)]:text-emerald-600 transition"><input type="radio" name="txType" value="income" class="hidden" onchange="updateFormCategories()"><i class="fa-solid fa-plus mb-1 text-sm"></i><span>Thu Nhập</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&:has(:checked)]:border-blue-500 [&:has(:checked)]:bg-blue-50 [&:has(:checked)]:text-blue-600 transition"><input type="radio" name="txType" value="transfer" class="hidden" onchange="updateFormCategories()"><i class="fa-solid fa-arrow-right-arrow-left mb-1 text-sm"></i><span>Chuyển</span></label></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-slate-500 mb-1">SỐ TIỀN</label><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" id="txAmount" required class="w-full bg-slate-50 border rounded-lg p-2.5 text-base font-bold text-indigo-600 outline-none"></div><div><label class="block text-xs font-bold text-slate-500 mb-1">NGÀY</label><input type="date" id="txDate" required class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm outline-none"></div></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label id="lbl-tx-account" class="block text-xs font-bold text-slate-500 mb-1">TỪ TÀI KHOẢN</label><select id="txAccount" required class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm"></select></div><div id="tx-category-wrapper"><label class="block text-xs font-bold text-slate-500 mb-1">DANH MỤC</label><select id="txCategory" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm"></select></div><div id="tx-to-account-wrapper" class="hidden"><label class="block text-xs font-bold text-blue-600 mb-1">ĐẾN TÀI KHOẢN</label><select id="txToAccount" class="w-full bg-blue-50 border-blue-200 border rounded-lg p-2.5 text-sm"></select></div></div><div><label class="block text-xs font-bold text-slate-500 mb-1">GHI CHÚ</label><input type="text" id="txNotes" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm outline-none"></div><div class="pt-4"><button type="submit" id="tx-submit-btn" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl text-sm shadow-md">Lưu Giao Dịch</button></div></form></div></div></div>
 
     <script>
-        const CATEGORY_ICONS = { "Lương": "fa-briefcase", "Thưởng": "fa-gift", "Đầu tư": "fa-chart-line", "Kinh doanh": "fa-store", "Khác": "fa-asterisk", "Ăn uống": "fa-utensils", "Di chuyển": "fa-car", "Nhà cửa": "fa-house", "Mua sắm": "fa-bag-shopping", "Giải trí": "fa-gamepad", "Sức khỏe": "fa-heart-pulse", "Giáo dục": "fa-graduation-cap" };
+        const CATEGORY_ICONS = { "Lương": "fa-briefcase", "Thưởng": "fa-gift", "Đầu tư": "fa-chart-line", "Lãi Đầu tư/Tiết kiệm": "fa-sack-dollar", "Kinh doanh": "fa-store", "Khác": "fa-asterisk", "Ăn uống": "fa-utensils", "Di chuyển": "fa-car", "Nhà cửa": "fa-house", "Mua sắm": "fa-bag-shopping", "Giải trí": "fa-gamepad", "Sức khỏe": "fa-heart-pulse", "Giáo dục": "fa-graduation-cap", "Lỗ Đầu tư/Tất toán sớm": "fa-arrow-trend-down" };
 
         let transactions = [];
         let categories = { income: [], expense: [] };
@@ -1297,7 +1326,15 @@
             if (localStorage.getItem('personal_ideal_budget_v4')) idealBudget = Number(localStorage.getItem('personal_ideal_budget_v4'));
             if (localStorage.getItem('personal_ideal_cat_budgets_v4')) idealCategoryBudgets = JSON.parse(localStorage.getItem('personal_ideal_cat_budgets_v4'));
             
-            categories = savedCats ? JSON.parse(savedCats) : { income: ["Lương", "Thưởng", "Đầu tư", "Kinh doanh", "Khác"], expense: ["Ăn uống", "Di chuyển", "Nhà cửa", "Mua sắm", "Giải trí", "Sức khỏe", "Giáo dục", "Khác"] };
+            categories = savedCats ? JSON.parse(savedCats) : { income: ["Lương", "Thưởng", "Đầu tư", "Lãi Đầu tư/Tiết kiệm", "Kinh doanh", "Khác"], expense: ["Ăn uống", "Di chuyển", "Nhà cửa", "Mua sắm", "Giải trí", "Sức khỏe", "Giáo dục", "Lỗ Đầu tư/Tất toán sớm", "Khác"] };
+            // Người dùng cũ đã có sẵn danh mục -> tự bổ sung 2 danh mục lãi/lỗ đầu tư (nếu chưa có),
+            // không ghi đè hay xóa bất kỳ danh mục nào người dùng đã tự thêm.
+            if (savedCats) {
+                let catsMigrated = false;
+                if (!categories.income.includes("Lãi Đầu tư/Tiết kiệm")) { categories.income.push("Lãi Đầu tư/Tiết kiệm"); catsMigrated = true; }
+                if (!categories.expense.includes("Lỗ Đầu tư/Tất toán sớm")) { categories.expense.push("Lỗ Đầu tư/Tất toán sớm"); catsMigrated = true; }
+                if (catsMigrated) localStorage.setItem('personal_categories_v4', JSON.stringify(categories));
+            }
             userAccounts = savedAccs ? JSON.parse(savedAccs) : { "Tiền mặt": 0, "TCB": 0, "TPBank": 0, "Vietinbank": 0 };
             
             setMonthPickerValue('dashboard-month-filter', getCurrentMonthStr(), false);
