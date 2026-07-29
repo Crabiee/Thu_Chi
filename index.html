@@ -15,7 +15,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
@@ -277,6 +277,172 @@
         body.dark-mode #dash-budget-advice, body.dark-mode .assistant-hero, body.dark-mode .ai-card { background-color: rgba(15,23,42,.78) !important; border-color: rgba(148,163,184,.18) !important; color: #e5e7eb !important; }
         body.dark-mode .ai-chip { background: rgba(67,56,202,.28); color: #ddd6fe; border-color: rgba(165,180,252,.24); }
         body.dark-mode .ai-list li { border-color: rgba(148,163,184,.16); }
+
+        /* =========================================================
+           MINIMALIST REDESIGN — flat, high-contrast, editorial dark UI
+           (inspired by modern canvas/agent tools: hairline borders,
+           no glass/blur, mono figures, generous negative space)
+        ========================================================= */
+        body.dark-mode {
+            --fp-bg: #0a0a0c;
+            --fp-surface: #131316;
+            --fp-surface-2: #19191d;
+            --fp-sunken: #0e0e10;
+            --fp-border: rgba(255,255,255,.09);
+            --fp-border-strong: rgba(255,255,255,.16);
+            --fp-text: #f4f4f5;
+            --fp-text-dim: #8b8b93;
+            --fp-text-faint: #55555c;
+            --fp-accent: #7c5cff;
+            --fp-accent-soft: rgba(124,92,255,.14);
+            --fp-accent-ink: #ffffff;
+            --fp-success: #35d68e;
+            --fp-danger: #fb7185;
+            --fp-warning: #f5b544;
+            background: var(--fp-bg) !important;
+            color: var(--fp-text);
+            font-family: 'Inter', sans-serif;
+        }
+        body.dark-mode::before { display: none; }
+
+        /* --- Type system: Space Grotesk for display, JetBrains Mono for money --- */
+        body.dark-mode h1, body.dark-mode #page-title,
+        body.dark-mode .assistant-hero h3, body.dark-mode #tab-guide h2,
+        body.dark-mode section h2 {
+            font-family: 'Space Grotesk', 'Inter', sans-serif !important;
+            letter-spacing: -.02em;
+        }
+        body.dark-mode #page-title { font-weight: 600; letter-spacing: -.03em; }
+        body.dark-mode aside h1 { font-family: 'Space Grotesk', 'Inter', sans-serif !important; font-weight: 700; letter-spacing: -.01em; }
+
+        body.dark-mode #stat-income, body.dark-mode #stat-expense, body.dark-mode #stat-net,
+        body.dark-mode #stat-top-expense-amount, body.dark-mode #balance-total,
+        body.dark-mode #dash-budget-percent, body.dark-mode #dash-budget-spent, body.dark-mode #dash-budget-total,
+        body.dark-mode #allocation-total, body.dark-mode #allocation-used, body.dark-mode #allocation-remaining,
+        body.dark-mode #all-transactions-tbody td.font-bold, body.dark-mode #recent-tx-list .font-bold.text-sm,
+        body.dark-mode #txAmount, body.dark-mode .account-balance-figure {
+            font-family: 'JetBrains Mono', ui-monospace, monospace !important;
+            letter-spacing: -.02em;
+            font-feature-settings: "tnum" 1;
+        }
+
+        /* --- Base surfaces: flat panels, hairline borders, no blur/glass --- */
+        body.dark-mode .bg-white {
+            background-color: var(--fp-surface) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            border: 1px solid var(--fp-border) !important;
+            box-shadow: none !important;
+        }
+        body.dark-mode section > .bg-white:hover, body.dark-mode section .grid > .bg-white:hover,
+        body.dark-mode #tab-dashboard .grid > div.bg-white:hover {
+            border-color: var(--fp-border-strong) !important;
+            box-shadow: none !important;
+            transform: translateY(-2px);
+        }
+        body.dark-mode .bg-slate-50 { background-color: var(--fp-sunken) !important; }
+        body.dark-mode .bg-slate-100 { background-color: var(--fp-surface-2) !important; }
+
+        /* --- Sidebar: flat black rail, quiet nav, single accent for active state --- */
+        body.dark-mode aside {
+            background: var(--fp-bg) !important;
+            border-right: 1px solid var(--fp-border);
+            box-shadow: none;
+        }
+        body.dark-mode aside::before { display: none; }
+        body.dark-mode aside .bg-indigo-600:not(.tab-btn) { background: var(--fp-surface-2) !important; }
+        body.dark-mode aside .tab-btn { border: 1px solid transparent; color: var(--fp-text-dim); font-weight: 500; }
+        body.dark-mode aside .tab-btn:hover { background: var(--fp-surface-2) !important; color: var(--fp-text) !important; }
+        body.dark-mode aside .tab-btn.bg-indigo-600 {
+            background: var(--fp-accent-soft) !important;
+            color: var(--fp-accent) !important;
+            border-color: rgba(124,92,255,.28) !important;
+        }
+        body.dark-mode aside .border-slate-800 { border-color: var(--fp-border) !important; }
+        body.dark-mode aside .bg-slate-800 { background: var(--fp-surface) !important; border: 1px solid var(--fp-border); }
+        body.dark-mode aside .bg-slate-800:hover { background: var(--fp-surface-2) !important; }
+        body.dark-mode aside .text-slate-400 { color: var(--fp-text-dim) !important; }
+
+        /* --- Header: flat, hairline underline instead of blur+shadow --- */
+        body.dark-mode header {
+            background: rgba(10,10,12,.92) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            border-bottom: 1px solid var(--fp-border) !important;
+            box-shadow: none !important;
+        }
+
+        /* --- Buttons: quiet by default, one strong accent for primary actions --- */
+        body.dark-mode .bg-indigo-600 {
+            background: var(--fp-accent) !important;
+            color: var(--fp-accent-ink) !important;
+            box-shadow: none !important;
+        }
+        body.dark-mode .bg-indigo-600:hover, body.dark-mode .hover\:bg-indigo-700:hover { background: #8f70ff !important; }
+        body.dark-mode .text-indigo-600, body.dark-mode .text-indigo-500 { color: var(--fp-accent) !important; }
+        body.dark-mode .bg-indigo-50 { background: var(--fp-accent-soft) !important; }
+        button.bg-indigo-600, #gate-signin-btn, #tx-submit-btn {
+            border-radius: 999px !important;
+        }
+        body.dark-mode #gate-signin-btn { background: var(--fp-surface) !important; border-color: var(--fp-border-strong) !important; color: var(--fp-text) !important; }
+        body.dark-mode #loginGate { background: var(--fp-bg) !important; }
+        body.dark-mode #loginGate > div { background: var(--fp-surface) !important; border: 1px solid var(--fp-border); box-shadow: none !important; }
+
+        /* --- Inputs: sunken flat fields --- */
+        body.dark-mode input, body.dark-mode select, body.dark-mode textarea {
+            background-color: var(--fp-sunken) !important;
+            border: 1px solid var(--fp-border) !important;
+            box-shadow: none !important;
+            border-radius: 10px;
+        }
+        body.dark-mode input:focus, body.dark-mode select:focus {
+            border-color: var(--fp-accent) !important;
+            box-shadow: 0 0 0 3px var(--fp-accent-soft) !important;
+        }
+
+        /* --- Stat cards: quiet top accent hairline instead of gradient bar --- */
+        body.dark-mode #tab-dashboard .grid.grid-cols-2.md\:grid-cols-4 > div::before {
+            background: var(--fp-border-strong);
+            height: 1px;
+            opacity: 1;
+        }
+        body.dark-mode .text-emerald-600, body.dark-mode .text-emerald-700 { color: var(--fp-success) !important; }
+        body.dark-mode .text-rose-600, body.dark-mode .text-rose-700 { color: var(--fp-danger) !important; }
+        body.dark-mode .text-amber-600, body.dark-mode .text-amber-700 { color: var(--fp-warning) !important; }
+        body.dark-mode .bg-emerald-50 { background: rgba(53,214,142,.12) !important; color: var(--fp-success) !important; }
+        body.dark-mode .bg-rose-50 { background: rgba(251,113,133,.12) !important; color: var(--fp-danger) !important; }
+        body.dark-mode .bg-amber-50 { background: rgba(245,181,68,.12) !important; color: var(--fp-warning) !important; }
+
+        /* --- Tables: hairline rows, no glow, quiet hover --- */
+        body.dark-mode table thead tr { background: transparent !important; border-bottom: 1px solid var(--fp-border-strong) !important; }
+        body.dark-mode table thead th { color: var(--fp-text-faint) !important; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; font-size: 11px; }
+        body.dark-mode tbody tr { border-color: var(--fp-border) !important; }
+        body.dark-mode tbody tr:hover { background: var(--fp-surface-2) !important; box-shadow: inset 2px 0 0 var(--fp-accent) !important; }
+
+        /* --- Modals: flat panel, hairline, restrained motion --- */
+        body.dark-mode .fixed.inset-0 > div.bg-white,
+        body.dark-mode .fixed.inset-0 > div > .bg-white { box-shadow: 0 24px 60px rgba(0,0,0,.5) !important; }
+        body.dark-mode .bg-slate-950 { background: var(--fp-bg) !important; border-bottom: 1px solid var(--fp-border); }
+
+        /* --- Agent / Assistant tab: signature panel treatment --- */
+        body.dark-mode .assistant-hero, body.dark-mode .ai-card {
+            background: var(--fp-surface) !important;
+            border: 1px solid var(--fp-border) !important;
+            box-shadow: none !important;
+        }
+        body.dark-mode .ai-card:hover { border-color: var(--fp-border-strong) !important; transform: translateY(-2px); }
+        body.dark-mode .ai-chip { background: var(--fp-accent-soft) !important; color: var(--fp-accent) !important; border-color: rgba(124,92,255,.24) !important; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; font-size: 11px; }
+        body.dark-mode .ai-dot { background: var(--fp-accent) !important; }
+        body.dark-mode #dash-budget-advice { background: var(--fp-surface) !important; border-color: var(--fp-border) !important; }
+
+        /* --- Scrollbar to match flat dark surface --- */
+        body.dark-mode .custom-scrollbar::-webkit-scrollbar-track { background: var(--fp-bg); }
+        body.dark-mode .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--fp-surface-2); }
+
+        /* --- Motion: keep it restrained, respect reduced motion --- */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
@@ -1270,8 +1436,7 @@
         // ================== CÁC HÀM TIỆN ÍCH CORE ==================
         function applyDarkModePreference() {
             const savedTheme = localStorage.getItem('financepro_theme_v1');
-            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const shouldUseDark = savedTheme ? savedTheme === 'dark' : prefersDark;
+            const shouldUseDark = savedTheme ? savedTheme === 'dark' : true;
             document.body.classList.toggle('dark-mode', shouldUseDark);
             document.getElementById('dark-mode-icon').className = shouldUseDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
         }
@@ -2112,8 +2277,17 @@
         function attachFirestoreListener(uid) {
             detachFirestoreListener();
             fbUnsubscribeDoc = fbDb.collection(FIRESTORE_COLLECTION).doc(uid).onSnapshot({ includeMetadataChanges: true }, (snap) => {
-                if (!snap.exists) { pushLocalDataToFirestore(); return; } // chưa có dữ liệu trên server -> đẩy dữ liệu máy này lên làm bản đầu tiên
                 if (snap.metadata.hasPendingWrites) return; // đây là do CHÍNH máy này vừa ghi -> đã có sẵn, khỏi gộp lại chính mình
+                if (!snap.exists) {
+                    // QUAN TRỌNG: nếu bản snapshot "chưa có dữ liệu" này đến từ CACHE cục bộ của chính
+                    // thiết bị (ví dụ vừa mở app, mạng chưa kịp sẵn sàng) thì KHÔNG được kết luận vội là
+                    // "server chưa có dữ liệu" rồi đẩy dữ liệu rỗng lên ghi đè - đây chính là nguyên nhân
+                    // gây mất dữ liệu khi mở app trên 1 thiết bị vào lúc thiết bị kia không mở cùng lúc.
+                    // Chỉ đẩy lên làm bản đầu tiên khi đã CHẮC CHẮN đây là phản hồi thật từ server.
+                    if (snap.metadata.fromCache) return;
+                    pushLocalDataToFirestore(); // đã xác nhận từ server: thật sự chưa có dữ liệu -> đẩy dữ liệu máy này lên làm bản đầu tiên
+                    return;
+                }
                 applyRemoteSnapshotWhenIdle(snap.data());
             }, (err) => {
                 console.error('Firestore onSnapshot error', err);
