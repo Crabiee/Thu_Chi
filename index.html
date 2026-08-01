@@ -2387,6 +2387,21 @@
             const tag = (el.tagName || '').toLowerCase();
             return tag === 'input' || tag === 'textarea' || tag === 'select';
         }
+
+        // Trình duyệt di động (và cả desktop) đóng băng hoặc cắt kết nối WebSocket của tab khi tab vào
+        // nền quá lâu. Firestore SDK v8-compat không đủ tin cậy để tự reconnect trong mọi trường hợp,
+        // nên onSnapshot có thể đã "chết điếc" mà không biết. Khi tab quay lại foreground, chủ động kéo
+        // dữ liệu thật từ server về (bỏ qua cache), hợp nhất rồi để Firestore tự nối lại listener.
+        let lastVisibleAt = Date.now();
+        document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState !== 'visible') { lastVisibleAt = Date.now(); return; }
+            const awayMs = Date.now() - lastVisibleAt;
+            if (!fbCurrentUid || !fbDb || awayMs < 15000) return; // chỉ kéo nếu đã vào nền ít nhất 15 giây
+            try {
+                const snap = await fbDb.collection(FIRESTORE_COLLECTION).doc(fbCurrentUid).get({ source: 'server' });
+                if (snap.exists) { mergeRemoteData(snap.data()); syncReady = true; }
+            } catch (_) {} // lỗi mạng thì bỏ qua, listener sẽ tự thử lại khi có mạng
+        });
     </script>
 </body>
 </html>
