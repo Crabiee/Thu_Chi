@@ -159,6 +159,19 @@
         @keyframes uiShimmer { 55%,100% { transform: translateX(100%); } }
         .subguide-panel:not(.hidden), section:not(.hidden) { animation: uiPanelIn .34s ease both; }
         @keyframes uiPanelIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Smooth motion pass: hover lift + theme-toggle crossfade --- */
+        .bg-white { transition: transform .22s cubic-bezier(.2,.8,.2,1), box-shadow .22s ease, border-color .22s ease, background-color .3s ease; }
+        body, header, aside, input, select, textarea, table, tbody, tr,
+        .bg-slate-50, .bg-slate-100, .bg-slate-200, .bg-slate-800, .bg-slate-900, .bg-slate-950 {
+            transition: background-color .3s ease, border-color .3s ease, color .3s ease;
+        }
+        button, .tab-btn, .mobile-tab-btn { transition: background-color .18s ease, color .18s ease, border-color .18s ease, transform .12s ease; }
+        button:active:not(:disabled) { transform: scale(.97); }
+        aside .tab-btn.bg-indigo-600 { transition: background-color .22s ease, color .22s ease, border-color .22s ease; }
+        @media (prefers-reduced-motion: reduce) {
+            .bg-white, body, header, aside, button, .tab-btn, .mobile-tab-btn { transition: none !important; }
+        }
         canvas { filter: drop-shadow(0 12px 18px rgba(15,23,42,.06)); }
         
         /* =========================================================
@@ -166,7 +179,7 @@
         ========================================================= */
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
         .mobile-tab-btn.active { color: #4f46e5 !important; }
-        body.dark-mode .mobile-tab-btn.active { color: #818cf8 !important; }
+        body.dark-mode .mobile-tab-btn.active { color: #7c5cff !important; }
 
         /* =========================================================
            DARK MODE PACK - Finance Pro
@@ -185,9 +198,9 @@
             mask-image: linear-gradient(to bottom, rgba(0,0,0,.72), transparent 78%);
         }
         body.dark-mode header, body.dark-mode #mobile-bottom-nav, body.dark-mode #mobileMenuModal .bg-white {
-            background: rgba(15,23,42,.85) !important;
-            border-color: rgba(148,163,184,.18) !important;
-            box-shadow: 0 8px 32px rgba(0,0,0,.28);
+            background: #0a0a0c !important;
+            border-color: rgba(255,255,255,.09) !important;
+            box-shadow: none;
         }
         body.dark-mode aside {
             background:
@@ -202,6 +215,18 @@
         body.dark-mode .bg-slate-50, body.dark-mode .bg-slate-100 { background-color: rgba(30,41,59,.72) !important; }
         body.dark-mode .bg-emerald-50, body.dark-mode .bg-emerald-100 { background-color: rgba(6,78,59,.38) !important; border-color: rgba(52,211,153,.28) !important; }
         body.dark-mode .bg-rose-50, body.dark-mode .bg-rose-100 { background-color: rgba(127,29,45,.36) !important; border-color: rgba(251,113,133,.28) !important; }
+        body.dark-mode .bg-blue-50, body.dark-mode .bg-blue-100 { background-color: rgba(30,58,138,.38) !important; border-color: rgba(96,165,250,.28) !important; }
+        /* Nút chọn loại giao dịch (Chi/Thu/Chuyển) dùng Tailwind arbitrary-variant [&:has(:checked)]:*
+           -> tên class chứa ký tự đặc biệt, không khớp .bg-emerald-50 thường nên phải khai riêng */
+        body.dark-mode .\[\&\:has\(\:checked\)\]\:bg-rose-50:has(:checked) { background-color: rgba(127,29,45,.4) !important; }
+        body.dark-mode .\[\&\:has\(\:checked\)\]\:bg-emerald-50:has(:checked) { background-color: rgba(6,78,59,.4) !important; }
+        body.dark-mode .\[\&\:has\(\:checked\)\]\:bg-blue-50:has(:checked) { background-color: rgba(30,58,138,.4) !important; }
+        body.dark-mode .\[\&\:has\(\:checked\)\]\:border-rose-500:has(:checked) { border-color: #fb7185 !important; }
+        body.dark-mode .\[\&\:has\(\:checked\)\]\:border-emerald-500:has(:checked) { border-color: #34d399 !important; }
+        body.dark-mode .\[\&\:has\(\:checked\)\]\:border-blue-500:has(:checked) { border-color: #60a5fa !important; }
+        body.dark-mode .\[\&\:has\(\:checked\)\]\:text-rose-600:has(:checked) { color: #fda4af !important; }
+        body.dark-mode .\[\&\:has\(\:checked\)\]\:text-emerald-600:has(:checked) { color: #6ee7b7 !important; }
+        body.dark-mode .\[\&\:has\(\:checked\)\]\:text-blue-600:has(:checked) { color: #93c5fd !important; }
         body.dark-mode .bg-amber-50, body.dark-mode .bg-amber-100 { background-color: rgba(120,53,15,.36) !important; border-color: rgba(251,191,36,.28) !important; }
         body.dark-mode .bg-blue-50 { background-color: rgba(30,58,138,.36) !important; border-color: rgba(96,165,250,.28) !important; }
         body.dark-mode .bg-purple-50 { background-color: rgba(88,28,135,.36) !important; border-color: rgba(216,180,254,.28) !important; }
@@ -226,6 +251,8 @@
         body.dark-mode .text-indigo-900, body.dark-mode .text-indigo-800, body.dark-mode .text-indigo-700, body.dark-mode .text-indigo-600, body.dark-mode .text-indigo-500 { color: #c4b5fd !important; }
         body.dark-mode .text-blue-600, body.dark-mode .text-blue-700, body.dark-mode .text-blue-800 { color: #93c5fd !important; }
         body.dark-mode .text-emerald-600, body.dark-mode .text-emerald-700, body.dark-mode .text-emerald-800, body.dark-mode .text-emerald-900 { color: #6ee7b7 !important; }
+        body.dark-mode .text-blue-600, body.dark-mode .text-blue-700, body.dark-mode .text-blue-800, body.dark-mode .text-blue-900 { color: #93c5fd !important; }
+        body.dark-mode .border-blue-500 { border-color: #60a5fa !important; }
         body.dark-mode .text-rose-600, body.dark-mode .text-rose-700, body.dark-mode .text-rose-800, body.dark-mode .text-rose-900 { color: #fda4af !important; }
         body.dark-mode .text-amber-600, body.dark-mode .text-amber-700, body.dark-mode .text-amber-800, body.dark-mode .text-amber-900 { color: #fcd34d !important; }
         body.dark-mode .text-purple-600, body.dark-mode .text-purple-700, body.dark-mode .text-purple-800 { color: #d8b4fe !important; }
@@ -270,10 +297,10 @@
         body.dark-mode .month-picker-head, body.dark-mode .month-picker-actions { border-color: rgba(148,163,184,.18); }
         body.dark-mode .month-picker-year { color: #f8fafc; }
         body.dark-mode .month-picker-nav, body.dark-mode .month-picker-month { background: rgba(30,41,59,.78); border-color: rgba(148,163,184,.20); color: #e5e7eb; }
-        body.dark-mode .month-picker-nav:hover, body.dark-mode .month-picker-month:hover { background: rgba(67,56,202,.35); color: #ddd6fe; }
-        body.dark-mode .month-picker-month.is-selected { background: #6366f1; color: #fff; border-color: #818cf8; }
-        body.dark-mode .month-picker-action { color: #a5b4fc; }
-        body.dark-mode .month-picker-action:hover { background: rgba(67,56,202,.35); }
+        body.dark-mode .month-picker-nav:hover, body.dark-mode .month-picker-month:hover { background: rgba(124,92,255,.22); color: #ddd6fe; }
+        body.dark-mode .month-picker-month.is-selected { background: #7c5cff; color: #fff; border-color: #9c87ff; }
+        body.dark-mode .month-picker-action { color: #b4a3ff; }
+        body.dark-mode .month-picker-action:hover { background: rgba(124,92,255,.22); }
         body.dark-mode #dash-budget-advice, body.dark-mode .assistant-hero, body.dark-mode .ai-card { background-color: rgba(15,23,42,.78) !important; border-color: rgba(148,163,184,.18) !important; color: #e5e7eb !important; }
         body.dark-mode .ai-chip { background: rgba(67,56,202,.28); color: #ddd6fe; border-color: rgba(165,180,252,.24); }
         body.dark-mode .ai-list li { border-color: rgba(148,163,184,.16); }
@@ -360,7 +387,7 @@
         }
         body.dark-mode aside .border-slate-800 { border-color: var(--fp-border) !important; }
         body.dark-mode aside .bg-slate-800 { background: var(--fp-surface) !important; border: 1px solid var(--fp-border); }
-        body.dark-mode aside .bg-slate-800:hover { background: var(--fp-surface-2) !important; }
+        body.dark-mode aside .bg-slate-800:hover, body.dark-mode aside .hover\:bg-slate-700:hover { background: var(--fp-surface-2) !important; }
         body.dark-mode aside .text-slate-400 { color: var(--fp-text-dim) !important; }
 
         /* --- Header: flat, hairline underline instead of blur+shadow --- */
@@ -431,13 +458,25 @@
             box-shadow: none !important;
         }
         body.dark-mode .ai-card:hover { border-color: var(--fp-border-strong) !important; transform: translateY(-2px); }
-        body.dark-mode .ai-chip { background: var(--fp-accent-soft) !important; color: var(--fp-accent) !important; border-color: rgba(124,92,255,.24) !important; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; font-size: 11px; }
-        body.dark-mode .ai-dot { background: var(--fp-accent) !important; }
+        /* .ai-chip: chỉ chỉnh hình dạng/nền, KHÔNG ép màu chữ - #ai-health-chip dùng chính class này kèm
+           text-emerald-600/text-rose-600/text-amber-600/text-indigo-600 để báo trạng thái tốt/xấu, ép
+           1 màu sẽ làm chip "Rất ổn" và "Cần siết lại" trông giống hệt nhau. */
+        body.dark-mode .ai-chip { background: var(--fp-surface-2) !important; border-color: var(--fp-border-strong) !important; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; font-size: 11px; }
+        /* .ai-dot: KHÔNG ép màu — các dot dùng bg-rose-500/bg-emerald-500/bg-amber-500/bg-indigo-500
+           để biểu thị ý nghĩa (tăng/giảm/cảnh báo/thứ hạng), ép về 1 màu sẽ làm mất ý nghĩa đó. */
         body.dark-mode #dash-budget-advice { background: var(--fp-surface) !important; border-color: var(--fp-border) !important; }
 
         /* --- Scrollbar to match flat dark surface --- */
         body.dark-mode .custom-scrollbar::-webkit-scrollbar-track { background: var(--fp-bg); }
         body.dark-mode .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--fp-surface-2); }
+        body.dark-mode #mobile-bottom-nav button.bg-indigo-600.border-slate-50 { border-color: #0a0a0c !important; box-shadow: 0 8px 20px rgba(124,92,255,.35) !important; }
+        body.dark-mode .border-slate-50 { border-color: var(--fp-border) !important; }
+        body.dark-mode .hover\:bg-slate-100:hover, body.dark-mode .active\:bg-slate-100:active { background-color: var(--fp-surface-2) !important; }
+        body.dark-mode .bg-slate-200 { background-color: var(--fp-surface-2) !important; }
+        body.dark-mode .hover\:bg-slate-200:hover { background-color: var(--fp-border-strong) !important; }
+        body.dark-mode .hover\:bg-slate-50:hover { background-color: var(--fp-surface-2) !important; }
+        /* text-slate-700 vốn dùng cho nền sáng; trên nền tối, hover về slate-700 gần như chìm mất chữ */
+        body.dark-mode .hover\:text-slate-700:hover { color: var(--fp-text) !important; }
 
         /* --- Motion: keep it restrained, respect reduced motion --- */
         @media (prefers-reduced-motion: reduce) {
@@ -1097,7 +1136,7 @@
     <div id="initialBalanceModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[70]"><div class="bg-white rounded-2xl w-full max-w-md flex flex-col max-h-[90vh]"><div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center rounded-t-2xl"><h3 class="font-bold text-lg">Ví / Tài Khoản</h3><button onclick="closeModal('initialBalanceModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-6 overflow-y-auto space-y-4" id="account-setup-list"></div><div class="p-4 border-t bg-slate-50 rounded-b-2xl"><div class="flex space-x-2 mb-4"><input type="text" id="new-account-input" class="flex-1 bg-white border rounded-lg p-2 text-sm" placeholder="Tên ví mới..."><button onclick="handleAddAccount()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium">Thêm</button></div><div class="flex justify-end space-x-2"><button onclick="saveAllAccounts()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium w-full">Lưu Thay Đổi</button></div></div></div></div>
 
     <!-- Drive Sync -->
-    <div id="driveSyncModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[80]"><div class="bg-white rounded-2xl w-full max-w-md flex flex-col"><div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center rounded-t-2xl"><h3 class="font-bold text-lg"><i class="fa-solid fa-cloud-arrow-up mr-2"></i>Đồng Bộ Dữ Liệu</h3><button onclick="closeModal('driveSyncModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-6 space-y-4"><div class="flex items-center space-x-2 bg-slate-50 border rounded-lg px-3 py-2.5"><span id="drive-status-dot" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span><span id="drive-status-text" class="text-slate-700 font-medium text-sm">Chưa đăng nhập</span></div><div id="drive-account-email-wrap" class="hidden flex items-center space-x-2 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2.5"><i class="fa-solid fa-user-circle text-indigo-400"></i><span id="drive-account-email" class="text-indigo-700 font-medium text-xs truncate"></span></div><div class="flex space-x-2"><button id="drive-signin-btn" onclick="signInGoogleClick()" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-medium">Đăng nhập với Google</button><button id="drive-signout-btn" onclick="signOutGoogle()" class="hidden flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-lg text-sm font-medium">Đăng xuất</button></div><button onclick="manualSyncNow()" class="w-full bg-emerald-50 text-emerald-700 border border-emerald-200 py-2 rounded-lg text-sm font-medium">Đồng bộ ngay</button></div></div></div>
+    <div id="driveSyncModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[80]"><div class="bg-white rounded-2xl w-full max-w-md flex flex-col"><div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center rounded-t-2xl"><h3 class="font-bold text-lg"><i class="fa-solid fa-cloud-arrow-up mr-2"></i>Đồng Bộ Dữ Liệu</h3><button onclick="closeModal('driveSyncModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-6 space-y-4"><div class="flex items-center space-x-2 bg-slate-50 border rounded-lg px-3 py-2.5"><span id="drive-status-dot" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span><span id="drive-status-text" class="text-slate-700 font-medium text-sm">Chưa đăng nhập</span></div><div id="drive-account-email-wrap" class="hidden flex items-center space-x-2 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2.5"><i class="fa-solid fa-user-circle text-indigo-400"></i><span id="drive-account-email" class="text-indigo-700 font-medium text-xs truncate"></span></div><div class="flex space-x-2"><button id="drive-signin-btn" onclick="signInGoogleClick()" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-medium">Đăng nhập với Google</button><button id="drive-signout-btn" onclick="signOutGoogle()" class="hidden flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-lg text-sm font-medium">Đăng xuất</button></div><button onclick="manualSyncNow()" class="w-full bg-emerald-50 text-emerald-700 border border-emerald-200 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-rotate mr-1.5"></i>Đồng bộ ngay</button></div></div></div>
 
     <!-- Transaction form -->
     <div id="transactionModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-2 md:p-4 z-[70]"><div class="bg-white rounded-2xl w-full max-w-lg flex flex-col max-h-[95vh]"><div class="bg-slate-950 text-white px-4 py-4 md:px-6 flex justify-between items-center rounded-t-2xl"><h3 id="tx-modal-title" class="font-bold md:text-lg text-base">Ghi Chép</h3><button onclick="closeModal('transactionModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-4 md:p-6 overflow-y-auto"><form id="transaction-form" onsubmit="handleTransactionSubmit(event)" class="space-y-4"><div class="grid grid-cols-3 gap-2"><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&:has(:checked)]:border-rose-500 [&:has(:checked)]:bg-rose-50 [&:has(:checked)]:text-rose-600 transition"><input type="radio" name="txType" value="expense" checked class="hidden" onchange="updateFormCategories()"><i class="fa-solid fa-minus mb-1 text-sm"></i><span>Chi Tiêu</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&:has(:checked)]:border-emerald-500 [&:has(:checked)]:bg-emerald-50 [&:has(:checked)]:text-emerald-600 transition"><input type="radio" name="txType" value="income" class="hidden" onchange="updateFormCategories()"><i class="fa-solid fa-plus mb-1 text-sm"></i><span>Thu Nhập</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&:has(:checked)]:border-blue-500 [&:has(:checked)]:bg-blue-50 [&:has(:checked)]:text-blue-600 transition"><input type="radio" name="txType" value="transfer" class="hidden" onchange="updateFormCategories()"><i class="fa-solid fa-arrow-right-arrow-left mb-1 text-sm"></i><span>Chuyển</span></label></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-slate-500 mb-1">SỐ TIỀN</label><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" id="txAmount" required class="w-full bg-slate-50 border rounded-lg p-2.5 text-base font-bold text-indigo-600 outline-none"></div><div><label class="block text-xs font-bold text-slate-500 mb-1">NGÀY</label><input type="date" id="txDate" required class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm outline-none"></div></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label id="lbl-tx-account" class="block text-xs font-bold text-slate-500 mb-1">TỪ TÀI KHOẢN</label><select id="txAccount" required class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm"></select></div><div id="tx-category-wrapper"><label class="block text-xs font-bold text-slate-500 mb-1">DANH MỤC</label><select id="txCategory" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm"></select></div><div id="tx-to-account-wrapper" class="hidden"><label class="block text-xs font-bold text-blue-600 mb-1">ĐẾN TÀI KHOẢN</label><select id="txToAccount" class="w-full bg-blue-50 border-blue-200 border rounded-lg p-2.5 text-sm"></select></div></div><div><label class="block text-xs font-bold text-slate-500 mb-1">GHI CHÚ</label><input type="text" id="txNotes" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm outline-none"></div><div class="pt-4"><button type="submit" id="tx-submit-btn" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl text-sm shadow-md">Lưu Giao Dịch</button></div></form></div></div></div>
@@ -1727,9 +1766,9 @@
 
         function renderCharts(cData, yIn, yEx) {
             const chartTheme = {
-                text: document.body.classList.contains('dark-mode') ? '#cbd5e1' : '#475569',
-                grid: document.body.classList.contains('dark-mode') ? 'rgba(148,163,184,.16)' : 'rgba(148,163,184,.25)',
-                tooltipBg: document.body.classList.contains('dark-mode') ? '#020617' : '#0f172a'
+                text: document.body.classList.contains('dark-mode') ? '#8b8b93' : '#475569',
+                grid: document.body.classList.contains('dark-mode') ? 'rgba(255,255,255,.07)' : 'rgba(148,163,184,.25)',
+                tooltipBg: document.body.classList.contains('dark-mode') ? '#131316' : '#0f172a'
             };
             Chart.defaults.color=chartTheme.text;
             if(charts.c) charts.c.destroy(); if(charts.y) charts.y.destroy();
@@ -1743,7 +1782,7 @@
                     labels:ls.length?ls:['Chưa có dữ liệu'], 
                     datasets:[{data:ls.length?vs:[1], backgroundColor:ls.length?['#f43f5e', '#f59e0b', '#6366f1', '#ec4899', '#a855f7', '#3b82f6', '#14b8a6', '#f97316']:['#e2e8f0'], borderWidth:0, hoverOffset: 8, spacing: 2}] 
                 }, 
-                options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom', labels:{boxWidth:10, font:{size: 11}}}}} 
+                options:{responsive:true, maintainAspectRatio:false, animation:{duration:900, easing:'easeOutQuart'}, hoverBorderWidth:0, plugins:{legend:{position:'bottom', labels:{boxWidth:10, font:{size: 11}}}}} 
             });
             charts.y = new Chart(document.getElementById('yearlyTrendChart'), { 
                 type:'bar', 
@@ -2147,10 +2186,30 @@
             showToast('Đã đăng xuất khỏi Google.', 'fa-info-circle', 'text-slate-400');
         }
 
+        // Đồng bộ ngay: trước đây chỉ ĐẨY (push) dữ liệu máy này lên, không hề TẢI VỀ (pull) dữ liệu
+        // mới nhất từ server trước - nên nếu máy khác vừa thêm dữ liệu mà máy này chưa kịp nhận qua
+        // real-time listener (mạng chậm, tab vừa mở...), bấm "Đồng bộ ngay" khi đó vẫn có thể đẩy dữ
+        // liệu cũ lên đè mất dữ liệu mới. Giờ luôn TẢI VỀ TRƯỚC (lấy thẳng từ server, không dùng cache),
+        // hợp nhất, rồi mới đẩy lên nếu máy này thực sự có gì mới hơn.
         async function manualSyncNow() {
             if (!fbCurrentUid) { showToast('Vui lòng đăng nhập Google trước.', 'fa-info-circle', 'text-amber-500'); return; }
-            await pushLocalDataToFirestore();
-            showToast('Đã đồng bộ.', 'fa-check', 'text-emerald-400');
+            updateSyncStatusUI('syncing', 'Đang tải dữ liệu mới nhất...');
+            try {
+                const snap = await fbDb.collection(FIRESTORE_COLLECTION).doc(fbCurrentUid).get({ source: 'server' });
+                if (snap.exists) {
+                    mergeRemoteData(snap.data()); // tự hợp nhất; nếu máy này có gì mới hơn, hàm này tự đẩy lên lại
+                    syncReady = true;
+                } else {
+                    markSyncReadyAndFlush();
+                    await pushLocalDataToFirestore();
+                }
+                showToast('Đã đồng bộ - dữ liệu mới nhất từ mọi thiết bị.', 'fa-check', 'text-emerald-400');
+                updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
+            } catch (err) {
+                console.error('manualSyncNow error', err);
+                showToast('Không tải được dữ liệu mới nhất, kiểm tra lại mạng.', 'fa-triangle-exclamation', 'text-rose-500');
+                updateSyncStatusUI('error', 'Đồng bộ thất bại, thử lại sau.');
+            }
         }
 
         // ============ HỢP NHẤT DỮ LIỆU (giống bản trước, giữ nguyên logic đã kiểm chứng) ============
@@ -2250,8 +2309,20 @@
         // ============ FIRESTORE: GHI + LẮNG NGHE REAL-TIME ============
         // Gộp nhiều thay đổi liên tiếp (gõ nhanh nhiều giao dịch) thành 1 lần ghi lên server sau 1.2s
         // ngừng thao tác, để tiết kiệm số lượt ghi (vẫn nằm rất xa hạn mức miễn phí của Firestore).
+        //
+        // QUAN TRỌNG - "syncReady": mỗi lần đăng nhập (kể cả khôi phục phiên cũ tự động), TUYỆT ĐỐI
+        // không được đẩy (push/overwrite) dữ liệu lên server cho tới khi máy này đã thực sự nhận được
+        // bản dữ liệu THẬT từ server ít nhất 1 lần. Trước đây, các bước "vá dữ liệu cũ" lúc khởi động
+        // (gán updatedAt cho giao dịch cũ, bổ sung danh mục mới...) vô tình gọi localStorage.setItem
+        // -> tự lên lịch đẩy dữ liệu cục bộ (còn cũ, chưa kịp hợp nhất) lên server chỉ sau 1.2 giây -
+        // thường NHANH HƠN thời gian máy kịp tải dữ liệu thật từ server về (đặc biệt trên mạng di động
+        // hoặc lúc vừa mở app) -> ghi đè mất dữ liệu mới hơn mà thiết bị khác đã thêm. Đây chính là
+        // nguyên nhân gây mất đồng bộ 2 chiều giữa các thiết bị đã từng đăng nhập.
+        let syncReady = false;
+        let pendingSyncAfterReady = false;
         function scheduleDriveSync() {
             if (!fbCurrentUid) return;
+            if (!syncReady) { pendingSyncAfterReady = true; return; } // đợi nhận dữ liệu thật từ server trước, không đẩy vội
             clearTimeout(fbSaveTimer);
             fbSaveTimer = setTimeout(pushLocalDataToFirestore, 1200);
         }
@@ -2268,7 +2339,7 @@
                 console.error('pushLocalDataToFirestore error', err);
                 updateSyncStatusUI('error', 'Lưu thất bại, sẽ tự thử lại...');
                 clearTimeout(fbSaveRetryTimer);
-                fbSaveRetryTimer = setTimeout(pushLocalDataToFirestore, 8000);
+                fbSaveRetryTimer = setTimeout(() => { if (syncReady) pushLocalDataToFirestore(); }, 8000);
             } finally { gDriveState.isSyncing = false; }
         }
 
@@ -2276,6 +2347,7 @@
         // khác), Firestore tự động đẩy về NGAY LẬP TỨC - không cần dò hỏi định kỳ (polling) như trước.
         function attachFirestoreListener(uid) {
             detachFirestoreListener();
+            syncReady = false; pendingSyncAfterReady = false; // phiên đăng nhập mới -> phải đợi nhận dữ liệu thật từ server trước
             fbUnsubscribeDoc = fbDb.collection(FIRESTORE_COLLECTION).doc(uid).onSnapshot({ includeMetadataChanges: true }, (snap) => {
                 if (snap.metadata.hasPendingWrites) return; // đây là do CHÍNH máy này vừa ghi -> đã có sẵn, khỏi gộp lại chính mình
                 if (!snap.exists) {
@@ -2285,16 +2357,24 @@
                     // gây mất dữ liệu khi mở app trên 1 thiết bị vào lúc thiết bị kia không mở cùng lúc.
                     // Chỉ đẩy lên làm bản đầu tiên khi đã CHẮC CHẮN đây là phản hồi thật từ server.
                     if (snap.metadata.fromCache) return;
+                    markSyncReadyAndFlush();
                     pushLocalDataToFirestore(); // đã xác nhận từ server: thật sự chưa có dữ liệu -> đẩy dữ liệu máy này lên làm bản đầu tiên
                     return;
                 }
                 applyRemoteSnapshotWhenIdle(snap.data());
+                markSyncReadyAndFlush();
             }, (err) => {
                 console.error('Firestore onSnapshot error', err);
                 updateSyncStatusUI('error', 'Mất kết nối đồng bộ, đang tự thử lại...');
             });
         }
-        function detachFirestoreListener() { if (fbUnsubscribeDoc) { fbUnsubscribeDoc(); fbUnsubscribeDoc = null; } }
+        // Đánh dấu đã sẵn sàng đồng bộ (đã có dữ liệu thật từ server làm gốc để so sánh) - nếu trong
+        // lúc chờ đã có yêu cầu đẩy dữ liệu bị hoãn lại, giờ mới cho phép thực hiện.
+        function markSyncReadyAndFlush() {
+            syncReady = true;
+            if (pendingSyncAfterReady) { pendingSyncAfterReady = false; scheduleDriveSync(); }
+        }
+        function detachFirestoreListener() { if (fbUnsubscribeDoc) { fbUnsubscribeDoc(); fbUnsubscribeDoc = null; } syncReady = false; pendingSyncAfterReady = false; }
         // Nếu người dùng đang gõ dở 1 ô nhập liệu, hoãn việc gộp dữ liệu mới về để tránh làm gián đoạn/
         // mất nội dung đang gõ; tự kiểm tra lại mỗi 1.5s cho đến khi rảnh tay.
         function applyRemoteSnapshotWhenIdle(remoteData) {
