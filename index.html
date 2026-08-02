@@ -748,20 +748,35 @@
                         </div>
                     </div>
 
+                    <div class="ai-card">
+                        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                            <h4 class="font-bold text-slate-900 flex items-center gap-2"><i class="fa-solid fa-chart-line text-indigo-500"></i>Nhịp độ chi tiêu trong tháng</h4>
+                            <p id="ai-pace-text" class="text-xs font-semibold text-slate-500"></p>
+                        </div>
+                        <p class="text-xs text-slate-400 mb-2">So sánh chi tiêu lũy kế thực tế (từng ngày) với tốc độ lý tưởng để không vượt ngân sách tháng — khác với biểu đồ Tổng Quan vốn chỉ so sánh theo từng tháng.</p>
+                        <div class="relative w-full" style="height:220px;"><canvas id="paceChart"></canvas></div>
+                    </div>
+
                     <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
                         <div class="ai-card">
                             <h4 class="font-bold text-slate-900 mb-3 flex items-center gap-2"><i class="fa-solid fa-magnifying-glass-chart text-rose-500"></i>Nguyên nhân chi nhiều nhất</h4>
+                            <div class="relative w-full mb-3" style="height:180px;"><canvas id="topCategoriesChart"></canvas></div>
                             <ul id="ai-causes-list" class="ai-list text-sm text-slate-600"></ul>
                         </div>
                         <div class="ai-card">
                             <h4 class="font-bold text-slate-900 mb-3 flex items-center gap-2"><i class="fa-solid fa-gauge-high text-indigo-500"></i>Visual kiểm soát ngân sách</h4>
                             <div class="space-y-4">
-                                <div class="flex items-center justify-between gap-4">
-                                    <div>
-                                        <p class="text-xs font-bold text-slate-500 uppercase mb-1">Tình trạng hiện tại</p>
-                                        <p id="ai-visual-status" class="text-sm font-semibold text-slate-800">Chưa có dữ liệu.</p>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="flex flex-col items-center">
+                                        <div class="relative w-full" style="height:120px;"><canvas id="budgetDoughnut"></canvas></div>
+                                        <p class="text-xs font-bold text-slate-500 uppercase mt-1">Ngân sách</p>
+                                        <p id="ai-visual-status" class="text-xs text-slate-500 text-center mt-0.5">Chưa có dữ liệu.</p>
                                     </div>
-                                    <div id="ai-visual-percent" class="w-20 h-20 rounded-full flex items-center justify-center text-lg font-extrabold text-indigo-600 bg-slate-100" style="background: conic-gradient(#4f46e5 0deg, #e2e8f0 0deg);">0%</div>
+                                    <div class="flex flex-col items-center">
+                                        <div class="relative w-full" style="height:120px;"><canvas id="healthGauge"></canvas></div>
+                                        <p class="text-xs font-bold text-slate-500 uppercase mt-1">Sức khỏe tài chính</p>
+                                        <p id="ai-health-gauge-label" class="text-xs text-slate-500 text-center mt-0.5">--</p>
+                                    </div>
                                 </div>
                                 <div>
                                     <div class="flex justify-between text-xs font-semibold text-slate-500 mb-1">
@@ -787,10 +802,14 @@
                     <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
                         <div class="ai-card">
                             <h4 class="font-bold text-slate-900 mb-3 flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation text-amber-500"></i>Giao dịch bất thường</h4>
+                            <p class="text-xs text-slate-400 mb-2">So sánh khoản chi đột biến với mức trung bình cùng danh mục.</p>
+                            <div class="relative w-full mb-3" style="height:170px;"><canvas id="anomaliesChart"></canvas></div>
                             <ul id="ai-anomalies-list" class="ai-list text-sm text-slate-600"></ul>
                         </div>
                         <div class="ai-card">
                             <h4 class="font-bold text-slate-900 mb-3 flex items-center gap-2"><i class="fa-solid fa-arrow-trend-up text-rose-500"></i>Danh mục biến động mạnh nhất</h4>
+                            <p class="text-xs text-slate-400 mb-2">So với cùng danh mục ở tháng trước.</p>
+                            <div class="relative w-full mb-3" style="height:170px;"><canvas id="trendsChart"></canvas></div>
                             <ul id="ai-trends-list" class="ai-list text-sm text-slate-600"></ul>
                         </div>
                     </div>
@@ -1491,6 +1510,12 @@
         function getRawNumber(valueStr) { return !valueStr ? 0 : Number(valueStr.toString().replace(/\./g, '')); }
         function getCurrentMonthStr() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
         function formatCurrency(num) { return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num); }
+        function formatCompactCurrency(num) {
+            const n = Number(num) || 0;
+            if (Math.abs(n) >= 1000000) return (n / 1000000).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + 'tr';
+            if (Math.abs(n) >= 1000) return Math.round(n / 1000) + 'k';
+            return String(Math.round(n));
+        }
         function formatDate(dStr) { const [y,m,d] = dStr.split('-'); return `${d}/${m}/${y}`; }
 
         function showToast(msg, icon, color) {
@@ -1886,6 +1911,191 @@
             });
             return trends.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff)).slice(0, 5);
         }
+        function renderAssistantCharts({ monthStats, daysInMonth, elapsedDays, isCurrentMonth, idealBudget, topCategories, monthExpense }) {
+            const chartTheme = {
+                text: document.body.classList.contains('dark-mode') ? '#8b8b93' : '#475569',
+                grid: document.body.classList.contains('dark-mode') ? 'rgba(255,255,255,.07)' : 'rgba(148,163,184,.25)',
+                tooltipBg: document.body.classList.contains('dark-mode') ? '#131316' : '#0f172a'
+            };
+            if (charts.pace) charts.pace.destroy();
+            if (charts.topCat) charts.topCat.destroy();
+
+            // --- 1) Nhịp độ chi tiêu lũy kế theo ngày, so với tốc độ lý tưởng để không vượt ngân sách ---
+            const dailyTotals = new Array(daysInMonth).fill(0);
+            (monthStats.expenseTxs || []).forEach(tx => {
+                const day = new Date(tx.date + 'T00:00:00').getDate();
+                if (day >= 1 && day <= daysInMonth) dailyTotals[day - 1] += tx.amount;
+            });
+            const actualCumulative = []; let run = 0;
+            dailyTotals.forEach((v, i) => { run += v; actualCumulative.push(i < (isCurrentMonth ? elapsedDays : daysInMonth) ? run : null); });
+            const idealPace = idealBudget > 0 ? dailyTotals.map((_, i) => Math.round(idealBudget * (i + 1) / daysInMonth)) : null;
+            const paceLabels = Array.from({ length: daysInMonth }, (_, i) => `${i + 1}`);
+            const paceCtx = document.getElementById('paceChart');
+            if (paceCtx) {
+                charts.pace = new Chart(paceCtx, {
+                    type: 'line',
+                    data: {
+                        labels: paceLabels,
+                        datasets: [
+                            { label: 'Thực tế (lũy kế)', data: actualCumulative, borderColor: '#7c5cff', backgroundColor: 'rgba(124,92,255,.16)', fill: true, tension: .3, pointRadius: 0, borderWidth: 2.5, spanGaps: false },
+                            ...(idealPace ? [{ label: 'Tốc độ lý tưởng', data: idealPace, borderColor: '#f59e0b', borderDash: [5, 5], fill: false, tension: 0, pointRadius: 0, borderWidth: 1.75 }] : [])
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, animation: { duration: 700, easing: 'easeOutQuart' },
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: { legend: { position: 'top', align: 'end', labels: { boxWidth: 10, usePointStyle: true, font: { size: 11 } } }, tooltip: { backgroundColor: chartTheme.tooltipBg, callbacks: { label: (c) => `${c.dataset.label}: ${c.raw != null ? formatCurrency(c.raw) : '—'}`, title: (c) => `Ngày ${c[0].label}` } } },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { font: { size: 10 }, color: chartTheme.text, maxTicksLimit: 10 } },
+                            y: { beginAtZero: true, grid: { color: chartTheme.grid }, ticks: { font: { size: 10 }, color: chartTheme.text, callback: (v) => formatCompactCurrency(v) } }
+                        }
+                    }
+                });
+            }
+            const paceTextEl = document.getElementById('ai-pace-text');
+            if (paceTextEl) {
+                if (idealBudget > 0 && isCurrentMonth) {
+                    const idealSoFar = idealPace[Math.max(0, elapsedDays - 1)];
+                    const aheadBy = monthExpense - idealSoFar;
+                    paceTextEl.innerHTML = aheadBy > 0 ? `<span class="text-rose-500 font-bold">Đang chi nhanh hơn kế hoạch ${formatCurrency(aheadBy)}</span>` : `<span class="text-emerald-500 font-bold">Đang chi chậm hơn kế hoạch ${formatCurrency(Math.abs(aheadBy))}</span>`;
+                } else { paceTextEl.textContent = ''; }
+            }
+
+            // --- 2) Xếp hạng danh mục chi tiêu tháng này (khác biểu đồ tỷ trọng tròn ở Tổng Quan) ---
+            const topCatCtx = document.getElementById('topCategoriesChart');
+            if (topCatCtx) {
+                const labels = topCategories.length ? topCategories.map(([c]) => c) : ['Chưa có dữ liệu'];
+                const values = topCategories.length ? topCategories.map(([, v]) => v) : [1];
+                const palette = ['#fb7185', '#f59e0b', '#7c5cff', '#38bdf8', '#34d399'];
+                charts.topCat = new Chart(topCatCtx, {
+                    type: 'bar',
+                    data: { labels, datasets: [{ data: values, backgroundColor: topCategories.length ? labels.map((_, i) => palette[i % palette.length]) : ['#e2e8f0'], borderRadius: 6, barThickness: 18 }] },
+                    options: {
+                        indexAxis: 'y', responsive: true, maintainAspectRatio: false, animation: { duration: 700, easing: 'easeOutQuart' },
+                        plugins: { legend: { display: false }, tooltip: { backgroundColor: chartTheme.tooltipBg, callbacks: { label: (c) => formatCurrency(c.raw) } } },
+                        scales: {
+                            x: { beginAtZero: true, grid: { color: chartTheme.grid }, ticks: { font: { size: 10 }, color: chartTheme.text, callback: (v) => formatCompactCurrency(v) } },
+                            y: { grid: { display: false }, ticks: { font: { size: 11, weight: '600' }, color: chartTheme.text } }
+                        }
+                    }
+                });
+            }
+        }
+        function renderAnomalyAndTrendCharts(anomalies, trends) {
+            const chartTheme = {
+                text: document.body.classList.contains('dark-mode') ? '#8b8b93' : '#475569',
+                grid: document.body.classList.contains('dark-mode') ? 'rgba(255,255,255,.07)' : 'rgba(148,163,184,.25)',
+                tooltipBg: document.body.classList.contains('dark-mode') ? '#131316' : '#0f172a'
+            };
+            if (charts.anomalies) charts.anomalies.destroy();
+            if (charts.trends) charts.trends.destroy();
+
+            // --- Giao dịch bất thường: so khoản chi đột biến với mức TB cùng danh mục ---
+            const anomCtx = document.getElementById('anomaliesChart');
+            if (anomCtx) {
+                const labels = anomalies.length ? anomalies.map(a => `${a.tx.category} (${formatDate(a.tx.date)})`) : ['Không có'];
+                const txVals = anomalies.length ? anomalies.map(a => a.tx.amount) : [0];
+                const avgVals = anomalies.length ? anomalies.map(a => a.avg) : [0];
+                charts.anomalies = new Chart(anomCtx, {
+                    type: 'bar',
+                    data: { labels, datasets: [
+                        { label: 'Giao dịch này', data: txVals, backgroundColor: '#f59e0b', borderRadius: 5, barPercentage: .7, categoryPercentage: .7 },
+                        { label: 'TB danh mục', data: avgVals, backgroundColor: 'rgba(148,163,184,.5)', borderRadius: 5, barPercentage: .7, categoryPercentage: .7 }
+                    ] },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, animation: { duration: 700, easing: 'easeOutQuart' },
+                        plugins: { legend: { position: 'top', align: 'end', labels: { boxWidth: 10, usePointStyle: true, font: { size: 10 } } }, tooltip: { backgroundColor: chartTheme.tooltipBg, callbacks: { label: (c) => `${c.dataset.label}: ${formatCurrency(c.raw)}` } } },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { font: { size: 9 }, color: chartTheme.text, maxRotation: 0, autoSkip: false, callback: function (v) { const l = this.getLabelForValue(v); return l.length > 10 ? l.slice(0, 9) + '…' : l; } } },
+                            y: { beginAtZero: true, grid: { color: chartTheme.grid }, ticks: { font: { size: 10 }, color: chartTheme.text, callback: (v) => formatCompactCurrency(v) } }
+                        }
+                    }
+                });
+            }
+
+            // --- Danh mục biến động mạnh nhất: tháng này vs tháng trước ---
+            const trendCtx = document.getElementById('trendsChart');
+            if (trendCtx) {
+                const labels = trends.length ? trends.map(t => t.cat) : ['Chưa đủ dữ liệu'];
+                const curVals = trends.length ? trends.map(t => t.cur) : [0];
+                const prevVals = trends.length ? trends.map(t => t.prev) : [0];
+                const curColors = trends.length ? trends.map(t => t.diff > 0 ? '#fb7185' : '#34d399') : ['#e2e8f0'];
+                charts.trends = new Chart(trendCtx, {
+                    type: 'bar',
+                    data: { labels, datasets: [
+                        { label: 'Tháng trước', data: prevVals, backgroundColor: 'rgba(148,163,184,.5)', borderRadius: 5, barPercentage: .7, categoryPercentage: .7 },
+                        { label: 'Tháng này', data: curVals, backgroundColor: curColors, borderRadius: 5, barPercentage: .7, categoryPercentage: .7 }
+                    ] },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, animation: { duration: 700, easing: 'easeOutQuart' },
+                        plugins: { legend: { position: 'top', align: 'end', labels: { boxWidth: 10, usePointStyle: true, font: { size: 10 } } }, tooltip: { backgroundColor: chartTheme.tooltipBg, callbacks: { label: (c) => `${c.dataset.label}: ${formatCurrency(c.raw)}` } } },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { font: { size: 10 }, color: chartTheme.text } },
+                            y: { beginAtZero: true, grid: { color: chartTheme.grid }, ticks: { font: { size: 10 }, color: chartTheme.text, callback: (v) => formatCompactCurrency(v) } }
+                        }
+                    }
+                });
+            }
+        }
+        function makeCenterTextPlugin(id, getText, getColor) {
+            return {
+                id,
+                beforeDraw(chart) {
+                    const { ctx, chartArea } = chart;
+                    if (!chartArea) return;
+                    const text = getText();
+                    if (!text) return;
+                    ctx.save();
+                    ctx.font = "700 17px 'JetBrains Mono', ui-monospace, monospace";
+                    ctx.fillStyle = getColor();
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    const x = (chartArea.left + chartArea.right) / 2;
+                    const y = (chartArea.top + chartArea.bottom) / 2;
+                    ctx.fillText(text, x, y);
+                    ctx.restore();
+                }
+            };
+        }
+        function renderGaugeCharts(budgetPercent, budgetPercentRaw, health) {
+            if (charts.budgetGauge) charts.budgetGauge.destroy();
+            if (charts.healthGauge) charts.healthGauge.destroy();
+            const trackColor = document.body.classList.contains('dark-mode') ? 'rgba(255,255,255,.09)' : '#e2e8f0';
+
+            // --- Ngân sách đã dùng: vòng tròn đầy đủ, giữ cảm giác quen thuộc như trước ---
+            const budgetCtx = document.getElementById('budgetDoughnut');
+            if (budgetCtx) {
+                const hasBudget = budgetPercent !== null;
+                const used = hasBudget ? Math.min(100, budgetPercent) : 0;
+                const color = budgetPercentRaw > 100 ? '#fb7185' : budgetPercentRaw >= 90 ? '#f59e0b' : '#7c5cff';
+                charts.budgetGauge = new Chart(budgetCtx, {
+                    type: 'doughnut',
+                    data: { datasets: [{ data: hasBudget ? [used, 100 - used] : [1], backgroundColor: hasBudget ? [color, trackColor] : [trackColor], borderWidth: 0 }] },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, cutout: '74%', animation: { duration: 800, easing: 'easeOutQuart' },
+                        plugins: { legend: { display: false }, tooltip: { enabled: false } }
+                    },
+                    plugins: [makeCenterTextPlugin('budgetCenterText', () => hasBudget ? `${budgetPercentRaw}%` : '--', () => color)]
+                });
+            }
+
+            // --- Sức khỏe tài chính: gauge nửa vòng tròn, trực quan hơn nhiều so với chỉ hiện số điểm ---
+            const healthCtx = document.getElementById('healthGauge');
+            if (healthCtx) {
+                const score = health.score;
+                const color = score < 50 ? '#fb7185' : score < 70 ? '#f59e0b' : score < 85 ? '#7c5cff' : '#34d399';
+                charts.healthGauge = new Chart(healthCtx, {
+                    type: 'doughnut',
+                    data: { datasets: [{ data: [score, 100 - score], backgroundColor: [color, trackColor], borderWidth: 0 }] },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, cutout: '74%', rotation: -90, circumference: 180,
+                        animation: { duration: 800, easing: 'easeOutQuart' },
+                        plugins: { legend: { display: false }, tooltip: { enabled: false } }
+                    },
+                    plugins: [makeCenterTextPlugin('healthCenterText', () => `${score}`, () => color)]
+                });
+            }
+        }
         function renderSmartFinancialAssistant() {
             const monthEl = document.getElementById('dashboard-month-filter');
             if (!monthEl || !monthEl.value) return;
@@ -1929,10 +2139,7 @@
             
             const budgetPercentNow = idealBudget > 0 ? Math.round((monthExpense / idealBudget) * 100) : 0;
             const visualPercent = Math.min(100, Math.max(0, budgetPercentNow));
-            const visualDeg = Math.round(visualPercent * 3.6);
-            const visualColor = budgetPercentNow > 100 ? '#e11d48' : budgetPercentNow >= 90 ? '#f59e0b' : '#4f46e5';
-            const visualPercentEl = document.getElementById('ai-visual-percent');
-            if (visualPercentEl) { visualPercentEl.innerText = idealBudget > 0 ? `${budgetPercentNow}%` : '--'; visualPercentEl.style.background = `conic-gradient(${visualColor} ${visualDeg}deg, #e2e8f0 ${visualDeg}deg)`; visualPercentEl.style.color = visualColor; }
+            renderGaugeCharts(idealBudget > 0 ? visualPercent : null, budgetPercentNow, health);
             
             const visualBar = document.getElementById('ai-visual-budget-bar');
             if (visualBar) { visualBar.style.width = `${visualPercent}%`; visualBar.className = budgetPercentNow > 100 ? 'bg-rose-600' : budgetPercentNow >= 90 ? 'bg-amber-500' : 'bg-indigo-600'; }
@@ -1940,10 +2147,12 @@
             setText('ai-remaining-budget', idealBudget > 0 ? `Còn lại: ${formatCurrency(Math.max(0, idealBudget - monthExpense))}` : 'Chưa đặt ngân sách');
             setText('ai-safe-daily', (idealBudget > 0 && remainingDays > 0) ? formatCurrency(Math.max(0, Math.floor((idealBudget - monthExpense) / remainingDays))) : (idealBudget > 0 ? formatCurrency(Math.max(0, idealBudget - monthExpense)) : 'Cần đặt ngân sách'));
             setText('ai-visual-status', idealBudget <= 0 ? 'Chưa có mục tiêu tổng.' : (budgetPercentNow > 100 ? `Đã vượt ${formatCurrency(monthExpense - idealBudget)}.` : `Đã chi ${formatCurrency(monthExpense)} / ${formatCurrency(idealBudget)}.`));
+            setText('ai-health-gauge-label', health.label);
             
             const topCategories = Object.entries(categoryExpenses).sort((a,b) => b[1]-a[1]).slice(0,5);
             renderAIList('ai-causes-list', topCategories.map(([cat, amount], idx) => ({ dot: idx === 0 ? 'bg-rose-500' : idx === 1 ? 'bg-amber-500' : 'bg-indigo-500', html: `<strong>${escapeHTML(cat)}</strong>: ${formatCurrency(amount)} (${monthExpense > 0 ? Math.round(amount / monthExpense * 100) : 0}% tổng chi)` })), 'Chưa có khoản chi.');
             setText('ai-top-category-visual', topCategories[0] ? `${topCategories[0][0]} • ${formatCurrency(topCategories[0][1])}` : 'Chưa có');
+            renderAssistantCharts({ monthStats, daysInMonth, elapsedDays, isCurrentMonth, idealBudget, topCategories, monthExpense });
 
             // Giao dịch bất thường (chi tiêu cao đột biến so với trung bình cùng danh mục)
             const anomalies = findAnomalies(monthStats);
@@ -1958,6 +2167,7 @@
                 dot: t.diff > 0 ? 'bg-rose-500' : 'bg-emerald-500',
                 html: `<strong>${escapeHTML(t.cat)}</strong>: ${t.diff > 0 ? 'Tăng' : 'Giảm'} ${formatCurrency(Math.abs(t.diff))}${t.pct !== null ? ` (${t.diff > 0 ? '+' : ''}${t.pct}%)` : ' (mới phát sinh)'} so với tháng trước`
             })), 'Chưa đủ dữ liệu để so sánh xu hướng.');
+            renderAnomalyAndTrendCharts(anomalies, trends);
 
             const mainCause = topCategories[0] ? topCategories[0][0] : 'chưa rõ';
             const summaryLines = [];
