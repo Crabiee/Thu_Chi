@@ -955,6 +955,7 @@
                             <button onclick="switchSubGuide('savings')" id="subguide-btn-savings" class="subguide-btn py-2.5 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap transition-all duration-200"><i class="fa-solid fa-piggy-bank mr-2"></i>3. Tiết Kiệm & Chi Tiêu</button>
                             <button onclick="switchSubGuide('sync')" id="subguide-btn-sync" class="subguide-btn py-2.5 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap transition-all duration-200"><i class="fa-brands fa-google mr-2"></i>4. Đồng Bộ Dữ Liệu</button>
                             <button onclick="switchSubGuide('invest')" id="subguide-btn-invest" class="subguide-btn py-2.5 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap transition-all duration-200"><i class="fa-solid fa-chart-line mr-2"></i>5. Đầu Tư & Tiết Kiệm Kỳ Hạn</button>
+                            <button onclick="switchSubGuide('knowledge')" id="subguide-btn-knowledge" class="subguide-btn py-2.5 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap transition-all duration-200"><i class="fa-solid fa-lightbulb mr-2"></i>6. Kiến Thức & Dữ Liệu Thực Tế</button>
                         </div>
 
                         <!-- Panel 1: Demo -->
@@ -1063,12 +1064,119 @@
                             </div>
                         </div>
 
-                    </div>
-                </section>
+                        </div>
 
-            </div>
-        </main>
-        
+                        <!-- Panel 6: Kiến thức tài chính -->
+                        <div id="subguide-panel-knowledge" class="subguide-panel space-y-6 hidden">
+
+                            <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+                                <div class="bg-amber-400 text-white w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5"><i class="fa-solid fa-fire-flame-curved text-sm"></i></div>
+                                <div>
+                                    <p class="font-bold text-amber-900 text-sm">Lạm phát — kẻ thù thầm lặng của tiền tiết kiệm</p>
+                                    <p class="text-xs text-amber-800 mt-1 leading-relaxed">Dù bạn không tiêu, tiền vẫn mất giá từng năm vì giá hàng hóa tăng dần. Nếu lãi suất bạn nhận được thấp hơn lạm phát, về thực chất bạn đang <strong>mất tiền</strong> dù số dư tài khoản tăng. Mục tiêu tối thiểu: lãi suất phải <strong>vượt lạm phát</strong> để bảo toàn sức mua. Hãy kiểm tra lãi suất thực tế hiện hành trước khi gửi tiền.</p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                                    <div class="flex items-center gap-2 mb-3"><div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><i class="fa-solid fa-piggy-bank text-sm"></i></div><h5 class="font-bold text-slate-800 text-sm">Tiết kiệm ngân hàng</h5></div>
+                                    <p class="text-[11px] font-semibold text-slate-500 mb-3">Lãi cố định, an toàn tuyệt đối</p>
+                                    <div class="space-y-1.5 text-[11px]">
+                                        <p class="text-emerald-600"><i class="fa-solid fa-check mr-1.5"></i>Được bảo hiểm tiền gửi, không rủi ro</p>
+                                        <p class="text-emerald-600"><i class="fa-solid fa-check mr-1.5"></i>Lãi suất biết trước, dễ lên kế hoạch</p>
+                                        <p class="text-emerald-600"><i class="fa-solid fa-check mr-1.5"></i>Phù hợp quỹ khẩn cấp &amp; mục tiêu ngắn hạn</p>
+                                        <p class="text-rose-500"><i class="fa-solid fa-xmark mr-1.5"></i>Lãi thực có thể thấp sau lạm phát</p>
+                                        <p class="text-rose-500"><i class="fa-solid fa-xmark mr-1.5"></i>Rút trước hạn thường mất lãi kỳ hạn</p>
+                                    </div>
+                                </div>
+                                <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                                    <div class="flex items-center gap-2 mb-3"><div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center"><i class="fa-solid fa-chart-pie text-sm"></i></div><h5 class="font-bold text-slate-800 text-sm">Chứng chỉ quỹ (CCQ)</h5></div>
+                                    <p class="text-[11px] font-semibold text-slate-500 mb-3">Chuyên gia quản lý, đa dạng hóa tự động</p>
+                                    <div class="space-y-1.5 text-[11px]">
+                                        <p class="text-emerald-600"><i class="fa-solid fa-check mr-1.5"></i>Bắt đầu với số tiền nhỏ (vài chục nghìn)</p>
+                                        <p class="text-emerald-600"><i class="fa-solid fa-check mr-1.5"></i>Tiềm năng sinh lời vượt lạm phát dài hạn</p>
+                                        <p class="text-emerald-600"><i class="fa-solid fa-check mr-1.5"></i>Không cần theo dõi thị trường hàng ngày</p>
+                                        <p class="text-rose-500"><i class="fa-solid fa-xmark mr-1.5"></i>Biến động, không bảo toàn vốn ngắn hạn</p>
+                                        <p class="text-rose-500"><i class="fa-solid fa-xmark mr-1.5"></i>Cần nắm giữ ≥3 năm để giảm rủi ro</p>
+                                    </div>
+                                </div>
+                                <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                                    <div class="flex items-center gap-2 mb-3"><div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="fa-solid fa-chart-line text-sm"></i></div><h5 class="font-bold text-slate-800 text-sm">Cổ phiếu / ETF</h5></div>
+                                    <p class="text-[11px] font-semibold text-slate-500 mb-3">Tiềm năng cao nhất, rủi ro cao nhất</p>
+                                    <div class="space-y-1.5 text-[11px]">
+                                        <p class="text-emerald-600"><i class="fa-solid fa-check mr-1.5"></i>ETF VN30 là cách đơn giản nhất vào thị trường</p>
+                                        <p class="text-emerald-600"><i class="fa-solid fa-check mr-1.5"></i>Lịch sử dài hạn: thị trường luôn phục hồi</p>
+                                        <p class="text-rose-500"><i class="fa-solid fa-xmark mr-1.5"></i>Có thể giảm 30–50% trong giai đoạn khủng hoảng</p>
+                                        <p class="text-rose-500"><i class="fa-solid fa-xmark mr-1.5"></i>Tuyệt đối không dùng tiền ngắn hạn hay vay nợ</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                                <div class="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+                                    <i class="fa-solid fa-calculator text-indigo-500"></i>
+                                    <div>
+                                        <h4 class="font-bold text-slate-900 text-sm">Máy tính lãi kép</h4>
+                                        <p class="text-[11px] text-slate-400">Nhập vốn, lãi suất kỳ vọng và thời gian — xem tiền tăng trưởng thế nào</p>
+                                    </div>
+                                </div>
+                                <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="space-y-4">
+                                        <div><label class="block text-xs font-bold text-slate-600 mb-1">Vốn ban đầu (₫)</label><input type="number" id="calc-principal" value="50000000" step="1000000" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-mono" oninput="updateCompoundCalc()"></div>
+                                        <div><label class="block text-xs font-bold text-slate-600 mb-1">Đóng thêm mỗi tháng (₫)</label><input type="number" id="calc-monthly" value="3000000" step="100000" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-mono" oninput="updateCompoundCalc()"></div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-600 mb-1">Lãi suất kỳ vọng (%/năm)</label>
+                                            <input type="range" id="calc-rate" min="3" max="20" step="0.5" value="7" class="w-full accent-indigo-600" oninput="updateCompoundCalc()">
+                                            <div class="flex justify-between text-[10px] text-slate-400 mt-1"><span>3% (ngắn hạn)</span><span id="calc-rate-label" class="font-bold text-indigo-600">7%</span><span>20% (rủi ro cao)</span></div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-600 mb-1">Thời gian</label>
+                                            <input type="range" id="calc-years" min="1" max="30" step="1" value="10" class="w-full accent-indigo-600" oninput="updateCompoundCalc()">
+                                            <div class="flex justify-between text-[10px] text-slate-400 mt-1"><span>1 năm</span><span id="calc-years-label" class="font-bold text-indigo-600">10 năm</span><span>30 năm</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-col justify-center space-y-4">
+                                        <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-center">
+                                            <p class="text-xs font-bold text-indigo-500 uppercase mb-1">Tài sản cuối kỳ</p>
+                                            <p id="calc-result" class="text-2xl font-bold text-indigo-700 font-mono">0 ₫</p>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div class="bg-slate-50 rounded-xl p-3 text-center">
+                                                <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Tổng đã bỏ vào</p>
+                                                <p id="calc-invested" class="text-sm font-bold text-slate-700 font-mono">0 ₫</p>
+                                            </div>
+                                            <div class="bg-emerald-50 rounded-xl p-3 text-center">
+                                                <p class="text-[10px] font-bold text-emerald-600 uppercase mb-1">Lãi kép sinh ra</p>
+                                                <p id="calc-profit" class="text-sm font-bold text-emerald-700 font-mono">0 ₫</p>
+                                            </div>
+                                        </div>
+                                        <div class="relative w-full" style="height:130px;"><canvas id="compoundChart"></canvas></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex gap-3">
+                                    <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center shrink-0"><i class="fa-solid fa-bolt text-sm"></i></div>
+                                    <div><p class="font-bold text-slate-800 text-sm mb-1">Trả cho mình trước — tự động hóa</p><p class="text-xs text-slate-500 leading-relaxed">Ngay ngày nhận lương, đặt lệnh chuyển tự động sang tài khoản tiết kiệm riêng không liên kết ví điện tử. Não bộ tự điều chỉnh chi tiêu theo số còn lại — không cần ý chí, chỉ cần thiết kế đúng dòng tiền.</p></div>
+                                </div>
+                                <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex gap-3">
+                                    <div class="w-9 h-9 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center shrink-0"><i class="fa-solid fa-shield-halved text-sm"></i></div>
+                                    <div><p class="font-bold text-slate-800 text-sm mb-1">Quỹ khẩn cấp — ưu tiên số 1</p><p class="text-xs text-slate-500 leading-relaxed">Tích lũy 3–6 tháng chi tiêu ở tài khoản riêng, rút được ngay. Đây là nền móng trước cả đầu tư — không có quỹ này, một sự cố nhỏ buộc bạn vay nợ hoặc bán khoản đầu tư đúng lúc thị trường xấu.</p></div>
+                                </div>
+                                <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex gap-3">
+                                    <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0"><i class="fa-solid fa-clock-rotate-left text-sm"></i></div>
+                                    <div><p class="font-bold text-slate-800 text-sm mb-1">Quy tắc 72 — tốc độ nhân đôi tài sản</p><p class="text-xs text-slate-500 leading-relaxed">Số năm để tài sản nhân đôi ≈ <strong>72 ÷ lãi suất%</strong>. Lãi 6%/năm → nhân đôi sau 12 năm. Lãi 12%/năm → chỉ 6 năm. Lạm phát 4–5% → sức mua giảm 1 nửa sau 14–18 năm nếu tiền không sinh lãi.</p></div>
+                                </div>
+                                <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex gap-3">
+                                    <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0"><i class="fa-solid fa-hourglass-half text-sm"></i></div>
+                                    <div><p class="font-bold text-slate-800 text-sm mb-1">Quy tắc 7 ngày — chống mua bốc đồng</p><p class="text-xs text-slate-500 leading-relaxed">Với mọi khoản mua sắm không thiết yếu: đợi đúng 7 ngày. Nếu vẫn muốn mua và có tiền trong ngân sách — mua không tội lỗi. Nếu cảm giác thích qua đi, bạn vừa tránh được một khoản lãng phí.</p></div>
+                                </div>
+                            </div>
+
+                        </div>
+
+
         <!-- MOBILE BOTTOM NAVIGATION (Chỉ hiện trên điện thoại) -->
         <nav id="mobile-bottom-nav" class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around items-end px-2 pt-2 pb-safe z-40 shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
             <button onclick="switchTab('dashboard')" class="mobile-tab-btn active flex-1 flex flex-col items-center py-2 text-indigo-600" id="m-btn-dashboard">
@@ -2204,11 +2312,63 @@
         function handleDeleteCategoryClick(type, cat) { if (categories[type].length <= 1) return showToast("Phải giữ lại ít nhất 1", "fa-xmark", "text-rose-500"); openConfirm("Xóa Danh Mục", `Xóa "${cat}"?`, () => { categories[type] = categories[type].filter(c => c !== cat); localStorage.setItem('personal_categories_v4', JSON.stringify(categories)); if (type === 'expense') { delete idealCategoryBudgets[cat]; localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); } renderCategoryManager(); updateFormCategories(); updateDashboard(); showToast("Đã xóa", "fa-trash", "text-rose-400"); }); }
 
         // ================== GUIDE & EXPORT ==================
+        function updateCompoundCalc() {
+            const P = parseFloat(document.getElementById('calc-principal')?.value) || 0;
+            const M = parseFloat(document.getElementById('calc-monthly')?.value) || 0;
+            const rSlider = document.getElementById('calc-rate');
+            const ySlider = document.getElementById('calc-years');
+            if (!rSlider || !ySlider) return;
+            const r = parseFloat(rSlider.value) / 100;
+            const years = parseInt(ySlider.value);
+            setText('calc-rate-label', `${rSlider.value}%`);
+            setText('calc-years-label', `${years} năm`);
+            const n = years * 12;
+            const rm = r / 12;
+            const fv = P * Math.pow(1 + rm, n) + (rm > 0 ? M * (Math.pow(1 + rm, n) - 1) / rm : M * n);
+            const invested = P + M * n;
+            const profit = fv - invested;
+            setText('calc-result', formatCurrency(Math.round(fv)));
+            setText('calc-invested', formatCurrency(Math.round(invested)));
+            setText('calc-profit', formatCurrency(Math.round(profit)));
+            const milestones = [1, 3, 5, 10, 20, 30].filter(y => y <= years);
+            if (milestones[milestones.length - 1] !== years) milestones.push(years);
+            const capData = [], intData = [];
+            milestones.forEach(y => {
+                const ni = y * 12;
+                const fvi = P * Math.pow(1 + rm, ni) + (rm > 0 ? M * (Math.pow(1 + rm, ni) - 1) / rm : M * ni);
+                const inv = P + M * ni;
+                capData.push(Math.round(inv));
+                intData.push(Math.round(Math.max(0, fvi - inv)));
+            });
+            const ctx = document.getElementById('compoundChart');
+            if (!ctx) return;
+            if (charts.compound) charts.compound.destroy();
+            const isDark = document.body.classList.contains('dark-mode');
+            charts.compound = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: milestones.map(y => `${y}n`),
+                    datasets: [
+                        { label: 'Vốn góp', data: capData, backgroundColor: isDark ? 'rgba(148,163,184,.5)' : 'rgba(148,163,184,.6)', borderRadius: 4, stack: 'a' },
+                        { label: 'Lãi kép', data: intData, backgroundColor: '#7c5cff', borderRadius: 4, stack: 'a' }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, animation: { duration: 400 },
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 9 }, usePointStyle: true } }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${formatCompactCurrency(c.raw)}` } } },
+                    scales: {
+                        x: { stacked: true, grid: { display: false }, ticks: { font: { size: 9 }, color: isDark ? '#8b8b93' : '#64748b' } },
+                        y: { stacked: true, display: false }
+                    }
+                }
+            });
+        }
         function switchSubGuide(subTabName) {
             document.querySelectorAll('.subguide-panel').forEach(panel => panel.classList.add('hidden'));
             document.querySelectorAll('.subguide-btn').forEach(btn => { btn.className = "subguide-btn py-2.5 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap transition-all duration-200"; });
             document.getElementById(`subguide-panel-${subTabName}`).classList.remove('hidden');
             document.getElementById(`subguide-btn-${subTabName}`).className = "subguide-btn py-2.5 px-4 text-sm font-semibold border-b-2 border-indigo-600 text-indigo-600 whitespace-nowrap transition-all duration-200";
+            if (subTabName === 'knowledge') setTimeout(updateCompoundCalc, 80);
         }
         function runDemoTransfer() {
             const coin = document.getElementById('demo-coin-el');
