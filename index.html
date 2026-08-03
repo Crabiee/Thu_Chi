@@ -482,6 +482,10 @@
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
         }
+        /* --- Calculator 3-mode tab switcher --- */
+        body.dark-mode .calc-mode-btn { background: transparent; color: var(--fp-text-dim); }
+        body.dark-mode .calc-mode-btn.bg-white { background: var(--fp-surface-2) !important; color: var(--fp-accent) !important; box-shadow: none !important; border-radius: 8px; }
+        body.dark-mode #calc-desc-simple, body.dark-mode #calc-desc-compound, body.dark-mode #calc-desc-monthly { background: var(--fp-sunken) !important; border-color: var(--fp-border) !important; color: var(--fp-text-dim) !important; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
@@ -1113,44 +1117,89 @@
                             </div>
 
                             <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                                <div class="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
-                                    <i class="fa-solid fa-calculator text-indigo-500"></i>
-                                    <div>
-                                        <h4 class="font-bold text-slate-900 text-sm">Máy tính lãi kép</h4>
-                                        <p class="text-[11px] text-slate-400">Nhập vốn, lãi suất kỳ vọng và thời gian — xem tiền tăng trưởng thế nào</p>
+                                <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fa-solid fa-calculator text-indigo-500"></i>
+                                        <div>
+                                            <h4 class="font-bold text-slate-900 text-sm">Máy tính lãi suất</h4>
+                                            <p class="text-[11px] text-slate-400">Chọn hình thức gửi để tính kết quả phù hợp</p>
+                                        </div>
+                                    </div>
+                                    <!-- Tab chọn chế độ -->
+                                    <div class="flex bg-slate-100 rounded-xl p-1 gap-1">
+                                        <button id="calc-tab-simple" onclick="switchCalcMode('simple')" class="calc-mode-btn active text-xs font-bold px-3 py-1.5 rounded-lg bg-white text-indigo-600 shadow-sm transition-all">Lãi đơn</button>
+                                        <button id="calc-tab-compound" onclick="switchCalcMode('compound')" class="calc-mode-btn text-xs font-bold px-3 py-1.5 rounded-lg text-slate-500 transition-all">Lãi kép</button>
+                                        <button id="calc-tab-monthly" onclick="switchCalcMode('monthly')" class="calc-mode-btn text-xs font-bold px-3 py-1.5 rounded-lg text-slate-500 transition-all">Trả hàng tháng</button>
                                     </div>
                                 </div>
+
+                                <!-- Mô tả chế độ -->
+                                <div id="calc-desc-simple" class="calc-desc px-5 pt-3 pb-0 text-[11px] text-slate-500 bg-slate-50 border-b border-slate-100">
+                                    <i class="fa-solid fa-circle-info text-indigo-400 mr-1"></i>
+                                    <strong>Lãi đơn (lĩnh cuối kỳ):</strong> Lãi tính trên vốn gốc, trả 1 lần vào cuối kỳ hạn. Phổ biến nhất tại ngân hàng VN.
+                                </div>
+                                <div id="calc-desc-compound" class="calc-desc hidden px-5 pt-3 pb-0 text-[11px] text-slate-500 bg-slate-50 border-b border-slate-100">
+                                    <i class="fa-solid fa-circle-info text-indigo-400 mr-1"></i>
+                                    <strong>Lãi kép (tái đầu tư):</strong> Lãi được cộng vào gốc mỗi kỳ, kỳ sau tính lãi trên cả gốc + lãi cũ. Phù hợp CCQ, cổ phiếu, gửi tiết kiệm tự động tái ký.
+                                </div>
+                                <div id="calc-desc-monthly" class="calc-desc hidden px-5 pt-3 pb-0 text-[11px] text-slate-500 bg-slate-50 border-b border-slate-100">
+                                    <i class="fa-solid fa-circle-info text-indigo-400 mr-1"></i>
+                                    <strong>Lãi trả hàng tháng:</strong> Lãi được thanh toán mỗi tháng, vốn gốc trả cuối kỳ. Phù hợp khi cần dòng tiền đều đặn hàng tháng.
+                                </div>
+
                                 <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <!-- Cột trái: inputs -->
                                     <div class="space-y-4">
-                                        <div><label class="block text-xs font-bold text-slate-600 mb-1">Vốn ban đầu (₫)</label><input type="number" id="calc-principal" value="50000000" step="1000000" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-mono" oninput="updateCompoundCalc()"></div>
-                                        <div><label class="block text-xs font-bold text-slate-600 mb-1">Đóng thêm mỗi tháng (₫)</label><input type="number" id="calc-monthly" value="3000000" step="100000" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-mono" oninput="updateCompoundCalc()"></div>
                                         <div>
-                                            <label class="block text-xs font-bold text-slate-600 mb-1">Lãi suất kỳ vọng (%/năm)</label>
-                                            <input type="range" id="calc-rate" min="3" max="20" step="0.5" value="7" class="w-full accent-indigo-600" oninput="updateCompoundCalc()">
-                                            <div class="flex justify-between text-[10px] text-slate-400 mt-1"><span>3% (ngắn hạn)</span><span id="calc-rate-label" class="font-bold text-indigo-600">7%</span><span>20% (rủi ro cao)</span></div>
+                                            <label class="block text-xs font-bold text-slate-600 mb-1">Vốn gửi (₫)</label>
+                                            <input type="number" id="calc-principal" value="100000000" step="1000000" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-mono" oninput="runCalc()">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-600 mb-1">Lãi suất (%/năm)</label>
+                                            <div class="flex items-center gap-2">
+                                                <input type="range" id="calc-rate" min="1" max="20" step="0.1" value="7" class="flex-1 accent-indigo-600" oninput="runCalc()">
+                                                <span id="calc-rate-label" class="text-sm font-bold text-indigo-600 w-12 text-right font-mono">7.0%</span>
+                                            </div>
                                         </div>
                                         <div>
                                             <label class="block text-xs font-bold text-slate-600 mb-1">Thời gian</label>
-                                            <input type="range" id="calc-years" min="1" max="30" step="1" value="10" class="w-full accent-indigo-600" oninput="updateCompoundCalc()">
-                                            <div class="flex justify-between text-[10px] text-slate-400 mt-1"><span>1 năm</span><span id="calc-years-label" class="font-bold text-indigo-600">10 năm</span><span>30 năm</span></div>
+                                            <div class="flex items-center gap-2">
+                                                <input type="range" id="calc-years" min="1" max="30" step="1" value="3" class="flex-1 accent-indigo-600" oninput="runCalc()">
+                                                <span id="calc-years-label" class="text-sm font-bold text-indigo-600 w-16 text-right font-mono">3 năm</span>
+                                            </div>
+                                        </div>
+                                        <!-- Chỉ hiện khi lãi kép: nạp thêm hàng tháng -->
+                                        <div id="calc-monthly-contrib-row" class="hidden">
+                                            <label class="block text-xs font-bold text-slate-600 mb-1">Nạp thêm mỗi tháng (₫) <span class="text-slate-400 font-normal">— tùy chọn</span></label>
+                                            <input type="number" id="calc-monthly-contrib" value="0" step="500000" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-mono" oninput="runCalc()">
                                         </div>
                                     </div>
-                                    <div class="flex flex-col justify-center space-y-4">
+
+                                    <!-- Cột phải: kết quả -->
+                                    <div class="flex flex-col gap-3">
                                         <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-center">
-                                            <p class="text-xs font-bold text-indigo-500 uppercase mb-1">Tài sản cuối kỳ</p>
+                                            <p id="calc-result-label" class="text-xs font-bold text-indigo-500 uppercase mb-1">Nhận về cuối kỳ</p>
                                             <p id="calc-result" class="text-2xl font-bold text-indigo-700 font-mono">0 ₫</p>
                                         </div>
-                                        <div class="grid grid-cols-2 gap-3">
+                                        <div class="grid grid-cols-3 gap-2">
                                             <div class="bg-slate-50 rounded-xl p-3 text-center">
-                                                <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Tổng đã bỏ vào</p>
-                                                <p id="calc-invested" class="text-sm font-bold text-slate-700 font-mono">0 ₫</p>
+                                                <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Vốn gốc</p>
+                                                <p id="calc-principal-disp" class="text-xs font-bold text-slate-700 font-mono">0 ₫</p>
                                             </div>
                                             <div class="bg-emerald-50 rounded-xl p-3 text-center">
-                                                <p class="text-[10px] font-bold text-emerald-600 uppercase mb-1">Lãi kép sinh ra</p>
-                                                <p id="calc-profit" class="text-sm font-bold text-emerald-700 font-mono">0 ₫</p>
+                                                <p class="text-[10px] font-bold text-emerald-600 uppercase mb-1">Tổng lãi</p>
+                                                <p id="calc-profit" class="text-xs font-bold text-emerald-700 font-mono">0 ₫</p>
+                                            </div>
+                                            <div id="calc-monthly-out-box" class="bg-violet-50 rounded-xl p-3 text-center hidden">
+                                                <p class="text-[10px] font-bold text-violet-600 uppercase mb-1">Lãi/tháng</p>
+                                                <p id="calc-monthly-out" class="text-xs font-bold text-violet-700 font-mono">0 ₫</p>
+                                            </div>
+                                            <div id="calc-effective-box" class="bg-amber-50 rounded-xl p-3 text-center hidden">
+                                                <p class="text-[10px] font-bold text-amber-600 uppercase mb-1">Lãi thực/năm</p>
+                                                <p id="calc-effective" class="text-xs font-bold text-amber-700 font-mono">0%</p>
                                             </div>
                                         </div>
-                                        <div class="relative w-full" style="height:130px;"><canvas id="compoundChart"></canvas></div>
+                                        <div class="relative w-full" style="height:140px;"><canvas id="compoundChart"></canvas></div>
                                     </div>
                                 </div>
                             </div>
@@ -2312,34 +2361,84 @@
         function handleDeleteCategoryClick(type, cat) { if (categories[type].length <= 1) return showToast("Phải giữ lại ít nhất 1", "fa-xmark", "text-rose-500"); openConfirm("Xóa Danh Mục", `Xóa "${cat}"?`, () => { categories[type] = categories[type].filter(c => c !== cat); localStorage.setItem('personal_categories_v4', JSON.stringify(categories)); if (type === 'expense') { delete idealCategoryBudgets[cat]; localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); } renderCategoryManager(); updateFormCategories(); updateDashboard(); showToast("Đã xóa", "fa-trash", "text-rose-400"); }); }
 
         // ================== GUIDE & EXPORT ==================
-        function updateCompoundCalc() {
+        let calcMode = 'simple';
+        function switchCalcMode(mode) {
+            calcMode = mode;
+            document.querySelectorAll('.calc-mode-btn').forEach(b => { b.classList.remove('bg-white','text-indigo-600','shadow-sm'); b.classList.add('text-slate-500'); });
+            document.querySelectorAll('.calc-desc').forEach(d => d.classList.add('hidden'));
+            const activeBtn = document.getElementById(`calc-tab-${mode}`);
+            activeBtn.classList.add('bg-white','text-indigo-600','shadow-sm'); activeBtn.classList.remove('text-slate-500');
+            document.getElementById(`calc-desc-${mode}`).classList.remove('hidden');
+            // Hiện/ẩn ô nạp thêm (chỉ lãi kép)
+            const contribRow = document.getElementById('calc-monthly-contrib-row');
+            contribRow.classList.toggle('hidden', mode !== 'compound');
+            // Hiện/ẩn cột lãi/tháng và lãi thực/năm
+            document.getElementById('calc-monthly-out-box').classList.toggle('hidden', mode !== 'monthly');
+            document.getElementById('calc-effective-box').classList.toggle('hidden', mode !== 'compound');
+            // Nhãn kết quả
+            const labels = { simple: 'Nhận về cuối kỳ (vốn + lãi)', compound: 'Tài sản cuối kỳ', monthly: 'Vốn gốc thu hồi cuối kỳ' };
+            setText('calc-result-label', labels[mode]);
+            runCalc();
+        }
+        function runCalc() {
             const P = parseFloat(document.getElementById('calc-principal')?.value) || 0;
-            const M = parseFloat(document.getElementById('calc-monthly')?.value) || 0;
-            const rSlider = document.getElementById('calc-rate');
-            const ySlider = document.getElementById('calc-years');
-            if (!rSlider || !ySlider) return;
-            const r = parseFloat(rSlider.value) / 100;
-            const years = parseInt(ySlider.value);
-            setText('calc-rate-label', `${rSlider.value}%`);
+            const rate = parseFloat(document.getElementById('calc-rate')?.value) || 0;
+            const years = parseInt(document.getElementById('calc-years')?.value) || 1;
+            const M = parseFloat(document.getElementById('calc-monthly-contrib')?.value) || 0;
+            setText('calc-rate-label', `${rate.toFixed(1)}%`);
             setText('calc-years-label', `${years} năm`);
-            const n = years * 12;
-            const rm = r / 12;
-            const fv = P * Math.pow(1 + rm, n) + (rm > 0 ? M * (Math.pow(1 + rm, n) - 1) / rm : M * n);
-            const invested = P + M * n;
-            const profit = fv - invested;
-            setText('calc-result', formatCurrency(Math.round(fv)));
-            setText('calc-invested', formatCurrency(Math.round(invested)));
-            setText('calc-profit', formatCurrency(Math.round(profit)));
-            const milestones = [1, 3, 5, 10, 20, 30].filter(y => y <= years);
-            if (milestones[milestones.length - 1] !== years) milestones.push(years);
+            const r = rate / 100;
+            let result, profit, monthlyOut = 0, effectiveRate = 0;
+            const milestones = [];
             const capData = [], intData = [];
-            milestones.forEach(y => {
-                const ni = y * 12;
-                const fvi = P * Math.pow(1 + rm, ni) + (rm > 0 ? M * (Math.pow(1 + rm, ni) - 1) / rm : M * ni);
-                const inv = P + M * ni;
-                capData.push(Math.round(inv));
-                intData.push(Math.round(Math.max(0, fvi - inv)));
-            });
+
+            if (calcMode === 'simple') {
+                // Lãi đơn: A = P(1 + r*t), lãi trả 1 lần cuối kỳ
+                result = P * (1 + r * years);
+                profit = P * r * years;
+                for (let y = 1; y <= years; y++) {
+                    milestones.push(y);
+                    capData.push(Math.round(P));
+                    intData.push(Math.round(P * r * y));
+                }
+
+            } else if (calcMode === 'compound') {
+                // Lãi kép ghép tháng: A = P*(1+rm)^n + M*((1+rm)^n-1)/rm
+                const rm = r / 12, n = years * 12;
+                const fv = P * Math.pow(1 + rm, n) + (rm > 0 ? M * (Math.pow(1 + rm, n) - 1) / rm : M * n);
+                const invested = P + M * n;
+                result = fv;
+                profit = fv - invested;
+                // Lãi suất hiệu dụng (EAR) = (1 + r/12)^12 - 1
+                effectiveRate = (Math.pow(1 + rm, 12) - 1) * 100;
+                setText('calc-effective', `${effectiveRate.toFixed(2)}%`);
+                const marks = [1,2,3,5,7,10,15,20,25,30].filter(y => y <= years);
+                if (!marks.includes(years)) marks.push(years);
+                marks.forEach(y => {
+                    const ni = y * 12;
+                    const fvi = P * Math.pow(1+rm,ni) + (rm>0 ? M*(Math.pow(1+rm,ni)-1)/rm : M*ni);
+                    const inv = P + M * ni;
+                    milestones.push(y); capData.push(Math.round(inv)); intData.push(Math.round(Math.max(0,fvi-inv)));
+                });
+
+            } else {
+                // Lãi trả hàng tháng: lãi đơn chia đều 12 tháng, cuối kỳ thu vốn gốc
+                monthlyOut = P * r / 12;
+                result = P; // người gửi thu lại đúng vốn gốc cuối kỳ
+                profit = monthlyOut * 12 * years;
+                setText('calc-monthly-out', formatCurrency(Math.round(monthlyOut)));
+                for (let y = 1; y <= years; y++) {
+                    milestones.push(y);
+                    capData.push(Math.round(P));
+                    intData.push(Math.round(monthlyOut * 12 * y));
+                }
+            }
+
+            setText('calc-result', formatCurrency(Math.round(calcMode === 'monthly' ? P : result)));
+            setText('calc-principal-disp', formatCurrency(Math.round(P)));
+            setText('calc-profit', formatCurrency(Math.round(profit)));
+
+            // Biểu đồ cột stacked: vốn (xám) + lãi (tím)
             const ctx = document.getElementById('compoundChart');
             if (!ctx) return;
             if (charts.compound) charts.compound.destroy();
@@ -2349,13 +2448,16 @@
                 data: {
                     labels: milestones.map(y => `${y}n`),
                     datasets: [
-                        { label: 'Vốn góp', data: capData, backgroundColor: isDark ? 'rgba(148,163,184,.5)' : 'rgba(148,163,184,.6)', borderRadius: 4, stack: 'a' },
-                        { label: 'Lãi kép', data: intData, backgroundColor: '#7c5cff', borderRadius: 4, stack: 'a' }
+                        { label: 'Vốn', data: capData, backgroundColor: isDark ? 'rgba(148,163,184,.45)' : 'rgba(148,163,184,.55)', borderRadius: 4, stack: 'a' },
+                        { label: 'Lãi', data: intData, backgroundColor: calcMode === 'simple' ? '#38bdf8' : calcMode === 'compound' ? '#7c5cff' : '#a78bfa', borderRadius: 4, stack: 'a' }
                     ]
                 },
                 options: {
-                    responsive: true, maintainAspectRatio: false, animation: { duration: 400 },
-                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 9 }, usePointStyle: true } }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${formatCompactCurrency(c.raw)}` } } },
+                    responsive: true, maintainAspectRatio: false, animation: { duration: 350 },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 9 }, usePointStyle: true } },
+                        tooltip: { callbacks: { label: c => `${c.dataset.label}: ${formatCompactCurrency(c.raw)}` } }
+                    },
                     scales: {
                         x: { stacked: true, grid: { display: false }, ticks: { font: { size: 9 }, color: isDark ? '#8b8b93' : '#64748b' } },
                         y: { stacked: true, display: false }
@@ -2363,12 +2465,14 @@
                 }
             });
         }
+        // Alias để tương thích với các chỗ cũ gọi updateCompoundCalc
+        function updateCompoundCalc() { runCalc(); }
         function switchSubGuide(subTabName) {
             document.querySelectorAll('.subguide-panel').forEach(panel => panel.classList.add('hidden'));
             document.querySelectorAll('.subguide-btn').forEach(btn => { btn.className = "subguide-btn py-2.5 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap transition-all duration-200"; });
             document.getElementById(`subguide-panel-${subTabName}`).classList.remove('hidden');
             document.getElementById(`subguide-btn-${subTabName}`).className = "subguide-btn py-2.5 px-4 text-sm font-semibold border-b-2 border-indigo-600 text-indigo-600 whitespace-nowrap transition-all duration-200";
-            if (subTabName === 'knowledge') setTimeout(updateCompoundCalc, 80);
+            if (subTabName === 'knowledge') setTimeout(() => { switchCalcMode(calcMode || 'simple'); }, 80);
         }
         function runDemoTransfer() {
             const coin = document.getElementById('demo-coin-el');
