@@ -7,7 +7,6 @@
     <meta name="theme-color" content="#0a0a0c" media="(prefers-color-scheme: dark)">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="mobile-web-app-capable" content="yes">
     <title>Quản lý Chi tiêu & Dashboard Tài chính</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -504,155 +503,112 @@
 
         /* =========================================================
            MOBILE REDESIGN — Finance Pro
-           Tối ưu toàn diện cho màn hình ≤ 767px
+           Fix Safari iOS fixed positioning + tối ưu UX di động
         ========================================================= */
 
-        /* --- Safe area & base rhythm --- */
-        @supports (padding-bottom: env(safe-area-inset-bottom)) {
-            #mobile-bottom-nav { padding-bottom: calc(env(safe-area-inset-bottom) + 4px); }
+        /* --- Body scroll trên mobile: body scroll thay vì main scroll --- */
+        @media (max-width: 767px) {
+            html, body { height: 100%; overflow-x: hidden; }
+
+            /* appRoot phải full-height nhưng không overflow-clip */
+            #appRoot { min-height: 100dvh; overflow: visible !important; }
+
+            /* main: không overflow, để body cuộn */
+            main { overflow: visible !important; }
         }
 
-        /* --- BOTTOM NAV: nâng cấp toàn diện --- */
+        /* --- Safe area insets (notch / home indicator) --- */
+        @supports (padding-bottom: env(safe-area-inset-bottom)) {
+            #mobile-bottom-nav {
+                padding-bottom: calc(env(safe-area-inset-bottom) + 4px) !important;
+            }
+        }
+
+        /* =========================================================
+           BOTTOM NAV — Safari-safe, touch-optimized
+        ========================================================= */
         @media (max-width: 767px) {
             #mobile-bottom-nav {
+                /* position:fixed ở đây sẽ hoạt động vì nó không nằm trong overflow container */
                 height: auto;
                 min-height: 60px;
-                border-top: 1px solid rgba(148,163,184,.15);
+                border-top: 1px solid rgba(148,163,184,.15) !important;
                 box-shadow: 0 -8px 32px rgba(15,23,42,.10);
                 backdrop-filter: blur(20px);
                 -webkit-backdrop-filter: blur(20px);
-                background: rgba(255,255,255,.94) !important;
+                background: rgba(255,255,255,.96) !important;
             }
             body.dark-mode #mobile-bottom-nav {
-                background: rgba(10,10,14,.94) !important;
+                background: rgba(10,10,14,.96) !important;
                 border-top-color: rgba(148,163,184,.12) !important;
-                box-shadow: 0 -8px 32px rgba(0,0,0,.32);
             }
 
             /* Touch target tối thiểu 44×44px */
             .mobile-tab-btn {
                 min-height: 52px;
                 min-width: 44px;
-                padding-top: 8px;
-                padding-bottom: 8px;
+                padding: 8px 4px !important;
                 position: relative;
                 border-radius: 12px;
-                margin: 2px;
+                -webkit-tap-highlight-color: transparent;
             }
             .mobile-tab-btn i { font-size: 22px !important; }
             .mobile-tab-btn span { font-size: 10px; letter-spacing: .02em; }
 
-            /* Active pill indicator */
+            /* Active indicator pill */
+            .mobile-tab-btn.active { color: #4f46e5 !important; }
             .mobile-tab-btn.active::before {
                 content: "";
                 position: absolute;
                 top: 4px;
                 left: 50%;
                 transform: translateX(-50%);
-                width: 32px;
+                width: 28px;
                 height: 3px;
                 background: #4f46e5;
                 border-radius: 99px;
             }
+            body.dark-mode .mobile-tab-btn.active { color: #7c5cff !important; }
             body.dark-mode .mobile-tab-btn.active::before { background: #7c5cff; }
 
-            /* FAB — pulse glow */
+            /* FAB */
             #mobile-bottom-nav .flex-1 > button {
-                width: 58px;
-                height: 58px;
-                border: 5px solid rgba(255,255,255,1);
-                box-shadow: 0 8px 28px rgba(79,70,229,.42);
+                width: 56px;
+                height: 56px;
+                border: 5px solid #fff;
+                box-shadow: 0 6px 24px rgba(79,70,229,.45);
             }
             body.dark-mode #mobile-bottom-nav .flex-1 > button { border-color: #0a0a0c; }
-            @keyframes fabPulse {
-                0%, 100% { box-shadow: 0 8px 28px rgba(79,70,229,.42); }
-                50%       { box-shadow: 0 8px 40px rgba(79,70,229,.68); }
-            }
-            #mobile-bottom-nav .flex-1 > button { animation: fabPulse 3s ease-in-out infinite; }
 
-            /* --- HEADER: compact & sticky --- */
+            /* Main content thêm padding bottom để không bị nav che */
+            main { padding-bottom: 80px !important; }
+
+            /* --- HEADER compact --- */
             header {
                 padding: 10px 14px !important;
-                min-height: 56px;
-                border-bottom: 1px solid rgba(148,163,184,.14) !important;
+                min-height: 54px;
+                padding-top: max(10px, env(safe-area-inset-top, 10px)) !important;
             }
-            #page-title {
-                font-size: 17px !important;
-                font-weight: 800;
-                letter-spacing: -.025em;
-            }
-            /* Eye button & dark toggle: bỏ padding thừa */
-            header .flex.items-center.space-x-2 > button {
-                padding: 8px !important;
-                border-radius: 10px;
-                min-width: 38px;
-                min-height: 38px;
-            }
+            #page-title { font-size: 17px !important; font-weight: 800; }
+            header .flex button { padding: 8px !important; min-width: 38px; min-height: 38px; }
 
-            /* --- MAIN CONTENT: giảm padding, tăng breathing --- */
-            .p-4.md\:p-6.space-y-6 {
-                padding: 12px !important;
-                gap: 14px !important;
-            }
-            .space-y-6 { --tw-space-y-reverse: 0; }
-
-            /* --- STAT CARDS: 2 cột đẹp hơn --- */
-            #tab-dashboard .grid.grid-cols-2.md\:grid-cols-4 {
-                gap: 10px !important;
-            }
-            #tab-dashboard .grid.grid-cols-2.md\:grid-cols-4 > div {
-                padding: 14px 12px !important;
-                border-radius: 16px !important;
-            }
-            #tab-dashboard .grid.grid-cols-2.md\:grid-cols-4 > div p.text-xs {
-                font-size: 10px !important;
-                letter-spacing: .04em;
-            }
-            #stat-income, #stat-expense, #stat-net {
-                font-size: 18px !important;
-                margin-top: 6px;
-            }
+            /* --- STAT CARDS --- */
+            #tab-dashboard .grid.grid-cols-2.md\:grid-cols-4 { gap: 10px !important; }
+            #tab-dashboard .grid.grid-cols-2.md\:grid-cols-4 > div { padding: 14px 12px !important; border-radius: 16px !important; }
+            #stat-income, #stat-expense, #stat-net { font-size: 17px !important; }
             #stat-top-expense { font-size: 13px !important; }
 
-            /* Stat card icon: nhỏ hơn trên mobile */
-            #tab-dashboard .grid.grid-cols-2 .bg-emerald-50,
-            #tab-dashboard .grid.grid-cols-2 .bg-rose-50,
-            #tab-dashboard .grid.grid-cols-2 .bg-indigo-50,
-            #tab-dashboard .grid.grid-cols-2 .bg-amber-50 {
-                padding: 6px !important;
-                border-radius: 8px;
-            }
+            /* --- Ví & Ngân sách: stack 1 cột --- */
+            #tab-dashboard .grid.grid-cols-1.lg\:grid-cols-3 { grid-template-columns: 1fr !important; gap: 12px !important; }
 
-            /* --- VÍ & NGÂN SÁCH: full-width stack --- */
-            #tab-dashboard .grid.grid-cols-1.lg\:grid-cols-3 {
-                grid-template-columns: 1fr !important;
-                gap: 12px !important;
-            }
-            #tab-dashboard .grid.grid-cols-1.lg\:grid-cols-3 > div {
-                padding: 16px !important;
-                border-radius: 18px !important;
-            }
-
-            /* Account balance list: max-height thoải mái hơn */
-            #account-balances-list { max-height: 180px; }
-
-            /* Budget progress bar section */
-            #dash-budget-spent, #dash-budget-total { font-size: 17px !important; }
-            #dash-budget-percent { font-size: 22px !important; }
-
-            /* --- CHARTS: responsive chiều cao --- */
-            #tab-dashboard canvas,
-            #tab-assistant canvas { max-height: 200px; }
-            #tab-dashboard .relative[style*="height:260px"] { height: 200px !important; }
-            #tab-dashboard .relative[style*="height:280px"] { height: 200px !important; }
-
-            /* AI cards trong assistant: full-width stack */
+            /* --- Charts --- */
+            #tab-dashboard canvas { max-height: 200px; }
+            .relative[style*="height:260px"], .relative[style*="height:280px"] { height: 200px !important; }
             .grid.grid-cols-1.xl\:grid-cols-2 { grid-template-columns: 1fr !important; }
-            .ai-card { padding: 14px !important; border-radius: 14px !important; }
             .ai-card canvas { max-height: 150px; }
             .relative[style*="height:170px"] { height: 140px !important; }
 
-            /* --- TRANSACTION LIST: Cards view --- */
+            /* --- Transaction filter grid --- */
             #tab-transactions .grid.grid-cols-2.md\:grid-cols-5 {
                 grid-template-columns: 1fr 1fr !important;
                 gap: 8px !important;
@@ -661,178 +617,73 @@
             #tab-transactions .col-span-2.md\:col-span-1 { grid-column: span 2; }
             #tab-transactions .flex.items-end.col-span-2 { grid-column: span 2; }
 
-            /* Transaction card item: dễ touch */
-            #all-transactions-cards > div {
-                padding: 14px 16px;
-            }
-
-            /* --- FILTER section: compact --- */
-            #tab-transactions .bg-white.p-4,
-            #tab-budget .bg-white.p-4,
-            #tab-categories .bg-white.p-4 {
-                padding: 12px !important;
-                border-radius: 16px !important;
-            }
-
-            /* --- BUDGET PAGE: allocation bar --- */
-            .bg-indigo-50.border.border-indigo-100.rounded-xl.p-4.flex {
-                flex-direction: column;
-                gap: 8px;
-                text-align: center;
-            }
-            #allocation-total, #allocation-used, #allocation-remaining { font-size: 15px !important; }
-
-            /* Budget category grid: 1 col on small --- */
-            .grid.grid-cols-1.md\:grid-cols-2#category-budgets-container,
+            /* --- Budget page --- */
+            .bg-indigo-50.border.border-indigo-100.rounded-xl.p-4.flex { flex-direction: column; gap: 8px; text-align: center; }
             #category-budgets-container { grid-template-columns: 1fr !important; }
 
-            /* --- GUIDE TAB: tabs scrollable --- */
-            #tab-guide .flex.space-x-2.border-b { 
-                padding-bottom: 0;
-                scrollbar-width: none;
-            }
-            #tab-guide .flex.space-x-2.border-b::-webkit-scrollbar { display: none; }
-            .subguide-btn { font-size: 12px !important; padding: 8px 12px !important; }
+            /* --- Category page --- */
+            #tab-categories .grid.grid-cols-1.lg\:grid-cols-2 { grid-template-columns: 1fr !important; gap: 16px !important; }
 
-            /* Guide cards: 1 col */
-            #tab-guide .grid.grid-cols-1.md\:grid-cols-3,
-            #tab-guide .grid.grid-cols-1.sm\:grid-cols-2 { grid-template-columns: 1fr !important; gap: 10px !important; }
+            /* --- Guide tabs: scrollable, no wrap --- */
+            #tab-guide .flex.space-x-2.border-b { scrollbar-width: none; }
+            #tab-guide .flex.space-x-2.border-b::-webkit-scrollbar { display: none; }
+            .subguide-btn { font-size: 12px !important; padding: 8px 12px !important; white-space: nowrap; }
+            #tab-guide .grid.grid-cols-1.md\:grid-cols-3 { grid-template-columns: 1fr !important; gap: 10px !important; }
+            #tab-guide .grid.grid-cols-1.sm\:grid-cols-2 { grid-template-columns: 1fr !important; }
             #tab-guide .grid.grid-cols-1.md\:grid-cols-2 { grid-template-columns: 1fr !important; }
 
-            /* --- MODALS: slide-up sheet on mobile --- */
+            /* --- MODALS: slide-up sheet từ dưới --- */
+            #transactionModal { align-items: flex-end !important; padding: 0 !important; }
             #transactionModal > div {
                 border-radius: 24px 24px 0 0 !important;
-                max-height: 96vh;
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
+                max-height: 96dvh;
                 width: 100% !important;
                 max-width: 100% !important;
                 margin: 0 !important;
             }
-            #transactionModal {
-                align-items: flex-end !important;
-                padding: 0 !important;
-            }
+            /* Prevent iOS input zoom */
+            #transactionModal input, #transactionModal select { font-size: 16px !important; min-height: 48px; padding: 12px !important; border-radius: 12px !important; }
+            #transactionModal .grid.grid-cols-3 label { padding: 10px 6px !important; border-radius: 14px !important; }
 
-            /* TX form: input tap target */
-            #transactionModal input,
-            #transactionModal select {
-                font-size: 16px !important; /* Prevents iOS zoom */
-                padding: 12px !important;
-                border-radius: 12px !important;
-                min-height: 48px;
-            }
-            #transactionModal .grid.grid-cols-3 label { 
-                padding: 10px 6px !important; 
-                border-radius: 14px !important;
-            }
-
-            /* PIN Modal: centered, not sheet */
-            #pinModal > div { border-radius: 24px; }
-
-            /* initialBalanceModal: sheet */
-            #initialBalanceModal > div {
-                border-radius: 24px 24px 0 0 !important;
-                position: fixed;
-                bottom: 0; left: 0; right: 0;
-                max-width: 100% !important;
-                max-height: 88vh;
-            }
             #initialBalanceModal { align-items: flex-end !important; padding: 0 !important; }
+            #initialBalanceModal > div { border-radius: 24px 24px 0 0 !important; width: 100% !important; max-width: 100% !important; max-height: 88dvh; }
 
-            /* Confirm & prompt: centered compact */
-            #confirmModal > div, #promptModal > div {
-                border-radius: 20px;
-                padding: 20px !important;
-            }
-
-            /* --- CATEGORY PAGE --- */
-            #tab-categories .grid.grid-cols-1.lg\:grid-cols-2 { grid-template-columns: 1fr !important; gap: 16px !important; }
-
-            /* --- MONTH PICKER POPOVER: full-width on mobile --- */
-            .month-picker-popover {
-                width: calc(100vw - 28px) !important;
-                border-radius: 20px !important;
-                padding: 16px !important;
-            }
+            /* Month picker */
+            .month-picker-popover { width: calc(100vw - 28px) !important; border-radius: 20px !important; }
             .month-picker-month { padding: 12px 6px !important; font-size: 12px !important; }
 
-            /* --- TOAST: top-center on mobile --- */
+            /* Toast: top-center on mobile */
             #toast {
-                top: calc(env(safe-area-inset-top, 0px) + 56px) !important;
+                top: calc(env(safe-area-inset-top, 0px) + 58px) !important;
                 bottom: auto !important;
-                left: 12px !important;
-                right: 12px !important;
+                left: 12px !important; right: 12px !important;
                 transform: none !important;
                 max-width: 100% !important;
                 width: auto !important;
-                border-radius: 14px !important;
-                font-size: 13px;
             }
 
-            /* --- Mobile Menu sheet: tighter --- */
-            #mobileMenuSheet { padding: 16px 16px 8px !important; border-radius: 28px 28px 0 0 !important; }
-            #mobileMenuModal .grid.grid-cols-4 > button > div { width: 48px; height: 48px; border-radius: 16px; font-size: 18px; }
-            #mobileMenuModal .space-y-3 > button { padding: 12px 14px !important; font-size: 13px !important; }
+            /* Mobile menu sheet */
+            #mobileMenuSheet { border-radius: 28px 28px 0 0 !important; padding: 16px 16px 8px !important; }
 
-            /* --- SCROLLBAR: ẩn trên mobile --- */
+            /* Ẩn scrollbar */
             .custom-scrollbar { scrollbar-width: none; }
             .custom-scrollbar::-webkit-scrollbar { display: none; }
 
-            /* --- Main content bottom padding: khoảng trống cho bottom nav --- */
-            main { padding-bottom: 80px !important; }
-
-            /* --- Reduce card hover animations on touch --- */
+            /* Không dùng hover animation trên touch */
             @media (hover: none) {
-                section > .bg-white:hover,
-                section .grid > .bg-white:hover,
-                #tab-dashboard .grid > div.bg-white:hover { 
-                    box-shadow: var(--ui-shadow-sm) !important;
-                    transform: none !important;
-                }
-                .ai-card:hover { transform: none !important; }
+                section > .bg-white:hover, section .grid > .bg-white:hover { box-shadow: var(--ui-shadow-sm) !important; transform: none !important; }
                 button:not(:disabled):hover { transform: none !important; }
+                .ai-card:hover { transform: none !important; }
             }
 
-            /* --- Demo coin animation: compressed path on mobile --- */
-            @keyframes moveCoin {
-                0%   { transform: translate(0,0) scale(1); opacity: 1; }
-                50%  { transform: translate(80px,-30px) scale(1.3); opacity: 1; }
-                100% { transform: translate(160px,0) scale(1); opacity: 0; }
-            }
-
-            /* --- Login gate: better padding --- */
-            #loginGate > div {
-                padding: 28px 22px !important;
-                border-radius: 24px !important;
-            }
-            #loginGate #gate-signin-btn { padding: 14px !important; font-size: 15px; }
-
-            /* --- Misc fixes --- */
-            .min-w-\[150px\] { min-width: 130px !important; }
-            .text-xl { font-size: 17px !important; }
-
-            /* Account balance row */
-            #account-balances-list > div { padding: 10px 0 !important; }
-
-            /* Category budget items */
-            #category-budgets-container > div { padding: 14px !important; border-radius: 14px !important; }
-
-            /* Guide knowledge grid: 1 col always */
-            .grid.grid-cols-2.sm\:grid-cols-3,
-            .grid.grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
-
-            /* Calc result on mobile: stack */
-            #tab-guide .grid.grid-cols-1.md\:grid-cols-2.gap-6 { gap: 14px !important; }
+            /* Login gate */
+            #loginGate > div { padding: 28px 22px !important; border-radius: 24px !important; }
         }
 
-        /* --- Very small screens (≤ 380px) extra adjustments --- */
+        /* Màn hình rất nhỏ ≤ 380px */
         @media (max-width: 380px) {
-            #mobile-bottom-nav .mobile-tab-btn span { display: none; }
-            #mobile-bottom-nav .mobile-tab-btn { min-width: 36px; }
-            #mobile-bottom-nav .flex-1 > button { width: 52px; height: 52px; }
+            .mobile-tab-btn span { display: none; }
+            .mobile-tab-btn { min-width: 36px !important; }
             #stat-income, #stat-expense, #stat-net { font-size: 15px !important; }
         }
     </style>
@@ -922,26 +773,23 @@
         </aside>
 
         <!-- NỘI DUNG CHÍNH -->
-        <main class="flex-1 flex flex-col overflow-y-auto custom-scrollbar pb-20 md:pb-0 relative">
+        <!-- Safari iOS: position:fixed không hoạt động bên trong overflow:auto/scroll container.
+             Bỏ overflow-y-auto ở đây, để body scroll tự nhiên. Bottom nav fixed sẽ hoạt động đúng. -->
+        <main class="flex-1 flex flex-col pb-20 md:pb-0 relative">
             
             <!-- HEADER -->
-            <header class="bg-white border-b border-slate-200 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between sticky top-0 z-10 gap-2" style="padding-top: max(12px, env(safe-area-inset-top, 12px))">
-                <div class="flex items-center gap-2 min-w-0">
-                    <h2 id="page-title" class="text-xl md:text-2xl font-bold text-slate-900 truncate">Tổng Quan</h2>
-                    <!-- Sync status chip (mobile only) -->
-                    <span id="mobile-sync-chip" class="md:hidden flex-shrink-0 hidden items-center gap-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-100">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                        <span>Live</span>
-                    </span>
+            <header class="bg-white border-b border-slate-200 px-4 md:px-6 py-4 flex items-center justify-between sticky top-0 z-10 gap-2">
+                <div>
+                    <h2 id="page-title" class="text-xl md:text-2xl font-bold text-slate-900">Tổng Quan</h2>
                 </div>
                 
-                <div class="flex items-center gap-1.5 md:gap-3 flex-shrink-0">
-                    <button id="dark-mode-toggle" onclick="toggleDarkMode()" class="py-2 px-2.5 rounded-lg flex items-center transition" aria-label="Chuyển chế độ tối/sáng">
-                        <i id="dark-mode-icon" class="fa-solid fa-moon text-base"></i>
+                <div class="flex items-center space-x-2 md:space-x-3">
+                    <button id="dark-mode-toggle" onclick="toggleDarkMode()" class="py-2 px-3 rounded-lg flex items-center transition">
+                        <i id="dark-mode-icon" class="fa-solid fa-moon"></i>
                     </button>
                     <!-- Nút Ẩn/Hiện số tiền (Yêu cầu nhập PIN) -->
-                    <button onclick="toggleVisibility()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium p-2 rounded-lg flex items-center transition" title="Ẩn/Hiện số dư" aria-label="Ẩn hoặc hiện số dư">
-                        <i id="eye-icon" class="fa-solid fa-eye-slash text-base"></i>
+                    <button onclick="toggleVisibility()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium py-2 px-3 rounded-lg flex items-center transition shadow-inner" title="Ẩn/Hiện số dư">
+                        <i id="eye-icon" class="fa-solid fa-eye-slash"></i>
                     </button>
                     <!-- Nút giao dịch trên Desktop -->
                     <button onclick="openNewTransactionModal()" class="hidden md:flex bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg items-center space-x-2 shadow-sm transition">
@@ -2000,34 +1848,32 @@
                             <p class="text-center text-[11px] text-slate-400">Kiến thức đúc kết từ "Hiểu Hết Về Tiền" — DK Publishing. Các phần tiếp theo sẽ được cập nhật dần.</p>
                         </div>
 
-
-
-        <!-- MOBILE BOTTOM NAVIGATION (Chỉ hiện trên điện thoại) -->
-        <nav id="mobile-bottom-nav" class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around items-end px-1 pt-1 z-40" role="navigation" aria-label="Điều hướng chính">
-            <button onclick="switchTab('dashboard')" class="mobile-tab-btn active flex-1 flex flex-col items-center py-2 text-indigo-600 rounded-xl transition-colors" id="m-btn-dashboard" aria-label="Tổng quan" aria-current="page">
-                <i class="fa-solid fa-chart-pie text-[20px] mb-1" aria-hidden="true"></i>
-                <span class="text-[10px] font-semibold">Tổng quan</span>
-            </button>
-            <button onclick="switchTab('assistant')" class="mobile-tab-btn flex-1 flex flex-col items-center py-2 text-slate-400 rounded-xl transition-colors" id="m-btn-assistant" aria-label="Trợ lý thông minh">
-                <i class="fa-solid fa-robot text-[20px] mb-1" aria-hidden="true"></i>
-                <span class="text-[10px] font-semibold">Trợ lý</span>
-            </button>
-            <!-- FAB Giao dịch mới -->
-            <div class="flex-1 flex justify-center -translate-y-4">
-                <button onclick="openNewTransactionModal()" class="bg-indigo-600 text-white w-14 h-14 rounded-full flex items-center justify-center border-4 border-white active:scale-95 transition-transform" aria-label="Thêm giao dịch mới" title="Giao dịch mới">
-                    <i class="fa-solid fa-plus text-2xl" aria-hidden="true"></i>
-                </button>
-            </div>
-            <button onclick="switchTab('transactions')" class="mobile-tab-btn flex-1 flex flex-col items-center py-2 text-slate-400 rounded-xl transition-colors" id="m-btn-transactions" aria-label="Sổ giao dịch">
-                <i class="fa-solid fa-list-check text-[20px] mb-1" aria-hidden="true"></i>
-                <span class="text-[10px] font-semibold">Sổ sách</span>
-            </button>
-            <button onclick="openMobileMenuModal()" class="mobile-tab-btn flex-1 flex flex-col items-center py-2 text-slate-400 rounded-xl transition-colors" aria-label="Mở menu mở rộng" aria-haspopup="true">
-                <i class="fa-solid fa-bars text-[20px] mb-1" aria-hidden="true"></i>
-                <span class="text-[10px] font-semibold">Mở rộng</span>
-            </button>
-        </nav>
     </div>
+    <!-- /#appRoot -->
+
+    <!-- MOBILE BOTTOM NAVIGATION
+         ĐẶT Ở ĐÂY (con trực tiếp của body, NGOÀI appRoot và mọi overflow container)
+         -> Safari iOS: position:fixed chỉ hoạt động đúng khi không nằm trong overflow:auto/scroll -->
+    <nav id="mobile-bottom-nav" class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around items-end px-2 pt-2 pb-safe z-40 shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
+        <button onclick="switchTab('dashboard')" class="mobile-tab-btn active flex-1 flex flex-col items-center py-2 text-indigo-600" id="m-btn-dashboard" aria-label="Tổng quan">
+            <i class="fa-solid fa-chart-pie text-[20px] mb-1"></i><span class="text-[10px] font-semibold">Tổng quan</span>
+        </button>
+        <button onclick="switchTab('assistant')" class="mobile-tab-btn flex-1 flex flex-col items-center py-2 text-slate-400" id="m-btn-assistant" aria-label="Trợ lý">
+            <i class="fa-solid fa-robot text-[20px] mb-1"></i><span class="text-[10px] font-semibold">Trợ lý</span>
+        </button>
+        <!-- FAB Giao dịch mới -->
+        <div class="flex-1 flex justify-center -translate-y-5">
+            <button onclick="openNewTransactionModal()" class="bg-indigo-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/40 border-4 border-slate-50 active:scale-95 transition-transform" aria-label="Thêm giao dịch mới">
+                <i class="fa-solid fa-plus text-2xl"></i>
+            </button>
+        </div>
+        <button onclick="switchTab('transactions')" class="mobile-tab-btn flex-1 flex flex-col items-center py-2 text-slate-400" id="m-btn-transactions" aria-label="Sổ sách">
+            <i class="fa-solid fa-list-check text-[20px] mb-1"></i><span class="text-[10px] font-semibold">Sổ sách</span>
+        </button>
+        <button onclick="openMobileMenuModal()" class="mobile-tab-btn flex-1 flex flex-col items-center py-2 text-slate-400" aria-label="Mở rộng">
+            <i class="fa-solid fa-bars text-[20px] mb-1"></i><span class="text-[10px] font-semibold">Mở rộng</span>
+        </button>
+    </nav>
 
     <!-- CÁC MODALS GIAO DIỆN -->
 
