@@ -499,6 +499,29 @@
         body.dark-mode #subguide-panel-book .bg-emerald-50 { background: rgba(53,214,142,.1) !important; }
         body.dark-mode #subguide-panel-book .bg-amber-50 { background: rgba(245,181,68,.1) !important; }
         body.dark-mode #subguide-panel-book .bg-rose-50 { background: rgba(251,113,133,.12) !important; }
+        /* =========================================================
+           iOS SAFARI ANTI-ZOOM FIX
+           Safari tự zoom khi input/select có font-size < 16px.
+           Áp dụng font-size: 16px cho TẤT CẢ input, select, textarea trên mobile.
+           Đây là cách duy nhất đáng tin cậy — không dùng maximum-scale vì làm mất
+           khả năng zoom của người dùng (accessibility).
+        ========================================================= */
+        @media (max-width: 767px) {
+            input,
+            input[type="text"],
+            input[type="number"],
+            input[type="email"],
+            input[type="password"],
+            input[type="date"],
+            input[type="search"],
+            input[type="tel"],
+            select,
+            textarea {
+                font-size: 16px !important;
+                /* Đảm bảo không bị override bởi text-sm, text-xs của Tailwind */
+            }
+        }
+
         body.dark-mode #subguide-panel-book .border-l-2 { border-left-width: 2px; }
 
         /* =========================================================
@@ -1932,10 +1955,10 @@
 
     <div id="confirmModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[80]"><div class="bg-white rounded-2xl p-6 text-center w-full max-w-sm"><div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-triangle-exclamation text-xl"></i></div><h3 id="confirm-title" class="font-bold text-lg mb-2"></h3><p id="confirm-msg" class="text-sm text-slate-500 mb-6"></p><div class="flex justify-center space-x-3"><button onclick="closeConfirm()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium">Hủy</button><button id="confirm-btn" class="px-4 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium">Đồng ý</button></div></div></div>
 
-    <div id="promptModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[80]"><div class="bg-white rounded-2xl p-6 w-full max-w-sm"><h3 id="prompt-title" class="font-bold text-lg mb-2"></h3><input type="text" id="prompt-input" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm mb-4"><div class="flex justify-end space-x-3"><button onclick="closePrompt()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium">Hủy</button><button id="prompt-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium">Lưu</button></div></div></div>
+    <div id="promptModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[80]"><div class="bg-white rounded-2xl p-6 w-full max-w-sm"><h3 id="prompt-title" class="font-bold text-lg mb-2"></h3><input type="text" id="prompt-input" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm mb-4" style="font-size:16px"><div class="flex justify-end space-x-3"><button onclick="closePrompt()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium">Hủy</button><button id="prompt-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium">Lưu</button></div></div></div>
 
     <!-- Quản lý tài khoản (Initial Balance) -->
-    <div id="initialBalanceModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[70]"><div class="bg-white rounded-2xl w-full max-w-md flex flex-col max-h-[90vh]"><div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center rounded-t-2xl"><h3 class="font-bold text-lg">Ví / Tài Khoản</h3><button onclick="closeModal('initialBalanceModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-6 overflow-y-auto space-y-4" id="account-setup-list"></div><div class="p-4 border-t bg-slate-50 rounded-b-2xl"><div class="flex space-x-2 mb-4"><input type="text" id="new-account-input" class="flex-1 bg-white border rounded-lg p-2 text-sm" placeholder="Tên ví mới..."><button onclick="handleAddAccount()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium">Thêm</button></div><div class="flex justify-end space-x-2"><button onclick="saveAllAccounts()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium w-full">Lưu Thay Đổi</button></div></div></div></div>
+    <div id="initialBalanceModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-end md:items-center justify-center md:p-4 z-[70]"><div class="bg-white rounded-t-3xl md:rounded-2xl w-full max-w-md flex flex-col" style="max-height:92dvh"><div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center rounded-t-3xl md:rounded-t-2xl"><h3 class="font-bold text-lg">Ví / Tài Khoản</h3><button onclick="closeModal('initialBalanceModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-6 overflow-y-auto space-y-4" id="account-setup-list"></div><div class="p-4 border-t bg-slate-50 rounded-b-2xl"><div class="flex space-x-2 mb-4"><input type="text" id="new-account-input" class="flex-1 bg-white border rounded-lg p-2 text-sm" style="font-size:16px" placeholder="Tên ví mới..."><button onclick="handleAddAccount()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium">Thêm</button></div><div class="flex justify-end space-x-2"><button onclick="saveAllAccounts()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium w-full">Lưu Thay Đổi</button></div></div></div></div>
 
     <!-- Drive Sync -->
     <div id="driveSyncModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[80]"><div class="bg-white rounded-2xl w-full max-w-md flex flex-col"><div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center rounded-t-2xl"><h3 class="font-bold text-lg"><i class="fa-solid fa-cloud-arrow-up mr-2"></i>Đồng Bộ Dữ Liệu</h3><button onclick="closeModal('driveSyncModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-6 space-y-4"><div class="flex items-center space-x-2 bg-slate-50 border rounded-lg px-3 py-2.5"><span id="drive-status-dot" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span><span id="drive-status-text" class="text-slate-700 font-medium text-sm">Chưa đăng nhập</span></div><div id="drive-account-email-wrap" class="hidden flex items-center space-x-2 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2.5"><i class="fa-solid fa-user-circle text-indigo-400"></i><span id="drive-account-email" class="text-indigo-700 font-medium text-xs truncate"></span></div><div class="flex space-x-2"><button id="drive-signin-btn" onclick="signInGoogleClick()" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-medium">Đăng nhập với Google</button><button id="drive-signout-btn" onclick="signOutGoogle()" class="hidden flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-lg text-sm font-medium">Đăng xuất</button></div><button onclick="manualSyncNow()" class="w-full bg-emerald-50 text-emerald-700 border border-emerald-200 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-rotate mr-1.5"></i>Đồng bộ ngay</button></div></div></div>
@@ -2374,7 +2397,7 @@
         function renderAccountSetupList() {
             const list = document.getElementById('account-setup-list'); list.innerHTML = '';
             Object.keys(userAccounts).forEach(acc => {
-                list.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-between p-3 bg-slate-50 border rounded-lg"><span class="font-semibold text-slate-700">${acc}</span><div class="flex items-center"><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" id="setup-acc-${acc}" value="${userAccounts[acc].toLocaleString('vi-VN')}" class="w-24 text-right border rounded-md p-1.5 text-sm font-semibold"><span class="ml-1 text-xs text-slate-500">₫</span><button onclick="handleRemoveAccount('${acc}')" class="ml-3 text-rose-400"><i class="fa-solid fa-trash"></i></button></div></div>`);
+                list.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-between p-3 bg-slate-50 border rounded-lg"><span class="font-semibold text-slate-700">${acc}</span><div class="flex items-center"><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" id="setup-acc-${acc}" value="${userAccounts[acc].toLocaleString('vi-VN')}" class="w-24 text-right border rounded-md p-1.5 text-sm font-semibold" style="font-size:16px"><span class="ml-1 text-xs text-slate-500">₫</span><button onclick="handleRemoveAccount('${acc}')" class="ml-3 text-rose-400"><i class="fa-solid fa-trash"></i></button></div></div>`);
             });
         }
         function handleAddAccount() {
@@ -2971,7 +2994,7 @@
                 const percent = lim > 0 ? Math.min(Math.round((spent / lim) * 100), 100) : (spent > 0 ? 100 : 0);
                 let barColor = spent > lim && lim > 0 ? 'bg-rose-600' : (percent > 80 ? 'bg-amber-500' : 'bg-indigo-600');
                 const max = Math.max(0, idealBudget-tot+lim);
-                c.insertAdjacentHTML('beforeend', `<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-2"><div class="flex justify-between items-center"><span class="font-bold text-sm flex gap-2"><i class="fa-solid ${CATEGORY_ICONS[cat]||'fa-tag'} w-5 text-slate-400"></i> ${cat}</span><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" onchange="idealCategoryBudgets['${cat}']=getRawNumber(this.value); localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); renderCategoryBudgets();" value="${lim>0?lim.toLocaleString('vi-VN'):''}" placeholder="${max>0?max.toLocaleString('vi-VN'):'Hết'}" class="w-24 text-right border rounded p-1.5 text-xs focus:ring-1 focus:ring-indigo-500 outline-none"></div><div class="h-2 bg-slate-100 rounded-full w-full"><div class="h-full ${barColor} rounded-full transition-all duration-500" style="width:${lim>0?percent:(spent>0?100:0)}%"></div></div><div class="flex justify-between text-xs text-slate-500 mt-1"><span>Đã chi: <strong>${formatCurrency(spent)}</strong></span><span class="${spent>lim&&lim>0?'text-rose-600 font-bold':''}">${lim>0?percent+'%':''}</span></div></div>`);
+                c.insertAdjacentHTML('beforeend', `<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-2"><div class="flex justify-between items-center"><span class="font-bold text-sm flex gap-2"><i class="fa-solid ${CATEGORY_ICONS[cat]||'fa-tag'} w-5 text-slate-400"></i> ${cat}</span><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" onchange="idealCategoryBudgets['${cat}']=getRawNumber(this.value); localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); renderCategoryBudgets();" value="${lim>0?lim.toLocaleString('vi-VN'):''}" placeholder="${max>0?max.toLocaleString('vi-VN'):'Hết'}" class="w-24 text-right border rounded p-1.5 text-xs focus:ring-1 focus:ring-indigo-500 outline-none" style="font-size:16px"></div><div class="h-2 bg-slate-100 rounded-full w-full"><div class="h-full ${barColor} rounded-full transition-all duration-500" style="width:${lim>0?percent:(spent>0?100:0)}%"></div></div><div class="flex justify-between text-xs text-slate-500 mt-1"><span>Đã chi: <strong>${formatCurrency(spent)}</strong></span><span class="${spent>lim&&lim>0?'text-rose-600 font-bold':''}">${lim>0?percent+'%':''}</span></div></div>`);
             });
         }
         function renderCategoryManager() {
