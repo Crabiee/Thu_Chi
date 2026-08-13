@@ -1064,7 +1064,7 @@
                         <div>
                             <label class="block text-xs font-semibold text-slate-500 uppercase mb-1 md:mb-2">Loại</label>
                             <select id="filter-type" onchange="applyFilters()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 md:p-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                                <option value="all">Tất cả</option><option value="income">Thu</option><option value="expense">Chi</option><option value="transfer">Chuyển</option>
+                                <option value="all">Tất cả</option><option value="income">Thu</option><option value="expense">Chi</option><option value="transfer">Chuyển</option><option value="proxy">Trung gian</option>
                             </select>
                         </div>
                         <div>
@@ -1964,7 +1964,7 @@
     <div id="driveSyncModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[80]"><div class="bg-white rounded-2xl w-full max-w-md flex flex-col"><div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center rounded-t-2xl"><h3 class="font-bold text-lg"><i class="fa-solid fa-cloud-arrow-up mr-2"></i>Đồng Bộ Dữ Liệu</h3><button onclick="closeModal('driveSyncModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-6 space-y-4"><div class="flex items-center space-x-2 bg-slate-50 border rounded-lg px-3 py-2.5"><span id="drive-status-dot" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span><span id="drive-status-text" class="text-slate-700 font-medium text-sm">Chưa đăng nhập</span></div><div id="drive-account-email-wrap" class="hidden flex items-center space-x-2 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2.5"><i class="fa-solid fa-user-circle text-indigo-400"></i><span id="drive-account-email" class="text-indigo-700 font-medium text-xs truncate"></span></div><div class="flex space-x-2"><button id="drive-signin-btn" onclick="signInGoogleClick()" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-medium">Đăng nhập với Google</button><button id="drive-signout-btn" onclick="signOutGoogle()" class="hidden flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-lg text-sm font-medium">Đăng xuất</button></div><button onclick="manualSyncNow()" class="w-full bg-emerald-50 text-emerald-700 border border-emerald-200 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-rotate mr-1.5"></i>Đồng bộ ngay</button></div></div></div>
 
     <!-- Transaction form -->
-    <div id="transactionModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-2 md:p-4 z-[70]"><div class="bg-white rounded-2xl w-full max-w-lg flex flex-col max-h-[95vh]"><div class="bg-slate-950 text-white px-4 py-4 md:px-6 flex justify-between items-center rounded-t-2xl"><h3 id="tx-modal-title" class="font-bold md:text-lg text-base">Ghi Chép</h3><button onclick="closeModal('transactionModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-4 md:p-6 overflow-y-auto"><form id="transaction-form" onsubmit="handleTransactionSubmit(event)" class="space-y-4"><div class="grid grid-cols-3 gap-2"><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&:has(:checked)]:border-rose-500 [&:has(:checked)]:bg-rose-50 [&:has(:checked)]:text-rose-600 transition"><input type="radio" name="txType" value="expense" checked class="hidden" onchange="updateFormCategories()"><i class="fa-solid fa-minus mb-1 text-sm"></i><span>Chi Tiêu</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&:has(:checked)]:border-emerald-500 [&:has(:checked)]:bg-emerald-50 [&:has(:checked)]:text-emerald-600 transition"><input type="radio" name="txType" value="income" class="hidden" onchange="updateFormCategories()"><i class="fa-solid fa-plus mb-1 text-sm"></i><span>Thu Nhập</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&:has(:checked)]:border-blue-500 [&:has(:checked)]:bg-blue-50 [&:has(:checked)]:text-blue-600 transition"><input type="radio" name="txType" value="transfer" class="hidden" onchange="updateFormCategories()"><i class="fa-solid fa-arrow-right-arrow-left mb-1 text-sm"></i><span>Chuyển</span></label></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-slate-500 mb-1">SỐ TIỀN</label><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" id="txAmount" required class="w-full bg-slate-50 border rounded-lg p-2.5 text-base font-bold text-indigo-600 outline-none"></div><div><label class="block text-xs font-bold text-slate-500 mb-1">NGÀY</label><input type="date" id="txDate" required class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm outline-none"></div></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label id="lbl-tx-account" class="block text-xs font-bold text-slate-500 mb-1">TỪ TÀI KHOẢN</label><select id="txAccount" required class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm"></select></div><div id="tx-category-wrapper"><label class="block text-xs font-bold text-slate-500 mb-1">DANH MỤC</label><select id="txCategory" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm"></select></div><div id="tx-to-account-wrapper" class="hidden"><label class="block text-xs font-bold text-blue-600 mb-1">ĐẾN TÀI KHOẢN</label><select id="txToAccount" class="w-full bg-blue-50 border-blue-200 border rounded-lg p-2.5 text-sm"></select></div></div><div><label class="block text-xs font-bold text-slate-500 mb-1">GHI CHÚ</label><input type="text" id="txNotes" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm outline-none"></div><div class="pt-4"><button type="submit" id="tx-submit-btn" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl text-sm shadow-md">Lưu Giao Dịch</button></div></form></div></div></div>
+    <div id="transactionModal" class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-2 md:p-4 z-[70]"><div class="bg-white rounded-2xl w-full max-w-lg flex flex-col max-h-[95vh]"><div class="bg-slate-950 text-white px-4 py-4 md:px-6 flex justify-between items-center rounded-t-2xl"><h3 id="tx-modal-title" class="font-bold md:text-lg text-base">Ghi Chép</h3><button onclick="closeModal('transactionModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-4 md:p-6 overflow-y-auto"><form id="transaction-form" onsubmit="handleTransactionSubmit(event)" class="space-y-4"><div class="grid grid-cols-4 gap-2"><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&:has(:checked)]:border-rose-500 [&:has(:checked)]:bg-rose-50 [&:has(:checked)]:text-rose-600 transition"><input type="radio" name="txType" value="expense" checked class="hidden" onchange="updateFormCategories()"><i class="fa-solid fa-minus mb-1 text-sm"></i><span>Chi Tiêu</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&:has(:checked)]:border-emerald-500 [&:has(:checked)]:bg-emerald-50 [&:has(:checked)]:text-emerald-600 transition"><input type="radio" name="txType" value="income" class="hidden" onchange="updateFormCategories()"><i class="fa-solid fa-plus mb-1 text-sm"></i><span>Thu Nhập</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&:has(:checked)]:border-blue-500 [&:has(:checked)]:bg-blue-50 [&:has(:checked)]:text-blue-600 transition"><input type="radio" name="txType" value="transfer" class="hidden" onchange="updateFormCategories()"><i class="fa-solid fa-arrow-right-arrow-left mb-1 text-sm"></i><span>Chuyển</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&:has(:checked)]:border-amber-500 [&:has(:checked)]:bg-amber-50 [&:has(:checked)]:text-amber-600 transition" title="Ủy thác/trung gian: nhận hoặc chi tiền thay mặt người khác — không tính vào thu nhập/chi tiêu của bạn"><input type="radio" name="txType" value="proxy" class="hidden" onchange="updateFormCategories()"><i class="fa-solid fa-handshake mb-1 text-sm"></i><span>Trung gian</span></label></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-slate-500 mb-1">SỐ TIỀN</label><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" id="txAmount" required class="w-full bg-slate-50 border rounded-lg p-2.5 text-base font-bold text-indigo-600 outline-none"></div><div><label class="block text-xs font-bold text-slate-500 mb-1">NGÀY</label><input type="date" id="txDate" required class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm outline-none"></div></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label id="lbl-tx-account" class="block text-xs font-bold text-slate-500 mb-1">TỪ TÀI KHOẢN</label><select id="txAccount" required class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm"></select></div><div id="tx-category-wrapper"><label class="block text-xs font-bold text-slate-500 mb-1">DANH MỤC</label><select id="txCategory" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm"></select></div><div id="tx-to-account-wrapper" class="hidden"><label class="block text-xs font-bold text-blue-600 mb-1">ĐẾN TÀI KHOẢN</label><select id="txToAccount" class="w-full bg-blue-50 border-blue-200 border rounded-lg p-2.5 text-sm"></select></div></div><div id="proxy-dir-wrapper" class="hidden"><label class="block text-xs font-bold text-amber-600 mb-2">CHIỀU TIỀN</label><div class="grid grid-cols-2 gap-2"><label class="cursor-pointer border border-slate-200 rounded-xl p-2.5 text-center flex items-center justify-center gap-2 text-slate-600 text-xs font-bold [&:has(:checked)]:border-amber-500 [&:has(:checked)]:bg-amber-50 [&:has(:checked)]:text-amber-700 transition"><input type="radio" name="proxyDir" value="in" class="hidden"><i class="fa-solid fa-arrow-down-to-bracket text-sm"></i><span>Nhận vào ví (thu hộ)</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2.5 text-center flex items-center justify-center gap-2 text-slate-600 text-xs font-bold [&:has(:checked)]:border-amber-500 [&:has(:checked)]:bg-amber-50 [&:has(:checked)]:text-amber-700 transition"><input type="radio" name="proxyDir" value="out" checked class="hidden"><i class="fa-solid fa-arrow-up-from-bracket text-sm"></i><span>Xuất khỏi ví (chi hộ)</span></label></div></div><div><label class="block text-xs font-bold text-slate-500 mb-1">GHI CHÚ</label><input type="text" id="txNotes" class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm outline-none"></div><div class="pt-4"><button type="submit" id="tx-submit-btn" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl text-sm shadow-md">Lưu Giao Dịch</button></div></form></div></div></div>
 
     <script>
         const CATEGORY_ICONS = { "Lương": "fa-briefcase", "Thưởng": "fa-gift", "Đầu tư": "fa-chart-line", "Lãi Đầu tư/Tiết kiệm": "fa-sack-dollar", "Kinh doanh": "fa-store", "Khác": "fa-asterisk", "Ăn uống": "fa-utensils", "Di chuyển": "fa-car", "Nhà cửa": "fa-house", "Mua sắm": "fa-bag-shopping", "Giải trí": "fa-gamepad", "Sức khỏe": "fa-heart-pulse", "Giáo dục": "fa-graduation-cap", "Lỗ Đầu tư/Tất toán sớm": "fa-arrow-trend-down" };
@@ -2435,9 +2435,13 @@
             transactions.forEach(tx => {
                 // Chỉ áp dụng giao dịch TỪ ngày checkpoint (≥ cpDate) trở đi
                 if (cpDate && tx.date < cpDate) return;
-                if (balances[tx.account] === undefined && tx.type !== 'transfer') return;
+                if (balances[tx.account] === undefined && tx.type !== 'transfer' && tx.type !== 'proxy') return;
                 if (tx.type === 'income'   && balances[tx.account] !== undefined) balances[tx.account] += tx.amount;
                 if (tx.type === 'expense'  && balances[tx.account] !== undefined) balances[tx.account] -= tx.amount;
+                // proxy (trung gian/ủy thác): ảnh hưởng số dư ví nhưng không tính vào thu/chi cá nhân
+                if (tx.type === 'proxy'    && balances[tx.account] !== undefined) {
+                    balances[tx.account] += (tx.proxyDir === 'in' ? 1 : -1) * tx.amount;
+                }
                 if (tx.type === 'transfer') {
                     if (balances[tx.account]   !== undefined) balances[tx.account]   -= tx.amount;
                     if (balances[tx.toAccount] !== undefined) balances[tx.toAccount] += tx.amount;
@@ -2497,13 +2501,31 @@
         function updateFormCategories() {
             const type = document.querySelector('input[name="txType"]:checked').value;
             document.getElementById('lbl-tx-account').innerText = type==='transfer'?"TỪ TÀI KHOẢN":"TÀI KHOẢN";
+            // proxy: hiện category wrapper (để ghi tên người), ẩn to-account
             document.getElementById('tx-category-wrapper').classList.toggle('hidden', type==='transfer');
             document.getElementById('tx-to-account-wrapper').classList.toggle('hidden', type!=='transfer');
-            
+
+            // Cập nhật label danh mục cho proxy
+            const catLabel = document.querySelector('#tx-category-wrapper label');
+            if(catLabel) catLabel.innerText = type==='proxy' ? 'BÊN ỦY THÁC (ghi chú)' : 'DANH MỤC';
+
+            // Cập nhật màu ô tiền để phân biệt giao dịch trung gian
+            const amtInput = document.getElementById('txAmount');
+            amtInput.style.color = type==='proxy' ? '#d97706' : '';
+            // Show/hide proxy direction selector
+            const pdw = document.getElementById('proxy-dir-wrapper');
+            if(pdw) pdw.classList.toggle('hidden', type!=='proxy');
+
             const categorySelect = document.getElementById('txCategory');
             if(type==='transfer') {
                 document.getElementById('txCategory').removeAttribute('required');
                 document.getElementById('txToAccount').setAttribute('required', 'true');
+            } else if(type==='proxy') {
+                document.getElementById('txToAccount').removeAttribute('required');
+                document.getElementById('txCategory').removeAttribute('required');
+                // Proxy: để người dùng tự nhập tên — dùng select nhưng điền sẵn danh sách phổ biến
+                const proxyCats = categories['proxy'] || ['Thu hộ','Chi hộ','Mua hộ','Trả hộ','Thu nợ hộ','Khác'];
+                categorySelect.innerHTML=''; proxyCats.forEach(c=>categorySelect.appendChild(new Option(c,c)));
             } else {
                 document.getElementById('txCategory').setAttribute('required', 'true');
                 document.getElementById('txToAccount').removeAttribute('required');
@@ -2522,7 +2544,13 @@
             editingTxId = id; document.getElementById('tx-modal-title').innerText = 'Sửa Giao Dịch';
             document.querySelector(`input[name="txType"][value="${tx.type}"]`).checked=true; updateFormCategories();
             document.getElementById('txAmount').value = tx.amount.toLocaleString('vi-VN'); document.getElementById('txDate').value = tx.date; document.getElementById('txAccount').value = tx.account; document.getElementById('txNotes').value = tx.notes;
-            if(tx.type==='transfer') document.getElementById('txToAccount').value = tx.toAccount; else document.getElementById('txCategory').value = tx.category;
+            if(tx.type==='transfer') document.getElementById('txToAccount').value = tx.toAccount;
+            else if(tx.type==='proxy') {
+                document.getElementById('txCategory').value = tx.category;
+                const pdRadio = document.querySelector(`input[name="proxyDir"][value="${tx.proxyDir||'out'}"]`);
+                if(pdRadio) pdRadio.checked = true;
+            }
+            else document.getElementById('txCategory').value = tx.category;
             openModal('transactionModal');
         }
         function handleTransactionSubmit(e) {
@@ -2532,7 +2560,8 @@
             const acc = document.getElementById('txAccount').value, toAcc = document.getElementById('txToAccount').value, cat = document.getElementById('txCategory').value;
             if(type==='transfer' && acc===toAcc) return showToast("Khác tài khoản", "fa-xmark", "text-rose-500");
             
-            const newData = { id: editingTxId||'tx-'+Date.now(), type, amount:amt, date:document.getElementById('txDate').value, account:acc, category:type==='transfer'?'Chuyển tiền':cat, toAccount:type==='transfer'?toAcc:"", notes:document.getElementById('txNotes').value, updatedAt: new Date().toISOString() };
+            const proxyDir = document.querySelector('input[name="proxyDir"]:checked')?.value || 'out';
+            const newData = { id: editingTxId||'tx-'+Date.now(), type, amount:amt, date:document.getElementById('txDate').value, account:acc, category:type==='transfer'?'Chuyển tiền':(type==='proxy'?(cat||'Trung gian'):cat), toAccount:type==='transfer'?toAcc:"", proxyDir:type==='proxy'?proxyDir:undefined, notes:document.getElementById('txNotes').value, updatedAt: new Date().toISOString() };
             if(editingTxId) transactions[transactions.findIndex(t=>t.id===editingTxId)] = newData; else transactions.push(newData);
             // Nếu giao dịch này từng bị xóa ở thiết bị khác trước đó rồi được tạo lại ở đây, gỡ tombstone
             // để lần đồng bộ tới không bị máy khác xóa mất bản ghi vừa tạo.
@@ -2574,18 +2603,21 @@
                 let badge, cColor, prefix, icon;
                 if(tx.type==='income') { badge='<span class="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[10px]">Thu</span>'; cColor='text-emerald-600'; prefix='+'; icon=CATEGORY_ICONS[tx.category]||'fa-tag'; }
                 else if(tx.type==='expense') { badge='<span class="bg-rose-50 text-rose-700 px-2 py-0.5 rounded text-[10px]">Chi</span>'; cColor='text-rose-600'; prefix='-'; icon=CATEGORY_ICONS[tx.category]||'fa-tag'; }
+                else if(tx.type==='proxy') { const isIn=tx.proxyDir==='in'; badge=`<span class="bg-amber-50 text-amber-700 px-2 py-0.5 rounded text-[10px]">TG ${isIn?'↓':'↑'}</span>`; cColor='text-amber-600'; prefix=isIn?'+':'-'; icon='fa-handshake'; }
                 else { badge='<span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px]">Chuyển</span>'; cColor='text-blue-600'; prefix=''; icon='fa-arrow-right-arrow-left'; }
 
+                const proxyNote = tx.type==='proxy' ? `<span class="text-[9px] text-amber-500 font-semibold ml-1">(ủy thác — không tính vào thu/chi)</span>` : '';
+
                 // Desktop Table Row
-                tbody.insertAdjacentHTML('beforeend', `<tr class="border-b hover:bg-slate-50"><td class="py-3 px-6 whitespace-nowrap">${formatDate(tx.date)}</td><td class="py-3 px-6">${badge}</td><td class="py-3 px-6 whitespace-nowrap"><i class="fa-solid ${icon} text-slate-400 w-5"></i> ${tx.type==='transfer'?`Đến: ${tx.toAccount}`:tx.category}</td><td class="py-3 px-6">${tx.account}</td><td class="py-3 px-6 truncate max-w-[150px]">${tx.notes}</td><td class="py-3 px-6 text-right font-bold ${cColor}">${prefix}${maskCurrency(tx.amount)}</td><td class="py-3 px-6 text-center"><button onclick="handleEditTxClick('${tx.id}')" class="text-indigo-400 mx-1"><i class="fa-solid fa-pen"></i></button><button onclick="handleDeleteTxClick('${tx.id}')" class="text-rose-400 mx-1"><i class="fa-solid fa-trash"></i></button></td></tr>`);
+                tbody.insertAdjacentHTML('beforeend', `<tr class="border-b hover:bg-slate-50${tx.type==='proxy'?' bg-amber-50/30':''}"><td class="py-3 px-6 whitespace-nowrap">${formatDate(tx.date)}</td><td class="py-3 px-6">${badge}</td><td class="py-3 px-6 whitespace-nowrap"><i class="fa-solid ${icon} text-slate-400 w-5"></i> ${tx.type==='transfer'?`Đến: ${tx.toAccount}`:tx.category}${proxyNote}</td><td class="py-3 px-6">${tx.account}</td><td class="py-3 px-6 truncate max-w-[150px]">${tx.notes}</td><td class="py-3 px-6 text-right font-bold ${cColor}">${prefix}${maskCurrency(tx.amount)}</td><td class="py-3 px-6 text-center"><button onclick="handleEditTxClick('${tx.id}')" class="text-indigo-400 mx-1"><i class="fa-solid fa-pen"></i></button><button onclick="handleDeleteTxClick('${tx.id}')" class="text-rose-400 mx-1"><i class="fa-solid fa-trash"></i></button></td></tr>`);
                 
                 // Mobile Card View
                 cards.insertAdjacentHTML('beforeend', `
-                    <div class="p-4 hover:bg-slate-50 transition active:bg-slate-100 flex items-center justify-between">
+                    <div class="p-4 hover:bg-slate-50 transition active:bg-slate-100 flex items-center justify-between${tx.type==='proxy'?' bg-amber-50/40':''}">
                         <div class="flex items-center gap-3 overflow-hidden">
-                            <div class="w-10 h-10 rounded-full flex shrink-0 items-center justify-center ${tx.type==='income'?'bg-emerald-100 text-emerald-600':tx.type==='expense'?'bg-rose-100 text-rose-600':'bg-blue-100 text-blue-600'}"><i class="fa-solid ${icon}"></i></div>
+                            <div class="w-10 h-10 rounded-full flex shrink-0 items-center justify-center ${tx.type==='income'?'bg-emerald-100 text-emerald-600':tx.type==='expense'?'bg-rose-100 text-rose-600':tx.type==='proxy'?'bg-amber-100 text-amber-600':'bg-blue-100 text-blue-600'}"><i class="fa-solid ${icon}"></i></div>
                             <div class="min-w-0">
-                                <p class="font-bold text-slate-800 text-sm truncate">${tx.type==='transfer'?`Chuyển: ${tx.account} &rarr; ${tx.toAccount}`:tx.category}</p>
+                                <p class="font-bold text-slate-800 text-sm truncate">${tx.type==='transfer'?`Chuyển: ${tx.account} &rarr; ${tx.toAccount}`:tx.type==='proxy'?`Trung gian: ${tx.category}`:tx.category}</p>
                                 <p class="text-[11px] text-slate-500 flex gap-2"><span>${formatDate(tx.date)}</span><span>&bull;</span><span class="truncate">${tx.account}</span></p>
                                 ${tx.notes ? `<p class="text-[11px] text-slate-400 truncate mt-0.5">${tx.notes}</p>`:''}
                             </div>
@@ -2614,9 +2646,10 @@
             let cAccs = computeCurrentBalances(), gTot = 0, mIn = 0, mEx = 0, topA = 0, topC = "-", cExp = {}, yIn = Array(12).fill(0), yEx = Array(12).fill(0);
             
             transactions.forEach(tx => {
-                // Chỉ tính thống kê tháng/năm — KHÔNG tính số dư ví ở đây nữa
+                // Chỉ tính thống kê tháng/năm — KHÔNG tính số dư ví ở đây nữa, KHÔNG tính proxy vào thu/chi
                 if(tx.date.startsWith(m.split('-')[0])) { const midx = parseInt(tx.date.split('-')[1])-1; if(tx.type==='income') yIn[midx]+=tx.amount; if(tx.type==='expense') yEx[midx]+=tx.amount; }
                 if(tx.date.startsWith(m)) { if(tx.type==='income') mIn+=tx.amount; if(tx.type==='expense') { mEx+=tx.amount; cExp[tx.category]=(cExp[tx.category]||0)+tx.amount; } }
+                // proxy: bỏ qua ở đây — đã được xử lý trong computeCurrentBalances()
             });
             for(let c in cExp) { if(cExp[c]>topA) { topA=cExp[c]; topC=c; } }
 
@@ -2747,14 +2780,15 @@
         function getDaysInMonthFromStr(monthStr) { const [year, month] = monthStr.split('-').map(Number); return new Date(year, month, 0).getDate(); }
         function offsetMonthStr(monthStr, offset) { const [year, month] = monthStr.split('-').map(Number); const d = new Date(year, month - 1 + offset, 1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
         function getMonthStats(monthStr) {
-            const categoryBreakdown = {}; let income = 0, expense = 0, transfer = 0; const expenseTxs = [];
+            const categoryBreakdown = {}; let income = 0, expense = 0, transfer = 0, proxyIn = 0, proxyOut = 0; const expenseTxs = [];
             transactions.forEach(tx => {
                 if (!tx.date || !tx.date.startsWith(monthStr)) return;
                 if (tx.type === 'income') income += tx.amount;
                 else if (tx.type === 'expense') { expense += tx.amount; categoryBreakdown[tx.category] = (categoryBreakdown[tx.category] || 0) + tx.amount; expenseTxs.push(tx); }
                 else if (tx.type === 'transfer') transfer += tx.amount;
+                else if (tx.type === 'proxy') { if (tx.proxyDir === 'in') proxyIn += tx.amount; else proxyOut += tx.amount; }
             });
-            return { income, expense, transfer, categoryBreakdown, expenseTxs };
+            return { income, expense, transfer, proxyIn, proxyOut, categoryBreakdown, expenseTxs };
         }
         function renderAIList(id, items, emptyText) {
             const el = document.getElementById(id); if (!el) return;
@@ -3065,8 +3099,10 @@
             renderAnomalyAndTrendCharts(anomalies, trends);
 
             const mainCause = topCategories[0] ? topCategories[0][0] : 'chưa rõ';
+            const proxyTotal = (monthStats.proxyIn || 0) + (monthStats.proxyOut || 0);
+            const proxyNote = proxyTotal > 0 ? ` Ngoài ra có <strong>${formatCurrency(proxyTotal)}</strong> giao dịch trung gian (ủy thác) qua ví — không tính vào thu/chi.` : '';
             const summaryLines = [];
-            summaryLines.push(`<p><strong>1. Nhận định:</strong> ${idealBudget > 0 ? `Bạn đang ở mức ${Math.round(monthExpense / idealBudget * 100)}% ngân sách.` : 'Bạn chưa đặt ngân sách tổng.'}</p>`);
+            summaryLines.push(`<p><strong>1. Nhận định:</strong> ${idealBudget > 0 ? `Bạn đang ở mức ${Math.round(monthExpense / idealBudget * 100)}% ngân sách.` : 'Bạn chưa đặt ngân sách tổng.'}${proxyNote}</p>`);
             summaryLines.push(`<p><strong>2. Chú ý:</strong> Danh mục lớn nhất là <strong>${escapeHTML(mainCause)}</strong>.${anomalies.length ? ` Có ${anomalies.length} giao dịch chi bất thường cần rà lại.` : ''}${trends.length ? ` Danh mục biến động mạnh nhất: <strong>${escapeHTML(trends[0].cat)}</strong> (${trends[0].diff > 0 ? 'tăng' : 'giảm'} ${formatCurrency(Math.abs(trends[0].diff))}).` : ''}</p>`);
             summaryLines.push(`<p><strong>3. Kế hoạch:</strong> Rà lại 3 khoản chi lớn nhất → theo dõi trần chi/ngày → cập nhật hạn mức tháng sau.</p>`);
             setHTML('ai-executive-summary', summaryLines.join(''));
@@ -3229,7 +3265,7 @@
         function exportToCSV() {
             if (transactions.length === 0) return showToast("Không có dữ liệu!", "fa-circle-xmark", "text-rose-500");
             let csv = "ID,Ngay,Loai,Danh muc (Den TK),Tai khoan,Noi dung,So tien\n";
-            transactions.forEach(tx => { const catOrDest = tx.type === 'transfer' ? `Chuyển tới: ${tx.toAccount}` : tx.category; csv += `${tx.id},${tx.date},${tx.type},${catOrDest},${tx.account},${tx.notes.replace(/,/g, "-")},${tx.amount}\n`; });
+            transactions.forEach(tx => { const catOrDest = tx.type === 'transfer' ? `Chuyển tới: ${tx.toAccount}` : tx.type === 'proxy' ? `Trung gian (${tx.proxyDir==='in'?'thu hộ':'chi hộ'}): ${tx.category}` : tx.category; csv += `${tx.id},${tx.date},${tx.type},${catOrDest},${tx.account},${tx.notes.replace(/,/g, "-")},${tx.amount}\n`; });
             const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' })); link.download = `chi-tieu-${getCurrentMonthStr()}.csv`; link.click();
         }
         function exportDataJSON() {
@@ -3328,9 +3364,8 @@
                 fbApp = firebase.initializeApp(firebaseConfig);
                 fbAuth = firebase.auth();
                 fbDb = firebase.firestore();
-                // Cho phép app hoạt động cả khi mất mạng tạm thời (đọc/ghi cache cục bộ, tự đồng bộ lại
-                // khi có mạng trở lại) và giữ dữ liệu nhất quán giữa nhiều tab cùng trình duyệt.
-                fbDb.enablePersistence({ synchronizeTabs: true }).catch(() => {});
+                // Không dùng enablePersistence — tính năng offline cache làm phức tạp logic fromCache
+                // và không cần thiết cho mục đích đồng bộ 2 thiết bị. onSnapshot vẫn hoạt động real-time.
             } catch (err) {
                 console.error('Firebase init error', err);
                 updateSyncStatusUI('error', 'Lỗi khởi tạo Firebase - kiểm tra lại firebaseConfig');
@@ -3354,7 +3389,7 @@
                     fbCurrentUid = user.uid;
                     hideLoginGate();
                     updateAccountEmailUI();
-                    updateSyncStatusUI('connected');
+                    updateSyncStatusUI('syncing', 'Đang tải dữ liệu từ server...'); // chưa có snapshot thật → chưa hiện "connected"
                     attachFirestoreListener(user.uid);
                 } else {
                     fbCurrentUid = null;
@@ -3495,11 +3530,17 @@
 
             let changed = false;
             const mergedTxJson = JSON.stringify(mergedTx);
-            if (mergedTxJson !== JSON.stringify(localTx)) {
+            // So sánh theo id + updatedAt, không dùng JSON string (thứ tự không ổn định sau merge)
+            const localTxById = new Map((localTx || []).map(t => [t.id, t.updatedAt || '']));
+            const txChanged = mergedTx.length !== (localTx || []).length ||
+                mergedTx.some(t => localTxById.get(t.id) !== (t.updatedAt || ''));
+            if (txChanged) {
                 transactions = mergedTx; _origLocalStorageSetItem('personal_transactions_v4', mergedTxJson); changed = true;
             }
             const mergedTombJson = JSON.stringify(mergedTomb);
-            if (mergedTombJson !== JSON.stringify(localTomb)) { _origLocalStorageSetItem('personal_deleted_tx_v4', mergedTombJson); }
+            const localTombKeys = Object.keys(localTomb);
+            const tombChanged = Object.keys(mergedTomb).some(id => !localTomb[id] || mergedTomb[id] !== localTomb[id]) || localTombKeys.some(id => !mergedTomb[id]);
+            if (tombChanged) { _origLocalStorageSetItem('personal_deleted_tx_v4', mergedTombJson); }
 
             const localSettingsAt = localStorage.getItem('financepro_settings_updated_at');
             const remoteSettingsAt = remoteData.settingsUpdatedAt;
@@ -3519,9 +3560,17 @@
 
             _origLocalStorageSetItem('financepro_last_synced_at', new Date().toISOString());
 
-            // Nếu dữ liệu đã gộp khác với dữ liệu trên server (ví dụ máy này có giao dịch mới hơn mà
-            // server chưa có), đẩy bản đã gộp lên lại để các thiết bị khác cũng nhận được.
-            const localAheadOfRemote = mergedTxJson !== JSON.stringify(remoteData.transactions || []) || mergedTombJson !== JSON.stringify(remoteData.deletedTx || {});
+            // Chỉ đẩy lên nếu máy này thật sự có giao dịch mà server chưa có (so sánh theo id),
+            // hoặc có giao dịch cùng id nhưng bản local mới hơn (updatedAt lớn hơn).
+            // Không dùng JSON.stringify để so sánh vì thứ tự array/object sau merge không ổn định.
+            const remoteById = new Map((remoteData.transactions || []).map(t => [t.id, t]));
+            const localAheadOfRemote = mergedTx.some(t => {
+                const remote = remoteById.get(t.id);
+                if (!remote) return true; // local có, server chưa có
+                const lu = t.updatedAt ? new Date(t.updatedAt).getTime() : 0;
+                const ru = remote.updatedAt ? new Date(remote.updatedAt).getTime() : 0;
+                return lu > ru; // local mới hơn server
+            });
             if (localAheadOfRemote) scheduleDriveSync();
 
             if (changed) {
@@ -3557,6 +3606,24 @@
             if (!fbCurrentUid || !fbDb) return;
             gDriveState.isSyncing = true; updateSyncStatusUI('syncing');
             try {
+                // Pull thật từ server ngay trước khi ghi — tránh đè mất giao dịch
+                // mà thiết bị khác vừa push trong khoảng debounce 1.2s vừa rồi.
+                const snap = await fbDb.collection(FIRESTORE_COLLECTION).doc(fbCurrentUid).get({ source: 'server' });
+                if (snap.exists) {
+                    const remoteData = snap.data();
+                    const localTx = JSON.parse(localStorage.getItem('personal_transactions_v4') || '[]');
+                    const localTomb = JSON.parse(localStorage.getItem('personal_deleted_tx_v4') || '{}');
+                    const { transactions: mergedTx, deletedTx: mergedTomb } = mergeTransactions(localTx, remoteData.transactions, localTomb, remoteData.deletedTx);
+                    // So sánh theo id thay vì JSON string (JSON string không ổn định sau khi merge)
+                    const localIds = new Set(localTx.map(t => t.id));
+                    const hasNew = mergedTx.some(t => !localIds.has(t.id));
+                    if (hasNew) {
+                        transactions = mergedTx;
+                        _origLocalStorageSetItem('personal_transactions_v4', JSON.stringify(mergedTx));
+                        populateAccountSelects(); updateDashboard(); applyFilters(); renderCategoryBudgets();
+                    }
+                    _origLocalStorageSetItem('personal_deleted_tx_v4', JSON.stringify(mergedTomb));
+                }
                 const data = gatherLocalDataForSync();
                 await fbDb.collection(FIRESTORE_COLLECTION).doc(fbCurrentUid).set(data);
                 _origLocalStorageSetItem('financepro_last_synced_at', new Date().toISOString());
@@ -3573,22 +3640,21 @@
         // khác), Firestore tự động đẩy về NGAY LẬP TỨC - không cần dò hỏi định kỳ (polling) như trước.
         function attachFirestoreListener(uid) {
             detachFirestoreListener();
-            syncReady = false; pendingSyncAfterReady = false; // phiên đăng nhập mới -> phải đợi nhận dữ liệu thật từ server trước
-            fbUnsubscribeDoc = fbDb.collection(FIRESTORE_COLLECTION).doc(uid).onSnapshot({ includeMetadataChanges: true }, (snap) => {
-                if (snap.metadata.hasPendingWrites) return; // đây là do CHÍNH máy này vừa ghi -> đã có sẵn, khỏi gộp lại chính mình
+            syncReady = false; pendingSyncAfterReady = false;
+            fbUnsubscribeDoc = fbDb.collection(FIRESTORE_COLLECTION).doc(uid).onSnapshot({ includeMetadataChanges: false }, (snap) => {
+                // includeMetadataChanges=false: chỉ nhận snapshot có nội dung thay đổi thật sự,
+                // không nhận fire thừa khi chỉ metadata thay đổi (hasPendingWrites, fromCache...).
+                if (snap.metadata.hasPendingWrites) return; // chính máy này vừa ghi, bỏ qua
                 if (!snap.exists) {
-                    // QUAN TRỌNG: nếu bản snapshot "chưa có dữ liệu" này đến từ CACHE cục bộ của chính
-                    // thiết bị (ví dụ vừa mở app, mạng chưa kịp sẵn sàng) thì KHÔNG được kết luận vội là
-                    // "server chưa có dữ liệu" rồi đẩy dữ liệu rỗng lên ghi đè - đây chính là nguyên nhân
-                    // gây mất dữ liệu khi mở app trên 1 thiết bị vào lúc thiết bị kia không mở cùng lúc.
-                    // Chỉ đẩy lên làm bản đầu tiên khi đã CHẮC CHẮN đây là phản hồi thật từ server.
-                    if (snap.metadata.fromCache) return;
+                    // Server thật sự chưa có dữ liệu → đẩy local lên làm bản đầu tiên
                     markSyncReadyAndFlush();
-                    pushLocalDataToFirestore(); // đã xác nhận từ server: thật sự chưa có dữ liệu -> đẩy dữ liệu máy này lên làm bản đầu tiên
+                    pushLocalDataToFirestore();
                     return;
                 }
+                // Snapshot từ server — merge và đánh dấu sẵn sàng
                 applyRemoteSnapshotWhenIdle(snap.data());
                 markSyncReadyAndFlush();
+                updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
             }, (err) => {
                 console.error('Firestore onSnapshot error', err);
                 updateSyncStatusUI('error', 'Mất kết nối đồng bộ, đang tự thử lại...');
@@ -3622,11 +3688,18 @@
         document.addEventListener('visibilitychange', async () => {
             if (document.visibilityState !== 'visible') { lastVisibleAt = Date.now(); return; }
             const awayMs = Date.now() - lastVisibleAt;
-            if (!fbCurrentUid || !fbDb || awayMs < 15000) return; // chỉ kéo nếu đã vào nền ít nhất 15 giây
+            if (!fbCurrentUid || !fbDb || awayMs < 5000) return; // kéo về khi đã vào nền ít nhất 5 giây (mobile freeze tab rất nhanh)
+            // Re-attach listener để khôi phục real-time (WebSocket có thể đã bị freeze/drop khi vào nền)
+            // rồi kéo thêm 1 lần từ server để lấy dữ liệu trong thời gian không online
+            updateSyncStatusUI('syncing', 'Đang đồng bộ...');
+            attachFirestoreListener(fbCurrentUid); // tự detach cái cũ bên trong
             try {
                 const snap = await fbDb.collection(FIRESTORE_COLLECTION).doc(fbCurrentUid).get({ source: 'server' });
                 if (snap.exists) { mergeRemoteData(snap.data()); syncReady = true; }
-            } catch (_) {} // lỗi mạng thì bỏ qua, listener sẽ tự thử lại khi có mạng
+                updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
+            } catch (_) {
+                updateSyncStatusUI('connected'); // listener vẫn sống, lỗi pull 1 lần thì bỏ qua
+            }
         });
     </script>
 </body>
