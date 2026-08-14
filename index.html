@@ -1868,7 +1868,174 @@
                             </div>
 
 
-                            <p class="text-center text-[11px] text-slate-400">Kiến thức đúc kết từ "Hiểu Hết Về Tiền" — DK Publishing. Các phần tiếp theo sẽ được cập nhật dần.</p>
+
+                            <!-- PHẦN 7 -->
+                            <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                                <button onclick="toggleBookSection('book-p7')" class="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-slate-50 transition-colors">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 font-bold text-sm">7</div>
+                                        <div>
+                                            <p class="font-bold text-slate-900 text-sm">Nợ</p>
+                                            <p class="text-xs text-slate-400">Nợ tốt/xấu · Lãi đơn &amp; lãi kép · Tiền vay · Vay thế chấp · Thẻ tín dụng</p>
+                                        </div>
+                                    </div>
+                                    <i id="book-p7-icon" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform"></i>
+                                </button>
+                                <div id="book-p7" class="hidden border-t border-slate-100 px-5 py-5 space-y-5 text-sm text-slate-700 leading-relaxed">
+
+                                    <div>
+                                        <p class="font-bold text-slate-900 mb-2">Nợ tốt vs Nợ xấu — ranh giới cần phân biệt</p>
+                                        <div class="grid grid-cols-2 gap-2 text-xs">
+                                            <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-3"><p class="font-semibold text-emerald-800">Nợ tốt</p><p class="text-emerald-700 mt-1">Vay để đầu tư vào thứ <strong>tăng giá trị</strong> hoặc tạo thu nhập. Vay thế chấp mua nhà là ví dụ điển hình — ít người mua được nhà bằng tiền mặt ngay lập tức.</p></div>
+                                            <div class="bg-rose-50 border border-rose-100 rounded-xl p-3"><p class="font-semibold text-rose-800">Nợ xấu</p><p class="text-rose-700 mt-1">Vay để tiêu dùng thứ <strong>mất giá nhanh</strong> hoặc không thiết yếu. Thẻ tín dụng mua sắm, vay nặng lãi để sinh hoạt hằng ngày.</p></div>
+                                        </div>
+                                        <div class="bg-amber-50 border border-amber-100 rounded-xl p-3 mt-2 text-xs">
+                                            <p class="font-semibold text-amber-800 mb-1">Đòn bẩy tài chính — khuếch đại cả 2 chiều</p>
+                                            <p class="text-amber-700">A dùng 50.000 bảng mua 1 chiếc xe cổ → bán lãi 5.000 bảng. B dùng 50.000 bảng làm vốn, vay thêm 450.000 bảng mua 10 chiếc → lãi gộp 50.000 bảng. Nhưng nếu xe mất giá, B lỗ gấp 10 lần A. <strong>Đòn bẩy khuếch đại lãi lẫn lỗ theo cùng tỷ lệ.</strong></p>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <p class="font-bold text-slate-900 mb-2">Lãi đơn vs Lãi kép</p>
+                                        <p class="text-xs text-slate-500 italic mb-2">"Lãi kép là kỳ quan thứ tám của thế giới. Ai hiểu nó sẽ kiếm được tiền nhờ nó; ai không hiểu nó sẽ phải trả giá vì nó." — Albert Einstein</p>
+                                        <div class="grid grid-cols-2 gap-2 text-xs">
+                                            <div class="bg-slate-50 rounded-xl p-3"><p class="font-semibold text-slate-800">Lãi đơn</p><p class="text-slate-500 mt-1">Tính trên vốn gốc ban đầu, trả theo kỳ, vốn gốc không đổi.<br>1.000 bảng × 10%/năm = 100 bảng lãi mỗi năm — mãi mãi như vậy.</p></div>
+                                            <div class="bg-indigo-50 rounded-xl p-3"><p class="font-semibold text-indigo-800">Lãi kép</p><p class="text-indigo-700 mt-1">Lãi cộng vào vốn, kỳ sau tính lãi trên cả vốn + lãi cũ.<br>Năm 1: 1.000→1.100 (+100)<br>Năm 2: 1.100→1.210 (+110)<br>Năm 3: 1.210→1.331 (+121)<br>→ Sau 3 năm: 331 thay vì 300 bảng</p></div>
+                                        </div>
+                                        <div class="bg-slate-50 rounded-xl p-3 mt-2 text-xs">
+                                            <p class="font-semibold text-slate-800 mb-1">Công thức: A = P × (1 + R/N)^NT</p>
+                                            <p class="text-slate-500">A = số tiền cuối kỳ &nbsp;|&nbsp; P = vốn gốc &nbsp;|&nbsp; R = lãi suất/năm &nbsp;|&nbsp; N = tần suất ghép lãi/năm &nbsp;|&nbsp; T = số năm</p>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-2 mt-2 text-xs">
+                                            <div class="bg-slate-50 rounded-xl p-2.5"><p class="font-semibold text-slate-700">APR</p><p class="text-slate-500 mt-0.5">Lãi suất phần trăm bình quân năm cho khoản vay — tính cả phí. Dùng để so sánh các sản phẩm vay.</p></div>
+                                            <div class="bg-slate-50 rounded-xl p-2.5"><p class="font-semibold text-slate-700">AER</p><p class="text-slate-500 mt-0.5">Lãi suất thực hưởng cho tiết kiệm — xét đến tần suất ghép lãi. Dùng để so sánh tài khoản tiết kiệm.</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <p class="font-bold text-slate-900 mb-2">Vay thường — cạm bẫy cần biết</p>
+                                        <div class="space-y-1.5 text-xs text-slate-600">
+                                            <p>Mỗi kỳ hoàn trả = một phần vốn + một phần lãi. Ban đầu phần lớn là lãi (dư nợ còn lớn), về cuối phần lớn là vốn gốc.</p>
+                                            <p class="bg-rose-50 text-rose-700 rounded-xl p-2.5"><strong>Vay nặng lãi:</strong> Công ty Wonga (Anh) từng áp APR <strong>5.583%</strong> trước khi bị chặn năm 2014. Vay 100 bảng trả 125 bảng sau 28 ngày — nghe nhỏ nhưng quy đổi APR hơn 4.000%. Bẫy ở chỗ người vay chỉ thấy "25 bảng phí" không thấy lãi suất thực.</p>
+                                            <p class="text-slate-500">Tỷ lệ nợ gia đình/thu nhập tại Đan Mạch: <strong>265%</strong> — cao nhất thế giới. Tổng nợ người dân Anh: <strong>1.496 nghìn tỷ bảng</strong>.</p>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <p class="font-bold text-slate-900 mb-2">Vay thế chấp — nợ lớn nhất trong đời</p>
+                                        <div class="space-y-2 text-xs">
+                                            <div class="bg-slate-50 rounded-xl p-3"><p class="font-semibold text-slate-800">Trả góp (phổ biến nhất)</p><p class="text-slate-500 mt-0.5">Trả cả gốc lẫn lãi hàng tháng. Tiền cọc càng lớn → LTV càng thấp → lãi suất càng thấp. Đến cuối kỳ sở hữu hoàn toàn bất động sản.</p></div>
+                                            <div class="bg-slate-50 rounded-xl p-3"><p class="font-semibold text-slate-800">Chỉ trả lãi</p><p class="text-slate-500 mt-0.5">Mỗi tháng chỉ trả lãi, cuối kỳ trả toàn bộ vốn một lần. Tiền hàng tháng thấp hơn nhưng phải có nguồn trả vốn gốc cuối kỳ — nếu không có khoản tiết kiệm thỏa đáng, buộc phải bán nhà.</p></div>
+                                            <div class="bg-slate-50 rounded-xl p-3"><p class="font-semibold text-slate-800">Bù trừ tài khoản</p><p class="text-slate-500 mt-0.5">Chỉ tính lãi trên phần chênh lệch (nợ vay trừ đi tiết kiệm cùng ngân hàng). Ví dụ: vay 200.000 bảng, có 30.000 bảng tiết kiệm → chỉ tính lãi trên 170.000 bảng.</p></div>
+                                        </div>
+                                        <p class="text-xs text-rose-600 mt-2 bg-rose-50 rounded-xl p-2.5"><strong>Giá trị tài sản thế chấp âm:</strong> khi giá nhà giảm xuống thấp hơn số tiền vay còn lại → bị kẹt không bán được mà không lỗ — bẫy nguy hiểm nhất của vay thế chấp.</p>
+                                    </div>
+
+                                    <div>
+                                        <p class="font-bold text-slate-900 mb-2">Thẻ tín dụng — tín dụng xoay vòng nguy hiểm nhất</p>
+                                        <div class="space-y-1.5 text-xs text-slate-600">
+                                            <p>Tín dụng xoay vòng: dùng đi dùng lại trong hạn mức. Người dùng chỉ bắt buộc trả "tối thiểu" mỗi tháng — phần còn lại tiếp tục bị tính lãi kép.</p>
+                                            <p class="bg-rose-50 text-rose-700 rounded-xl p-2.5"><strong>Cạm bẫy "chỉ trả tối thiểu":</strong> nợ kéo dài nhiều năm, tổng lãi phải trả có thể vượt xa số tiền ban đầu. Đây là cách quản lý thẻ tín dụng tốn kém nhất.</p>
+                                            <p><strong>Điểm tín dụng</strong> bị ảnh hưởng xấu bởi: nợ cao, thanh toán trễ, yêu cầu cấp tín dụng quá nhiều lần. Cải thiện điểm tín dụng trước khi vay lớn.</p>
+                                            <p><strong>Hiệp hội tín dụng</strong> là lựa chọn thay thế: phi lợi nhuận, lãi suất thường thấp hơn ngân hàng, không phí ẩn, trả sớm không bị phạt. Hiện có 57.000 hiệp hội tại 105 nước.</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-rose-50 border border-rose-100 rounded-xl p-3 text-xs">
+                                        <p class="font-bold text-rose-800 mb-1">💡 Điểm mấu chốt</p>
+                                        <p class="text-rose-700">Nợ là <strong>công cụ</strong> — không tốt cũng không xấu. Ranh giới là: <em>lãi suất phải trả có thấp hơn lợi nhuận kỳ vọng từ tài sản mua bằng tiền đó không?</em> Nếu có — vay có thể hợp lý. Người hiểu lãi kép dùng nó để làm giàu; người không hiểu bị nó nuốt chửng từ từ.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- PHẦN 8 -->
+                            <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                                <button onclick="toggleBookSection('book-p8')" class="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-slate-50 transition-colors">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 font-bold text-sm">8</div>
+                                        <div>
+                                            <p class="font-bold text-slate-900 text-sm">Tiền trong kỷ nguyên điện tử</p>
+                                            <p class="text-xs text-slate-400">Tiền mã hóa · Blockchain · P2P · Crowdfunding · Tương lai của tiền</p>
+                                        </div>
+                                    </div>
+                                    <i id="book-p8-icon" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform"></i>
+                                </button>
+                                <div id="book-p8" class="hidden border-t border-slate-100 px-5 py-5 space-y-5 text-sm text-slate-700 leading-relaxed">
+
+                                    <div>
+                                        <p class="font-bold text-slate-900 mb-2">Tiền mã hóa — không do chính phủ nào kiểm soát</p>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                            <div class="bg-slate-50 rounded-xl p-3">
+                                                <p class="font-semibold text-slate-800 mb-1">2 đặc điểm cốt lõi</p>
+                                                <p class="text-slate-500"><strong>"Thợ mỏ" tạo ra tiền:</strong> giải bài toán mật mã → tạo ra "xu" mới. Bitcoin giới hạn cứng 21 triệu xu — không thể tạo thêm, bảo vệ khỏi lạm phát do in tiền.<br><br><strong>Blockchain:</strong> mọi giao dịch ghi vào "khối", mỗi khối mã hóa liên kết với khối trước → chuỗi bất biến, không thể giả mạo. Hơn 700 loại tiền mã hóa có thể giao dịch hiện nay.</p>
+                                            </div>
+                                            <div class="space-y-2">
+                                                <div class="bg-emerald-50 rounded-xl p-3 text-xs">
+                                                    <p class="font-semibold text-emerald-800">Ưu điểm</p>
+                                                    <p class="text-emerald-700 mt-0.5">Giao dịch trực tiếp, không qua ngân hàng, phí gần 0. Hoạt động 24/7, không giới hạn biên giới. Không bị lạm phát do quyết định chính trị. Nặc danh.</p>
+                                                </div>
+                                                <div class="bg-rose-50 rounded-xl p-3 text-xs">
+                                                    <p class="font-semibold text-rose-800">Rủi ro</p>
+                                                    <p class="text-rose-700 mt-0.5">Mất máy tính/ổ cứng = mất tiền vĩnh viễn, không khôi phục được. Ít nhà bán lẻ chấp nhận. Biến động giá cực mạnh.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2 bg-slate-50 rounded-xl p-3 text-xs">
+                                            <p class="font-semibold text-slate-700 mb-1.5">Mốc thời gian chính:</p>
+                                            <div class="grid grid-cols-2 gap-1 text-slate-500">
+                                                <span>🟠 <strong>10/2008</strong>: Ra mắt Bitcoin</span>
+                                                <span>🔄 <strong>2010</strong>: Giao dịch Bitcoin đầu tiên</span>
+                                                <span>🔵 <strong>2013</strong>: Phát hành Ripple</span>
+                                                <span>🟡 <strong>11/2013</strong>: Bitcoin đạt đỉnh (thời điểm đó)</span>
+                                                <span>⟠ <strong>2015</strong>: Phát hành Ethereum</span>
+                                                <span>🏦 <strong>3/2016</strong>: Ngân hàng Anh công bố RSCoin</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <p class="font-bold text-slate-900 mb-2">Cho vay ngang hàng (P2P) — ngân hàng không có ngân hàng</p>
+                                        <p class="text-xs text-slate-600 mb-2">Nền tảng P2P kết nối người có tiền muốn cho vay với người cần vay, bỏ qua hoàn toàn ngân hàng. Người cho vay kiếm lãi cao hơn tiết kiệm ngân hàng (~6%); người vay được lãi thấp hơn ngân hàng thương mại. Nền tảng thu phí 1–3% từ cả 2 phía. Đến năm 2025, giá trị P2P toàn cầu dự đoán đạt <strong>1 nghìn tỷ đô la Mỹ</strong>.</p>
+                                        <div class="bg-rose-50 border border-rose-100 rounded-xl p-3 text-xs space-y-1 text-rose-700">
+                                            <p class="font-semibold text-rose-800">Rủi ro P2P:</p>
+                                            <p>• Người vay vỡ nợ — không có bảo hiểm tiền gửi như ngân hàng.</p>
+                                            <p>• Nền tảng P2P phá sản → người cho vay phải tự thu hồi tiền.</p>
+                                            <p>• Chưa được quy định đầy đủ, chưa qua thử thách suy thoái nghiêm trọng.</p>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <p class="font-bold text-slate-900 mb-2">Gây quỹ cộng đồng (Crowdfunding)</p>
+                                        <p class="text-xs text-slate-600">Bất kỳ ai cũng có thể kêu gọi đóng góp trực tuyến, bỏ qua ngân hàng và quỹ đầu tư truyền thống. Nguyên tắc "đề nghị nhiều người đóng một phần nhỏ". Cắt bỏ người trung gian, tiền đến thẳng mục tiêu hơn. Phù hợp từ từ thiện đến đầu tư vào dự án khởi nghiệp. Nền tảng thu phí % từ số tiền quyên góp được.</p>
+                                    </div>
+
+                                    <div>
+                                        <p class="font-bold text-slate-900 mb-2">3 xu hướng lớn — tương lai của tiền</p>
+                                        <div class="space-y-2 text-xs">
+                                            <div class="border-l-2 border-indigo-400 pl-3">
+                                                <p class="font-bold text-slate-800">Phi trung gian hóa</p>
+                                                <p class="text-slate-500">Tiền mã hóa, P2P, crowdfunding đều loại bỏ tầng trung gian (ngân hàng, quỹ, tổ chức). Tiền chảy trực tiếp từ người có đến người cần — phí thấp hơn, nhanh hơn. Xu hướng này sẽ tiếp tục mạnh lên.</p>
+                                            </div>
+                                            <div class="border-l-2 border-emerald-400 pl-3">
+                                                <p class="font-bold text-slate-800">Toàn cầu hóa tài chính cá nhân</p>
+                                                <p class="text-slate-500">Tiền mã hóa và thanh toán điện tử xóa nhòa biên giới quốc gia trong giao dịch. Người lao động ở bất kỳ đâu có thể nhận tiền từ bất kỳ đâu, không cần tài khoản ngân hàng truyền thống.</p>
+                                            </div>
+                                            <div class="border-l-2 border-amber-400 pl-3">
+                                                <p class="font-bold text-slate-800">Ngân hàng trung ương phát hành tiền mã hóa riêng</p>
+                                                <p class="text-slate-500">Ngân hàng Anh công bố RSCoin (2016) — tiền mã hóa do nhà nước phát hành. Giữ lợi thế blockchain (nhanh, rẻ, minh bạch) nhưng vẫn duy trì kiểm soát cung tiền của nhà nước.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-3 text-xs">
+                                        <p class="font-bold text-emerald-800 mb-1">💡 Điểm mấu chốt — và kết luận toàn bộ cuốn sách</p>
+                                        <p class="text-emerald-700">Tiền đang trải qua sự biến đổi lớn nhất kể từ khi chuyển từ vàng sang tiền giấy. Nhưng dù là xu Bitcoin hay tờ đô la — <strong>nguyên lý nền tảng không đổi: tiền chỉ có giá trị khi mọi người tin tưởng vào nó.</strong><br><br>Thông điệp xuyên suốt 8 phần: <strong>Hiểu tiền không phải để ám ảnh với tiền, mà để tiền không kiểm soát bạn — bạn kiểm soát nó.</strong></p>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            <p class="text-center text-[11px] text-slate-400">Kiến thức đúc kết từ "Hiểu Hết Về Tiền" — DK Publishing.</p>
                         </div>
 
     </div>
@@ -2440,7 +2607,9 @@
             const cpNote = document.getElementById('balance-checkpoint-note');
             if (cpNote) cpNote.innerHTML = `<i class="fa-solid fa-circle-info text-indigo-400 mr-1"></i>Số dư ban đầu khi tạo ví. App sẽ tự cộng/trừ tất cả giao dịch vào đây để ra số dư hiện tại.`;
             Object.keys(userAccounts).forEach(acc => {
-                list.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-between p-3 bg-slate-50 border rounded-lg"><span class="font-semibold text-slate-700">${acc}</span><div class="flex items-center"><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" id="setup-acc-${acc}" value="${userAccounts[acc].toLocaleString('vi-VN')}" class="w-24 text-right border rounded-md p-1.5 text-sm font-semibold" style="font-size:16px"><span class="ml-1 text-xs text-slate-500">₫</span><button onclick="handleRemoveAccount('${acc}')" class="ml-3 text-rose-400"><i class="fa-solid fa-trash"></i></button></div></div>`);
+                const safeAcc = escapeHTML(acc);
+                const encodedAcc = encodeURIComponent(acc);
+                list.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-between p-3 bg-slate-50 border rounded-lg"><span class="font-semibold text-slate-700">${safeAcc}</span><div class="flex items-center"><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" data-account="${encodedAcc}" value="${userAccounts[acc].toLocaleString('vi-VN')}" class="w-24 text-right border rounded-md p-1.5 text-sm font-semibold" style="font-size:16px"><span class="ml-1 text-xs text-slate-500">₫</span><button type="button" onclick="handleRemoveAccount(decodeURIComponent('${encodedAcc}'))" class="ml-3 text-rose-400"><i class="fa-solid fa-trash"></i></button></div></div>`);
             });
         }
         function handleAddAccount() {
@@ -2458,9 +2627,9 @@
         }
         function saveAllAccounts() {
             // Lưu số dư ban đầu người dùng nhập — không đổi logic, không checkpoint
-            Object.keys(userAccounts).forEach(a => {
-                const e = document.getElementById(`setup-acc-${a}`);
-                if (e) userAccounts[a] = getRawNumber(e.value);
+            document.querySelectorAll('#account-setup-list [data-account]').forEach(e => {
+                const a = decodeURIComponent(e.getAttribute('data-account') || '');
+                if (Object.prototype.hasOwnProperty.call(userAccounts, a)) userAccounts[a] = getRawNumber(e.value);
             });
             localStorage.setItem('personal_accounts_v4', JSON.stringify(userAccounts));
             populateAccountSelects(); updateDashboard(); closeModal('initialBalanceModal');
@@ -2555,12 +2724,12 @@
         // biến mất trên Drive nếu thiết bị B chưa kịp đồng bộ). Do đó ta ghi lại "đã xóa lúc nào" để khi
         // gộp dữ liệu, biết được nên giữ hay bỏ 1 bản ghi.
         function recordTombstone(id) {
-            const tomb = JSON.parse(localStorage.getItem('personal_deleted_tx_v4') || '{}');
+            const tomb = getStoredJSON('personal_deleted_tx_v4', {});
             tomb[id] = new Date().toISOString();
             localStorage.setItem('personal_deleted_tx_v4', JSON.stringify(tomb));
         }
         function clearTombstone(id) {
-            const tomb = JSON.parse(localStorage.getItem('personal_deleted_tx_v4') || '{}');
+            const tomb = getStoredJSON('personal_deleted_tx_v4', {});
             if (tomb[id]) { delete tomb[id]; localStorage.setItem('personal_deleted_tx_v4', JSON.stringify(tomb)); }
         }
 
@@ -2585,31 +2754,40 @@
 
                 const proxyNote = tx.type==='proxy' ? `<span class="text-[9px] text-amber-500 font-semibold ml-1">(ủy thác — không tính vào thu/chi)</span>` : '';
 
+                const txId = encodeURIComponent(String(tx.id));
+                const txCategory = escapeHTML(tx.category);
+                const txAccount = escapeHTML(tx.account);
+                const txToAccount = escapeHTML(tx.toAccount || '');
+                const txNotes = escapeHTML(tx.notes || '');
+                const displayMain = tx.type==='transfer' ? `Đến: ${txToAccount}` : txCategory;
+
                 // Desktop Table Row
-                tbody.insertAdjacentHTML('beforeend', `<tr class="border-b hover:bg-slate-50${tx.type==='proxy'?' bg-amber-50/30':''}"><td class="py-3 px-6 whitespace-nowrap">${formatDate(tx.date)}</td><td class="py-3 px-6">${badge}</td><td class="py-3 px-6 whitespace-nowrap"><i class="fa-solid ${icon} text-slate-400 w-5"></i> ${tx.type==='transfer'?`Đến: ${tx.toAccount}`:tx.category}${proxyNote}</td><td class="py-3 px-6">${tx.account}</td><td class="py-3 px-6 truncate max-w-[150px]">${tx.notes}</td><td class="py-3 px-6 text-right font-bold ${cColor}">${prefix}${maskCurrency(tx.amount)}</td><td class="py-3 px-6 text-center"><button onclick="handleEditTxClick('${tx.id}')" class="text-indigo-400 mx-1"><i class="fa-solid fa-pen"></i></button><button onclick="handleDeleteTxClick('${tx.id}')" class="text-rose-400 mx-1"><i class="fa-solid fa-trash"></i></button></td></tr>`);
-                
+                tbody.insertAdjacentHTML('beforeend', `<tr class="border-b hover:bg-slate-50${tx.type==='proxy'?' bg-amber-50/30':''}"><td class="py-3 px-6 whitespace-nowrap">${escapeHTML(formatDate(tx.date))}</td><td class="py-3 px-6">${badge}</td><td class="py-3 px-6 whitespace-nowrap"><i class="fa-solid ${icon} text-slate-400 w-5"></i> ${displayMain}${proxyNote}</td><td class="py-3 px-6">${txAccount}</td><td class="py-3 px-6 truncate max-w-[150px]">${txNotes}</td><td class="py-3 px-6 text-right font-bold ${cColor}">${prefix}${maskCurrency(tx.amount)}</td><td class="py-3 px-6 text-center"><button type="button" onclick="handleEditTxClick(decodeURIComponent('${txId}'))" class="text-indigo-400 mx-1"><i class="fa-solid fa-pen"></i></button><button type="button" onclick="handleDeleteTxClick(decodeURIComponent('${txId}'))" class="text-rose-400 mx-1"><i class="fa-solid fa-trash"></i></button></td></tr>`);
+
                 // Mobile Card View
+                const mobileTitle = tx.type==='transfer' ? `Chuyển: ${txAccount} &rarr; ${txToAccount}` : tx.type==='proxy' ? `Trung gian: ${txCategory}` : txCategory;
                 cards.insertAdjacentHTML('beforeend', `
                     <div class="p-4 hover:bg-slate-50 transition active:bg-slate-100 flex items-center justify-between${tx.type==='proxy'?' bg-amber-50/40':''}">
                         <div class="flex items-center gap-3 overflow-hidden">
                             <div class="w-10 h-10 rounded-full flex shrink-0 items-center justify-center ${tx.type==='income'?'bg-emerald-100 text-emerald-600':tx.type==='expense'?'bg-rose-100 text-rose-600':tx.type==='proxy'?'bg-amber-100 text-amber-600':'bg-blue-100 text-blue-600'}"><i class="fa-solid ${icon}"></i></div>
                             <div class="min-w-0">
-                                <p class="font-bold text-slate-800 text-sm truncate">${tx.type==='transfer'?`Chuyển: ${tx.account} &rarr; ${tx.toAccount}`:tx.type==='proxy'?`Trung gian: ${tx.category}`:tx.category}</p>
-                                <p class="text-[11px] text-slate-500 flex gap-2"><span>${formatDate(tx.date)}</span><span>&bull;</span><span class="truncate">${tx.account}</span></p>
-                                ${tx.notes ? `<p class="text-[11px] text-slate-400 truncate mt-0.5">${tx.notes}</p>`:''}
+                                <p class="font-bold text-slate-800 text-sm truncate">${mobileTitle}</p>
+                                <p class="text-[11px] text-slate-500 flex gap-2"><span>${escapeHTML(formatDate(tx.date))}</span><span>&bull;</span><span class="truncate">${txAccount}</span></p>
+                                ${txNotes ? `<p class="text-[11px] text-slate-400 truncate mt-0.5">${txNotes}</p>`:''}
                             </div>
                         </div>
                         <div class="flex flex-col items-end shrink-0 pl-2">
                             <p class="font-bold text-sm ${cColor}">${prefix}${maskCurrency(tx.amount)}</p>
                             <div class="flex gap-3 mt-1.5">
-                                <button onclick="handleEditTxClick('${tx.id}')" class="text-indigo-400 text-xs"><i class="fa-solid fa-pen"></i></button>
-                                <button onclick="handleDeleteTxClick('${tx.id}')" class="text-rose-400 text-xs"><i class="fa-solid fa-trash"></i></button>
+                                <button type="button" onclick="handleEditTxClick(decodeURIComponent('${txId}'))" class="text-indigo-400 text-xs"><i class="fa-solid fa-pen"></i></button>
+                                <button type="button" onclick="handleDeleteTxClick(decodeURIComponent('${txId}'))" class="text-rose-400 text-xs"><i class="fa-solid fa-trash"></i></button>
                             </div>
                         </div>
                     </div>
                 `);
             });
         }
+
         function clearFilters() {
             setMonthPickerValue('filter-month', '', false);
             document.getElementById('filter-type').value = 'all'; document.getElementById('filter-account').value = 'all'; document.getElementById('filter-sort').value = 'desc';
@@ -2636,7 +2814,7 @@
             for(let a in cAccs) { 
                 const icon = ics[i % ics.length];
                 const color = colors[i % colors.length];
-                l.insertAdjacentHTML('beforeend', `<div class="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl"><div class="flex items-center gap-3"><div class="bg-${color}-100 text-${color}-600 w-8 h-8 rounded-lg flex items-center justify-center"><i class="fa-solid ${icon}"></i></div><span class="font-semibold text-slate-700 text-sm">${a}</span></div><span class="font-bold text-slate-900">${maskCurrency(cAccs[a])}</span></div>`); 
+                l.insertAdjacentHTML('beforeend', `<div class="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl"><div class="flex items-center gap-3"><div class="bg-${color}-100 text-${color}-600 w-8 h-8 rounded-lg flex items-center justify-center"><i class="fa-solid ${icon}"></i></div><span class="font-semibold text-slate-700 text-sm">${escapeHTML(a)}</span></div><span class="font-bold text-slate-900">${maskCurrency(cAccs[a])}</span></div>`); 
                 gTot+=cAccs[a]; i++;
             }
             
@@ -3088,14 +3266,19 @@
                 const percent = lim > 0 ? Math.min(Math.round((spent / lim) * 100), 100) : (spent > 0 ? 100 : 0);
                 let barColor = spent > lim && lim > 0 ? 'bg-rose-600' : (percent > 80 ? 'bg-amber-500' : 'bg-indigo-600');
                 const max = Math.max(0, idealBudget-tot+lim);
-                c.insertAdjacentHTML('beforeend', `<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-2"><div class="flex justify-between items-center"><span class="font-bold text-sm flex gap-2"><i class="fa-solid ${CATEGORY_ICONS[cat]||'fa-tag'} w-5 text-slate-400"></i> ${cat}</span><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" onchange="idealCategoryBudgets['${cat}']=getRawNumber(this.value); localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); renderCategoryBudgets();" value="${lim>0?lim.toLocaleString('vi-VN'):''}" placeholder="${max>0?max.toLocaleString('vi-VN'):'Hết'}" class="w-24 text-right border rounded p-1.5 text-xs focus:ring-1 focus:ring-indigo-500 outline-none" style="font-size:16px"></div><div class="h-2 bg-slate-100 rounded-full w-full"><div class="h-full ${barColor} rounded-full transition-all duration-500" style="width:${lim>0?percent:(spent>0?100:0)}%"></div></div><div class="flex justify-between text-xs text-slate-500 mt-1"><span>Đã chi: <strong>${formatCurrency(spent)}</strong></span><span class="${spent>lim&&lim>0?'text-rose-600 font-bold':''}">${lim>0?percent+'%':''}</span></div></div>`);
+                const safeCat = escapeHTML(cat);
+                const encodedCat = encodeURIComponent(cat);
+                c.insertAdjacentHTML('beforeend', `<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-2"><div class="flex justify-between items-center"><span class="font-bold text-sm flex gap-2"><i class="fa-solid ${CATEGORY_ICONS[cat]||'fa-tag'} w-5 text-slate-400"></i> ${safeCat}</span><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" onchange="idealCategoryBudgets[decodeURIComponent('${encodedCat}')]=getRawNumber(this.value); localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); renderCategoryBudgets();" value="${lim>0?lim.toLocaleString('vi-VN'):''}" placeholder="${max>0?max.toLocaleString('vi-VN'):'Hết'}" class="w-24 text-right border rounded p-1.5 text-xs focus:ring-1 focus:ring-indigo-500 outline-none" style="font-size:16px"></div><div class="h-2 bg-slate-100 rounded-full w-full"><div class="h-full ${barColor} rounded-full transition-all duration-500" style="width:${lim>0?percent:(spent>0?100:0)}%"></div></div><div class="flex justify-between text-xs text-slate-500 mt-1"><span>Đã chi: <strong>${formatCurrency(spent)}</strong></span><span class="${spent>lim&&lim>0?'text-rose-600 font-bold':''}">${lim>0?percent+'%':''}</span></div></div>`);
+
             });
         }
         function renderCategoryManager() {
             ['income', 'expense'].forEach(type => {
                 const list = document.getElementById(`${type}-categories-list`); list.innerHTML = '';
                 categories[type].forEach(cat => {
-                    list.insertAdjacentHTML('beforeend', `<li class="flex justify-between items-center p-3 hover:bg-slate-100 border-b border-slate-50"><div class="flex items-center space-x-3"><div class="bg-${type==='income'?'emerald':'rose'}-100 text-${type==='income'?'emerald':'rose'}-600 p-2 rounded-lg"><i class="fa-solid ${CATEGORY_ICONS[cat] || 'fa-tag'}"></i></div><span class="font-semibold text-slate-700">${cat}</span></div><div class="flex space-x-1"><button onclick="handleEditCategoryClick('${type}', '${cat}')" class="text-slate-400 hover:text-indigo-600 p-2"><i class="fa-solid fa-pencil"></i></button><button onclick="handleDeleteCategoryClick('${type}', '${cat}')" class="text-slate-400 hover:text-rose-600 p-2"><i class="fa-solid fa-trash-can"></i></button></div></li>`);
+                    const safeCat = escapeHTML(cat);
+                    const encodedCat = encodeURIComponent(cat);
+                    list.insertAdjacentHTML('beforeend', `<li class="flex justify-between items-center p-3 hover:bg-slate-100 border-b border-slate-50"><div class="flex items-center space-x-3"><div class="bg-${type==='income'?'emerald':'rose'}-100 text-${type==='income'?'emerald':'rose'}-600 p-2 rounded-lg"><i class="fa-solid ${CATEGORY_ICONS[cat] || 'fa-tag'}"></i></div><span class="font-semibold text-slate-700">${safeCat}</span></div><div class="flex space-x-1"><button type="button" onclick="handleEditCategoryClick('${type}', decodeURIComponent('${encodedCat}'))" class="text-slate-400 hover:text-indigo-600 p-2"><i class="fa-solid fa-pencil"></i></button><button type="button" onclick="handleDeleteCategoryClick('${type}', decodeURIComponent('${encodedCat}'))" class="text-slate-400 hover:text-rose-600 p-2"><i class="fa-solid fa-trash-can"></i></button></div></li>`);
                 });
             });
         }
@@ -3441,10 +3624,9 @@
 
         // ============ HỢP NHẤT DỮ LIỆU (giống bản trước, giữ nguyên logic đã kiểm chứng) ============
         function pruneOldTombstones(tomb) {
-            const cutoff = Date.now() - 180 * 24 * 60 * 60 * 1000; // giữ tombstone tối đa 180 ngày
-            const pruned = {};
-            Object.keys(tomb || {}).forEach(id => { if (new Date(tomb[id]).getTime() > cutoff) pruned[id] = tomb[id]; });
-            return pruned;
+            // App cá nhân: giữ tombstone lâu dài để thiết bị rất cũ không làm sống lại
+            // giao dịch đã xóa sau khi mốc thời gian lưu trữ ngắn hết hạn.
+            return Object.assign({}, tomb || {});
         }
 
         function gatherLocalDataForSync() {
@@ -3573,7 +3755,7 @@
             clearTimeout(fbSaveTimer);
             fbSaveTimer = setTimeout(() => {
                 pushLocalDataToFirestore();
-            }, 1200);
+            }, 500);
         }
 
         async function pushLocalDataToFirestore() {
@@ -3752,7 +3934,15 @@
         // dữ liệu thật từ server về (bỏ qua cache), hợp nhất rồi để Firestore tự nối lại listener.
         let lastVisibleAt = Date.now();
         document.addEventListener('visibilitychange', async () => {
-            if (document.visibilityState !== 'visible') { lastVisibleAt = Date.now(); return; }
+            if (document.visibilityState !== 'visible') {
+                lastVisibleAt = Date.now();
+                if (fbCurrentUid && fbDb && syncReady) {
+                    clearTimeout(fbSaveTimer);
+                    if (!syncPushInFlight) pushLocalDataToFirestore();
+                    else syncPushRequested = true;
+                }
+                return;
+            }
             const awayMs = Date.now() - lastVisibleAt;
             if (!fbCurrentUid || !fbDb || awayMs < 5000) return; // kéo về khi đã vào nền ít nhất 5 giây (mobile freeze tab rất nhanh)
             // Re-attach listener để khôi phục real-time (WebSocket có thể đã bị freeze/drop khi vào nền)
@@ -3765,6 +3955,14 @@
                 updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
             } catch (_) {
                 updateSyncStatusUI('connected'); // listener vẫn sống, lỗi pull 1 lần thì bỏ qua
+            }
+        });
+
+        window.addEventListener('pagehide', () => {
+            if (fbCurrentUid && fbDb && syncReady) {
+                clearTimeout(fbSaveTimer);
+                if (!syncPushInFlight) pushLocalDataToFirestore();
+                else syncPushRequested = true;
             }
         });
     </script>
