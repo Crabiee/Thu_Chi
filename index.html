@@ -1972,25 +1972,24 @@
         let transactions = [];
         let categories = { income: [], expense: [] };
         let userAccounts = {};
-        // checkpointDate: ngày (YYYY-MM-DD) người dùng nhập số dư vào ô "Ví / Tài Khoản".
-        // Số dư hiện tại = userAccounts[acc] + sum(giao dịch TỪ ngày checkpoint trở đi).
-        // Giao dịch TRƯỚC checkpoint đã được "gói" vào userAccounts[acc] rồi.
-        // null = chưa set checkpoint -> dùng ngày giao dịch cũ nhất làm checkpoint tự động.
-        let accountsCheckpointDate = null;
         let idealBudget = 0; 
         let idealCategoryBudgets = {}; 
         let charts = {};
 
         // ================== SYNC PATCH (áp dụng cho mọi thay đổi dữ liệu cục bộ) ==================
-        const DRIVE_SYNC_KEYS = ['personal_transactions_v4', 'personal_deleted_tx_v4', 'personal_categories_v4', 'personal_accounts_v4', 'personal_accounts_checkpoint_v4', 'personal_ideal_budget_v4', 'personal_ideal_cat_budgets_v4'];
+        const DRIVE_SYNC_KEYS = ['personal_transactions_v4', 'personal_deleted_tx_v4', 'personal_categories_v4', 'personal_accounts_v4', 'personal_ideal_budget_v4', 'personal_ideal_cat_budgets_v4'];
         // Các khóa "cài đặt" (không phải danh sách giao dịch) được gộp theo kiểu "bản mới nhất thắng"
         // dựa trên dấu thời gian financepro_settings_updated_at, cập nhật mỗi khi 1 trong các khóa này thay đổi.
-        const SETTINGS_SYNC_KEYS = ['personal_categories_v4', 'personal_accounts_v4', 'personal_accounts_checkpoint_v4', 'personal_ideal_budget_v4', 'personal_ideal_cat_budgets_v4'];
+        const SETTINGS_SYNC_KEYS = ['personal_categories_v4', 'personal_accounts_v4', 'personal_ideal_budget_v4', 'personal_ideal_cat_budgets_v4'];
         const _origLocalStorageSetItem = localStorage.setItem.bind(localStorage);
+        let localSyncGeneration = 0;
         localStorage.setItem = function (key, value) {
             _origLocalStorageSetItem(key, value);
             if (SETTINGS_SYNC_KEYS.includes(key)) _origLocalStorageSetItem('financepro_settings_updated_at', new Date().toISOString());
-            if (DRIVE_SYNC_KEYS.includes(key) && typeof scheduleDriveSync === 'function') scheduleDriveSync();
+            if (DRIVE_SYNC_KEYS.includes(key)) {
+                localSyncGeneration++;
+                if (typeof scheduleDriveSync === 'function') scheduleDriveSync();
+            }
         };
         
         let isBalanceHidden = true; 
@@ -2319,6 +2318,12 @@
 
         function formatNumberInput(input) { let v = input.value.replace(/\D/g, ''); input.value = v === '' ? '' : parseInt(v, 10).toLocaleString('vi-VN'); }
         function getRawNumber(valueStr) { return !valueStr ? 0 : Number(valueStr.toString().replace(/\./g, '')); }
+        function getLocalDateStr(date = new Date()) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
         function getCurrentMonthStr() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
         function formatCurrency(num) { return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num); }
         function formatCompactCurrency(num) {
@@ -2328,6 +2333,15 @@
             return String(Math.round(n));
         }
         function formatDate(dStr) { const [y,m,d] = dStr.split('-'); return `${d}/${m}/${y}`; }
+
+        function safeParseJSON(value, fallback) {
+            if (value == null || value === '') return fallback;
+            try { return JSON.parse(value); } catch (err) {
+                console.warn('FinancePro: dữ liệu localStorage không hợp lệ, dùng fallback.', err);
+                return fallback;
+            }
+        }
+        function getStoredJSON(key, fallback) { return safeParseJSON(localStorage.getItem(key), fallback); }
 
         function showToast(msg, icon, color) {
             const toast = document.getElementById('toast');
@@ -2356,44 +2370,30 @@
             const savedTxs = localStorage.getItem('personal_transactions_v4');
             const savedCats = localStorage.getItem('personal_categories_v4');
             const savedAccs = localStorage.getItem('personal_accounts_v4');
-            if (savedTxs) transactions = JSON.parse(savedTxs);
+            if (savedTxs) transactions = safeParseJSON(savedTxs, []);
             // Dữ liệu cũ (trước bản cập nhật đồng bộ) chưa có updatedAt -> gán tạm mốc thời gian hiện tại
             // để logic hợp nhất (merge) sau này có cơ sở so sánh; các chỉnh sửa mới sau đó sẽ tự có
             // dấu thời gian chính xác và luôn "thắng" so với dữ liệu cũ chưa từng được sửa lại.
             let migratedLegacyTx = false;
             transactions.forEach(tx => { if (!tx.updatedAt) { tx.updatedAt = new Date(0).toISOString(); migratedLegacyTx = true; } });
             if (migratedLegacyTx) localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions));
-            if (localStorage.getItem('personal_ideal_budget_v4')) idealBudget = Number(localStorage.getItem('personal_ideal_budget_v4'));
-            if (localStorage.getItem('personal_ideal_cat_budgets_v4')) idealCategoryBudgets = JSON.parse(localStorage.getItem('personal_ideal_cat_budgets_v4'));
+            if (localStorage.getItem('personal_ideal_budget_v4')) idealBudget = Number(localStorage.getItem('personal_ideal_budget_v4')) || 0;
+            if (localStorage.getItem('personal_ideal_cat_budgets_v4')) idealCategoryBudgets = getStoredJSON('personal_ideal_cat_budgets_v4', {});
             
-            categories = savedCats ? JSON.parse(savedCats) : { income: ["Lương", "Thưởng", "Đầu tư", "Lãi Đầu tư/Tiết kiệm", "Kinh doanh", "Khác"], expense: ["Ăn uống", "Di chuyển", "Nhà cửa", "Mua sắm", "Giải trí", "Sức khỏe", "Giáo dục", "Lỗ Đầu tư/Tất toán sớm", "Khác"] };
+            categories = savedCats ? safeParseJSON(savedCats, null) : { income: ["Lương", "Thưởng", "Đầu tư", "Lãi Đầu tư/Tiết kiệm", "Kinh doanh", "Khác"], expense: ["Ăn uống", "Di chuyển", "Nhà cửa", "Mua sắm", "Giải trí", "Sức khỏe", "Giáo dục", "Lỗ Đầu tư/Tất toán sớm", "Khác"] };
             // Người dùng cũ đã có sẵn danh mục -> tự bổ sung 2 danh mục lãi/lỗ đầu tư (nếu chưa có),
             // không ghi đè hay xóa bất kỳ danh mục nào người dùng đã tự thêm.
+            if (!categories || !Array.isArray(categories.income) || !Array.isArray(categories.expense)) {
+                categories = { income: ["Lương", "Thưởng", "Đầu tư", "Lãi Đầu tư/Tiết kiệm", "Kinh doanh", "Khác"], expense: ["Ăn uống", "Di chuyển", "Nhà cửa", "Mua sắm", "Giải trí", "Sức khỏe", "Giáo dục", "Lỗ Đầu tư/Tất toán sớm", "Khác"] };
+            }
             if (savedCats) {
                 let catsMigrated = false;
                 if (!categories.income.includes("Lãi Đầu tư/Tiết kiệm")) { categories.income.push("Lãi Đầu tư/Tiết kiệm"); catsMigrated = true; }
                 if (!categories.expense.includes("Lỗ Đầu tư/Tất toán sớm")) { categories.expense.push("Lỗ Đầu tư/Tất toán sớm"); catsMigrated = true; }
                 if (catsMigrated) localStorage.setItem('personal_categories_v4', JSON.stringify(categories));
             }
-            userAccounts = savedAccs ? JSON.parse(savedAccs) : { "Tiền mặt": 0, "TCB": 0, "TPBank": 0, "Vietinbank": 0 };
-
-            // Load checkpoint date
-            const savedCheckpoint = localStorage.getItem('personal_accounts_checkpoint_v4');
-            if (savedCheckpoint) {
-                accountsCheckpointDate = savedCheckpoint;
-            } else if (savedAccs && transactions.length > 0) {
-                // MIGRATION tự động cho dữ liệu cũ:
-                // Người dùng cũ đã nhập số dư vào modal — đó là số dư HIỆN TẠI của họ lúc nhập.
-                // Ta không biết chính xác họ nhập lúc nào, nhưng cách an toàn nhất:
-                // → Đặt checkpoint = NGÀY MAI (tức là không áp dụng bất kỳ giao dịch cũ nào).
-                // → Hiển thị thông báo yêu cầu người dùng xác nhận lại số dư.
-                // Điều này có nghĩa: số dư hiện tại = đúng như người dùng đã nhập.
-                // Từ ngày mai trở đi, giao dịch mới sẽ cộng/trừ vào đó.
-                const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-                accountsCheckpointDate = tomorrow.toISOString().slice(0, 10);
-                localStorage.setItem('personal_accounts_checkpoint_v4', accountsCheckpointDate);
-            }
-            // Nếu không có dữ liệu cũ và không có giao dịch → checkpoint null (dùng ngày giao dịch đầu tiên)
+            userAccounts = savedAccs ? safeParseJSON(savedAccs, null) : { "Tiền mặt": 0, "TCB": 0, "TPBank": 0, "Vietinbank": 0 };
+            if (!userAccounts || typeof userAccounts !== 'object' || Array.isArray(userAccounts)) userAccounts = { "Tiền mặt": 0, "TCB": 0, "TPBank": 0, "Vietinbank": 0 };
             
             setMonthPickerValue('dashboard-month-filter', getCurrentMonthStr(), false);
             setMonthPickerValue('filter-month', getCurrentMonthStr(), false);
@@ -2412,36 +2412,15 @@
 
         // ================== TÀI KHOẢN ==================
         // ================== TÍNH SỐ DƯ HIỆN TẠI (ĐÚNG) ==================
-        // userAccounts[acc] = số dư TẠI NGÀY checkpointDate (do người dùng nhập).
-        // Số dư thực = base + Σ thu/chi/chuyển khoản từ ngày checkpoint trở về sau.
-        //
-        // Tại sao cần checkpoint?
-        //   Nếu cộng TOÀN BỘ lịch sử vào số dư người dùng nhập → ĐẾM ĐÔI
-        //   vì người dùng nhập số dư HIỆN TẠI (đã bao gồm giao dịch cũ), không phải
-        //   số dư ngày 0 trước khi có bất kỳ giao dịch nào.
+        // Số dư hiện tại = số dư ban đầu (userAccounts) + tất cả giao dịch từ trước đến nay.
+        // Đơn giản như tài khoản ngân hàng thật: không có checkpoint, không lọc theo ngày.
         function computeCurrentBalances() {
-            // Xác định ngày checkpoint
-            let cpDate = accountsCheckpointDate;
-            if (!cpDate) {
-                // Chưa có checkpoint → tự suy từ giao dịch cũ nhất
-                // (tương thích ngược với dữ liệu cũ khi userAccounts = số dư ban đầu trước mọi giao dịch)
-                const dates = transactions.map(t => t.date).filter(Boolean).sort();
-                cpDate = dates.length ? dates[0] : null; // ngày giao dịch đầu tiên
-            }
-
             const balances = {};
             Object.keys(userAccounts).forEach(acc => { balances[acc] = userAccounts[acc]; });
-
             transactions.forEach(tx => {
-                // Chỉ áp dụng giao dịch TỪ ngày checkpoint (≥ cpDate) trở đi
-                if (cpDate && tx.date < cpDate) return;
-                if (balances[tx.account] === undefined && tx.type !== 'transfer' && tx.type !== 'proxy') return;
                 if (tx.type === 'income'   && balances[tx.account] !== undefined) balances[tx.account] += tx.amount;
                 if (tx.type === 'expense'  && balances[tx.account] !== undefined) balances[tx.account] -= tx.amount;
-                // proxy (trung gian/ủy thác): ảnh hưởng số dư ví nhưng không tính vào thu/chi cá nhân
-                if (tx.type === 'proxy'    && balances[tx.account] !== undefined) {
-                    balances[tx.account] += (tx.proxyDir === 'in' ? 1 : -1) * tx.amount;
-                }
+                if (tx.type === 'proxy'    && balances[tx.account] !== undefined) balances[tx.account] += (tx.proxyDir === 'in' ? 1 : -1) * tx.amount;
                 if (tx.type === 'transfer') {
                     if (balances[tx.account]   !== undefined) balances[tx.account]   -= tx.amount;
                     if (balances[tx.toAccount] !== undefined) balances[tx.toAccount] += tx.amount;
@@ -2458,19 +2437,8 @@
         }
         function renderAccountSetupList() {
             const list = document.getElementById('account-setup-list'); list.innerHTML = '';
-
-            // Hiển thị thông tin checkpoint để người dùng hiểu số dư họ nhập là tại thời điểm nào
             const cpNote = document.getElementById('balance-checkpoint-note');
-            if (cpNote) {
-                const today = new Date().toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric' });
-                if (accountsCheckpointDate) {
-                    const cpFormatted = new Date(accountsCheckpointDate + 'T00:00:00').toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric' });
-                    cpNote.innerHTML = `<i class="fa-solid fa-circle-info text-indigo-400 mr-1"></i>Nhập số dư <strong>thực tế hiện tại</strong> của mỗi ví. Giao dịch từ <strong>${cpFormatted}</strong> trở đi sẽ tự cộng/trừ vào đây.`;
-                } else {
-                    cpNote.innerHTML = `<i class="fa-solid fa-circle-info text-indigo-400 mr-1"></i>Nhập số dư <strong>hiện tại</strong> của mỗi ví. Sau khi lưu, app sẽ cộng/trừ giao dịch mới vào số dư này.`;
-                }
-            }
-
+            if (cpNote) cpNote.innerHTML = `<i class="fa-solid fa-circle-info text-indigo-400 mr-1"></i>Số dư ban đầu khi tạo ví. App sẽ tự cộng/trừ tất cả giao dịch vào đây để ra số dư hiện tại.`;
             Object.keys(userAccounts).forEach(acc => {
                 list.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-between p-3 bg-slate-50 border rounded-lg"><span class="font-semibold text-slate-700">${acc}</span><div class="flex items-center"><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" id="setup-acc-${acc}" value="${userAccounts[acc].toLocaleString('vi-VN')}" class="w-24 text-right border rounded-md p-1.5 text-sm font-semibold" style="font-size:16px"><span class="ml-1 text-xs text-slate-500">₫</span><button onclick="handleRemoveAccount('${acc}')" class="ml-3 text-rose-400"><i class="fa-solid fa-trash"></i></button></div></div>`);
             });
@@ -2482,19 +2450,21 @@
         }
         function handleRemoveAccount(a) {
             if(Object.keys(userAccounts).length<=1) return showToast("Phải có ít nhất 1", "fa-xmark", "text-rose-500");
+            const usedBy = transactions.filter(tx => tx.account === a || (tx.type === 'transfer' && tx.toAccount === a));
+            if (usedBy.length) {
+                return showToast(`Không thể xóa ${a}: còn ${usedBy.length} giao dịch đang dùng ví này.`, "fa-triangle-exclamation", "text-rose-500");
+            }
             openConfirm("Xóa", `Xóa "${a}"?`, () => { delete userAccounts[a]; renderAccountSetupList(); showToast(`Đã xóa ${a}`, "fa-trash", "text-rose-400"); });
         }
         function saveAllAccounts() {
-            Object.keys(userAccounts).forEach(a => { const e = document.getElementById(`setup-acc-${a}`); if(e) userAccounts[a]=getRawNumber(e.value); });
-            // Ghi lại checkpoint = hôm nay.
-            // Từ hôm nay trở đi, các giao dịch mới sẽ được cộng/trừ vào số dư này.
-            // Giao dịch TRƯỚC hôm nay đã được "bao gồm" trong số dư người dùng vừa nhập.
-            const today = new Date().toISOString().slice(0, 10);
-            accountsCheckpointDate = today;
+            // Lưu số dư ban đầu người dùng nhập — không đổi logic, không checkpoint
+            Object.keys(userAccounts).forEach(a => {
+                const e = document.getElementById(`setup-acc-${a}`);
+                if (e) userAccounts[a] = getRawNumber(e.value);
+            });
             localStorage.setItem('personal_accounts_v4', JSON.stringify(userAccounts));
-            localStorage.setItem('personal_accounts_checkpoint_v4', today);
             populateAccountSelects(); updateDashboard(); closeModal('initialBalanceModal');
-            showToast("Đã lưu — số dư tính từ hôm nay", "fa-check", "text-emerald-400");
+            showToast('Đã lưu số dư ban đầu', 'fa-check', 'text-emerald-400');
         }
 
         // ================== XỬ LÝ GIAO DỊCH ==================
@@ -2535,7 +2505,7 @@
         function openNewTransactionModal() {
             editingTxId = null; document.getElementById('transaction-form').reset();
             document.getElementById('tx-modal-title').innerText = 'Ghi Chép Giao Dịch';
-            document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('txDate').value = getLocalDateStr();
             document.querySelector(`input[name="txType"][value="expense"]`).checked = true;
             updateFormCategories(); openModal('transactionModal');
         }
@@ -2561,8 +2531,15 @@
             if(type==='transfer' && acc===toAcc) return showToast("Khác tài khoản", "fa-xmark", "text-rose-500");
             
             const proxyDir = document.querySelector('input[name="proxyDir"]:checked')?.value || 'out';
-            const newData = { id: editingTxId||'tx-'+Date.now(), type, amount:amt, date:document.getElementById('txDate').value, account:acc, category:type==='transfer'?'Chuyển tiền':(type==='proxy'?(cat||'Trung gian'):cat), toAccount:type==='transfer'?toAcc:"", proxyDir:type==='proxy'?proxyDir:undefined, notes:document.getElementById('txNotes').value, updatedAt: new Date().toISOString() };
-            if(editingTxId) transactions[transactions.findIndex(t=>t.id===editingTxId)] = newData; else transactions.push(newData);
+            if (!Object.prototype.hasOwnProperty.call(userAccounts, acc)) return showToast("Tài khoản không tồn tại", "fa-xmark", "text-rose-500");
+            if (type === 'transfer' && !Object.prototype.hasOwnProperty.call(userAccounts, toAcc)) return showToast("Tài khoản nhận không tồn tại", "fa-xmark", "text-rose-500");
+            const newId = editingTxId || `tx-${Date.now()}-${Math.random().toString(36).slice(2,10)}`;
+            const newData = { id: newId, type, amount:amt, date:document.getElementById('txDate').value, account:acc, category:type==='transfer'?'Chuyển tiền':(type==='proxy'?(cat||'Trung gian'):cat), toAccount:type==='transfer'?toAcc:"", proxyDir:type==='proxy'?proxyDir:undefined, notes:document.getElementById('txNotes').value, updatedAt: new Date().toISOString() };
+            if(editingTxId) {
+                const editIndex = transactions.findIndex(t=>t.id===editingTxId);
+                if (editIndex < 0) { editingTxId = null; return showToast("Giao dịch đã thay đổi ở thiết bị khác. Hãy tải lại dữ liệu rồi thử lại.", "fa-triangle-exclamation", "text-amber-500"); }
+                transactions[editIndex] = newData;
+            } else transactions.push(newData);
             // Nếu giao dịch này từng bị xóa ở thiết bị khác trước đó rồi được tạo lại ở đây, gỡ tombstone
             // để lần đồng bộ tới không bị máy khác xóa mất bản ghi vừa tạo.
             clearTombstone(newData.id);
@@ -2664,16 +2641,8 @@
             }
             
             document.getElementById('balance-total').innerText = maskCurrency(gTot);
-            // Cập nhật label hiển thị ngày checkpoint
             const balLbl = document.getElementById('balance-total-label');
-            if (balLbl) {
-                if (accountsCheckpointDate) {
-                    const cpFormatted = new Date(accountsCheckpointDate + 'T00:00:00').toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric' });
-                    balLbl.textContent = `Số dư thực tế (cập nhật từ ${cpFormatted})`;
-                } else {
-                    balLbl.textContent = 'Số dư hiện tại (giao dịch đã cộng/trừ tự động)';
-                }
-            }
+            if (balLbl) balLbl.textContent = 'Tổng số dư hiện tại';
             document.getElementById('stat-income').innerText = formatCurrency(mIn);
             document.getElementById('stat-expense').innerText = formatCurrency(mEx);
             document.getElementById('stat-net').innerText = formatCurrency(mIn-mEx);
@@ -3269,7 +3238,7 @@
             const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' })); link.download = `chi-tieu-${getCurrentMonthStr()}.csv`; link.click();
         }
         function exportDataJSON() {
-            const backupData = { version: "4", timestamp: new Date().toISOString(), transactions: transactions, categories: categories, userAccounts: userAccounts, accountsCheckpointDate: accountsCheckpointDate, idealBudget: idealBudget, idealCategoryBudgets: idealCategoryBudgets };
+            const backupData = { version: "4", timestamp: new Date().toISOString(), transactions: transactions, categories: categories, userAccounts: userAccounts, idealBudget: idealBudget, idealCategoryBudgets: idealCategoryBudgets };
             const link = document.createElement('a'); link.setAttribute("href", "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2))); link.setAttribute("download", `FinancePro_Backup_${getCurrentMonthStr()}.json`); document.body.appendChild(link); link.click(); link.remove();
             showToast("Đã tải xuống file sao lưu!", "fa-check", "text-emerald-400");
         }
@@ -3284,7 +3253,6 @@
                         localStorage.setItem('personal_transactions_v4', JSON.stringify(data.transactions));
                         localStorage.setItem('personal_categories_v4', JSON.stringify(data.categories));
                         if (data.userAccounts) localStorage.setItem('personal_accounts_v4', JSON.stringify(data.userAccounts)); else if (data.initialBalances) localStorage.setItem('personal_accounts_v4', JSON.stringify(data.initialBalances));
-                        if (data.accountsCheckpointDate) localStorage.setItem('personal_accounts_checkpoint_v4', data.accountsCheckpointDate);
                         if (data.idealBudget !== undefined) localStorage.setItem('personal_ideal_budget_v4', data.idealBudget);
                         if (data.idealCategoryBudgets) localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(data.idealCategoryBudgets));
                         showToast("Thành công! Đang tải lại...", "fa-check", "text-emerald-400"); setTimeout(() => window.location.reload(), 1000);
@@ -3448,22 +3416,25 @@
         // liệu cũ lên đè mất dữ liệu mới. Giờ luôn TẢI VỀ TRƯỚC (lấy thẳng từ server, không dùng cache),
         // hợp nhất, rồi mới đẩy lên nếu máy này thực sự có gì mới hơn.
         async function manualSyncNow() {
-            if (!fbCurrentUid) { showToast('Vui lòng đăng nhập Google trước.', 'fa-info-circle', 'text-amber-500'); return; }
+            if (!fbCurrentUid) {
+                showToast('Vui lòng đăng nhập Google trước.', 'fa-info-circle', 'text-amber-500');
+                return;
+            }
             updateSyncStatusUI('syncing', 'Đang tải dữ liệu mới nhất...');
+            clearTimeout(fbSaveTimer);
             try {
                 const snap = await fbDb.collection(FIRESTORE_COLLECTION).doc(fbCurrentUid).get({ source: 'server' });
                 if (snap.exists) {
-                    mergeRemoteData(snap.data()); // tự hợp nhất; nếu máy này có gì mới hơn, hàm này tự đẩy lên lại
-                    syncReady = true;
-                } else {
-                    markSyncReadyAndFlush();
-                    await pushLocalDataToFirestore();
+                    mergeRemoteData(snap.data());
                 }
+                syncReady = true;
+                // Đồng bộ ngay và chờ transaction Firestore hoàn tất — nút không báo "thành công"
+                // trước khi dữ liệu thực sự được commit lên server.
+                await pushLocalDataToFirestore();
                 showToast('Đã đồng bộ - dữ liệu mới nhất từ mọi thiết bị.', 'fa-check', 'text-emerald-400');
-                updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
             } catch (err) {
                 console.error('manualSyncNow error', err);
-                showToast('Không tải được dữ liệu mới nhất, kiểm tra lại mạng.', 'fa-triangle-exclamation', 'text-rose-500');
+                showToast('Không tải/lưu được dữ liệu mới nhất, kiểm tra lại mạng.', 'fa-triangle-exclamation', 'text-rose-500');
                 updateSyncStatusUI('error', 'Đồng bộ thất bại, thử lại sau.');
             }
         }
@@ -3478,13 +3449,12 @@
 
         function gatherLocalDataForSync() {
             return {
-                transactions: JSON.parse(localStorage.getItem('personal_transactions_v4') || '[]'),
-                deletedTx: pruneOldTombstones(JSON.parse(localStorage.getItem('personal_deleted_tx_v4') || '{}')),
-                categories: JSON.parse(localStorage.getItem('personal_categories_v4') || 'null'),
-                userAccounts: JSON.parse(localStorage.getItem('personal_accounts_v4') || 'null'),
-                accountsCheckpointDate: localStorage.getItem('personal_accounts_checkpoint_v4') || null,
+                transactions: getStoredJSON('personal_transactions_v4', transactions || []),
+                deletedTx: pruneOldTombstones(getStoredJSON('personal_deleted_tx_v4', {})),
+                categories: getStoredJSON('personal_categories_v4', categories || null),
+                userAccounts: getStoredJSON('personal_accounts_v4', userAccounts || null),
                 idealBudget: localStorage.getItem('personal_ideal_budget_v4') ? Number(localStorage.getItem('personal_ideal_budget_v4')) : 0,
-                idealCategoryBudgets: JSON.parse(localStorage.getItem('personal_ideal_cat_budgets_v4') || 'null'),
+                idealCategoryBudgets: getStoredJSON('personal_ideal_cat_budgets_v4', idealCategoryBudgets || null),
                 settingsUpdatedAt: localStorage.getItem('financepro_settings_updated_at') || null,
                 savedAt: new Date().toISOString()
             };
@@ -3524,17 +3494,23 @@
         // Gộp dữ liệu từ server vào dữ liệu máy này (KHÔNG reload trang, KHÔNG ghi đè toàn bộ).
         // Trả về true nếu dữ liệu cục bộ có thay đổi cần render lại.
         function mergeRemoteData(remoteData) {
-            const localTx = JSON.parse(localStorage.getItem('personal_transactions_v4') || '[]');
-            const localTomb = JSON.parse(localStorage.getItem('personal_deleted_tx_v4') || '{}');
+            const localTx = getStoredJSON('personal_transactions_v4', transactions || []);
+            const localTomb = getStoredJSON('personal_deleted_tx_v4', {});
             const { transactions: mergedTx, deletedTx: mergedTomb } = mergeTransactions(localTx, remoteData.transactions, localTomb, remoteData.deletedTx);
 
             let changed = false;
             const mergedTxJson = JSON.stringify(mergedTx);
-            if (mergedTxJson !== JSON.stringify(localTx)) {
+            // So sánh theo id + updatedAt, không dùng JSON string (thứ tự không ổn định sau merge)
+            const localTxById = new Map((localTx || []).map(t => [t.id, t.updatedAt || '']));
+            const txChanged = mergedTx.length !== (localTx || []).length ||
+                mergedTx.some(t => localTxById.get(t.id) !== (t.updatedAt || ''));
+            if (txChanged) {
                 transactions = mergedTx; _origLocalStorageSetItem('personal_transactions_v4', mergedTxJson); changed = true;
             }
             const mergedTombJson = JSON.stringify(mergedTomb);
-            if (mergedTombJson !== JSON.stringify(localTomb)) { _origLocalStorageSetItem('personal_deleted_tx_v4', mergedTombJson); }
+            const localTombKeys = Object.keys(localTomb);
+            const tombChanged = Object.keys(mergedTomb).some(id => !localTomb[id] || mergedTomb[id] !== localTomb[id]) || localTombKeys.some(id => !mergedTomb[id]);
+            if (tombChanged) { _origLocalStorageSetItem('personal_deleted_tx_v4', mergedTombJson); }
 
             const localSettingsAt = localStorage.getItem('financepro_settings_updated_at');
             const remoteSettingsAt = remoteData.settingsUpdatedAt;
@@ -3542,10 +3518,6 @@
             if (remoteSettingsNewer) {
                 if (remoteData.categories) { categories = remoteData.categories; _origLocalStorageSetItem('personal_categories_v4', JSON.stringify(categories)); }
                 if (remoteData.userAccounts) { userAccounts = remoteData.userAccounts; _origLocalStorageSetItem('personal_accounts_v4', JSON.stringify(userAccounts)); }
-                if (remoteData.accountsCheckpointDate) {
-                    accountsCheckpointDate = remoteData.accountsCheckpointDate;
-                    _origLocalStorageSetItem('personal_accounts_checkpoint_v4', accountsCheckpointDate);
-                }
                 if (remoteData.idealBudget !== undefined) { idealBudget = remoteData.idealBudget; _origLocalStorageSetItem('personal_ideal_budget_v4', remoteData.idealBudget); }
                 if (remoteData.idealCategoryBudgets) { idealCategoryBudgets = remoteData.idealCategoryBudgets; _origLocalStorageSetItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); }
                 _origLocalStorageSetItem('financepro_settings_updated_at', remoteSettingsAt);
@@ -3589,44 +3561,128 @@
         // nguyên nhân gây mất đồng bộ 2 chiều giữa các thiết bị đã từng đăng nhập.
         let syncReady = false;
         let pendingSyncAfterReady = false;
+        let syncPushInFlight = false;
+        let syncPushRequested = false;
         function scheduleDriveSync() {
             if (!fbCurrentUid) return;
             if (!syncReady) { pendingSyncAfterReady = true; return; } // đợi nhận dữ liệu thật từ server trước, không đẩy vội
+            if (syncPushInFlight) {
+                syncPushRequested = true;
+                return;
+            }
             clearTimeout(fbSaveTimer);
-            fbSaveTimer = setTimeout(pushLocalDataToFirestore, 1200);
+            fbSaveTimer = setTimeout(() => {
+                pushLocalDataToFirestore();
+            }, 1200);
         }
 
         async function pushLocalDataToFirestore() {
             if (!fbCurrentUid || !fbDb) return;
-            gDriveState.isSyncing = true; updateSyncStatusUI('syncing');
+            if (syncPushInFlight) {
+                syncPushRequested = true;
+                return;
+            }
+            syncPushInFlight = true;
+            syncPushRequested = false;
+            const pushStartGeneration = localSyncGeneration;
+            gDriveState.isSyncing = true;
+            updateSyncStatusUI('syncing');
+            const docRef = fbDb.collection(FIRESTORE_COLLECTION).doc(fbCurrentUid);
             try {
-                // Pull thật từ server ngay trước khi ghi — tránh đè mất giao dịch
-                // mà thiết bị khác vừa push trong khoảng debounce 1.2s vừa rồi.
-                const snap = await fbDb.collection(FIRESTORE_COLLECTION).doc(fbCurrentUid).get({ source: 'server' });
-                if (snap.exists) {
-                    const remoteData = snap.data();
-                    const localTx = JSON.parse(localStorage.getItem('personal_transactions_v4') || '[]');
-                    const localTomb = JSON.parse(localStorage.getItem('personal_deleted_tx_v4') || '{}');
-                    const { transactions: mergedTx, deletedTx: mergedTomb } = mergeTransactions(localTx, remoteData.transactions, localTomb, remoteData.deletedTx);
-                    // Cập nhật local với kết quả gộp (có thể có thêm từ server vừa pull)
-                    const mergedTxJson = JSON.stringify(mergedTx);
-                    if (mergedTxJson !== JSON.stringify(localTx)) {
-                        transactions = mergedTx;
-                        _origLocalStorageSetItem('personal_transactions_v4', mergedTxJson);
-                        populateAccountSelects(); updateDashboard(); applyFilters(); renderCategoryBudgets();
+                // Ghi bằng Firestore transaction để tránh race condition:
+                // thiết bị A và B cùng pull một phiên bản cũ rồi lần lượt set(), làm mất thay đổi của nhau.
+                const localSnapshot = gatherLocalDataForSync();
+                let committedData = null;
+
+                await fbDb.runTransaction(async (transaction) => {
+                    const snap = await transaction.get(docRef);
+                    const remoteData = snap.exists ? snap.data() : {};
+                    const localTx = localSnapshot.transactions || [];
+                    const localTomb = localSnapshot.deletedTx || {};
+                    const { transactions: mergedTx, deletedTx: mergedTomb } = mergeTransactions(
+                        localTx,
+                        remoteData.transactions || [],
+                        localTomb,
+                        remoteData.deletedTx || {}
+                    );
+
+                    // Settings dùng "latest timestamp wins" tương tự mergeRemoteData().
+                    const localSettingsAt = localSnapshot.settingsUpdatedAt;
+                    const remoteSettingsAt = remoteData.settingsUpdatedAt || null;
+                    const remoteSettingsNewer = !!remoteSettingsAt &&
+                        (!localSettingsAt || new Date(remoteSettingsAt).getTime() > new Date(localSettingsAt).getTime());
+
+                    const mergedData = {
+                        transactions: mergedTx,
+                        deletedTx: mergedTomb,
+                        categories: remoteSettingsNewer ? (remoteData.categories ?? localSnapshot.categories) : localSnapshot.categories,
+                        userAccounts: remoteSettingsNewer ? (remoteData.userAccounts ?? localSnapshot.userAccounts) : localSnapshot.userAccounts,
+                        idealBudget: remoteSettingsNewer ? (remoteData.idealBudget ?? localSnapshot.idealBudget) : localSnapshot.idealBudget,
+                        idealCategoryBudgets: remoteSettingsNewer ? (remoteData.idealCategoryBudgets ?? localSnapshot.idealCategoryBudgets) : localSnapshot.idealCategoryBudgets,
+                        settingsUpdatedAt: remoteSettingsNewer ? remoteSettingsAt : localSettingsAt,
+                        savedAt: new Date().toISOString()
+                    };
+
+                    committedData = mergedData;
+                    transaction.set(docRef, mergedData);
+                });
+
+                // Chỉ đồng bộ ngược committedData vào local nếu người dùng KHÔNG thay đổi dữ liệu
+                // trong lúc transaction đang chạy. Nếu local đã thay đổi, tuyệt đối không ghi đè thay đổi mới
+                // của người dùng bằng snapshot cũ đã chụp ở đầu lần push; thay vào đó queue thêm một lần sync.
+                if (committedData && localSyncGeneration === pushStartGeneration) {
+                    transactions = committedData.transactions || [];
+                    _origLocalStorageSetItem('personal_transactions_v4', JSON.stringify(transactions));
+                    _origLocalStorageSetItem('personal_deleted_tx_v4', JSON.stringify(committedData.deletedTx || {}));
+                    if (committedData.categories) {
+                        categories = committedData.categories;
+                        _origLocalStorageSetItem('personal_categories_v4', JSON.stringify(categories));
                     }
-                    _origLocalStorageSetItem('personal_deleted_tx_v4', JSON.stringify(mergedTomb));
+                    if (committedData.userAccounts) {
+                        userAccounts = committedData.userAccounts;
+                        _origLocalStorageSetItem('personal_accounts_v4', JSON.stringify(userAccounts));
+                    }
+                    if (committedData.idealBudget !== undefined) {
+                        idealBudget = Number(committedData.idealBudget) || 0;
+                        _origLocalStorageSetItem('personal_ideal_budget_v4', idealBudget);
+                    }
+                    if (committedData.idealCategoryBudgets) {
+                        idealCategoryBudgets = committedData.idealCategoryBudgets;
+                        _origLocalStorageSetItem('personal_ideal_cat_budgets_v4', JSON.stringify(committedData.idealCategoryBudgets));
+                    }
+                    if (committedData.settingsUpdatedAt) {
+                        _origLocalStorageSetItem('financepro_settings_updated_at', committedData.settingsUpdatedAt);
+                    }
+                    _origLocalStorageSetItem('financepro_last_synced_at', new Date().toISOString());
+                    populateAccountSelects();
+                    updateDashboard();
+                    applyFilters();
+                    renderCategoryBudgets();
+                    if (typeof renderCategoryManager === 'function') renderCategoryManager();
                 }
-                const data = gatherLocalDataForSync();
-                await fbDb.collection(FIRESTORE_COLLECTION).doc(fbCurrentUid).set(data);
-                _origLocalStorageSetItem('financepro_last_synced_at', new Date().toISOString());
-                updateSyncStatusUI('connected', 'Đã lưu lúc ' + new Date().toLocaleTimeString('vi-VN'));
+
+                if (localSyncGeneration !== pushStartGeneration) {
+                    syncPushRequested = true;
+                }
+                updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
             } catch (err) {
                 console.error('pushLocalDataToFirestore error', err);
                 updateSyncStatusUI('error', 'Lưu thất bại, sẽ tự thử lại...');
                 clearTimeout(fbSaveRetryTimer);
                 fbSaveRetryTimer = setTimeout(() => { if (syncReady) pushLocalDataToFirestore(); }, 8000);
-            } finally { gDriveState.isSyncing = false; }
+            } finally {
+                gDriveState.isSyncing = false;
+                syncPushInFlight = false;
+                if (syncPushRequested || localSyncGeneration !== pushStartGeneration) {
+                    syncPushRequested = false;
+                    if (syncReady && fbCurrentUid) {
+                        clearTimeout(fbSaveTimer);
+                        fbSaveTimer = setTimeout(() => { pushLocalDataToFirestore(); }, 150);
+                    } else if (fbCurrentUid) {
+                        pendingSyncAfterReady = true;
+                    }
+                }
+            }
         }
 
         // Lắng nghe real-time: mỗi khi dữ liệu trên Firestore thay đổi (kể cả từ thiết bị/trình duyệt
@@ -3644,10 +3700,16 @@
                     pushLocalDataToFirestore();
                     return;
                 }
-                // Snapshot từ server — merge và đánh dấu sẵn sàng
-                applyRemoteSnapshotWhenIdle(snap.data());
-                markSyncReadyAndFlush();
-                updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
+                // Snapshot từ server — PHẢI merge xong mới đánh dấu syncReady.
+                // Điều này đặc biệt quan trọng khi localStorage của trình duyệt mới đang rỗng:
+                // tuyệt đối không được cho phép push dữ liệu mặc định/cũ lên server trước khi pull xong.
+                applyRemoteSnapshotWhenIdle(snap.data()).then(() => {
+                    markSyncReadyAndFlush();
+                    updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
+                }).catch(err => {
+                    console.error('applyRemoteSnapshotWhenIdle error', err);
+                    updateSyncStatusUI('error', 'Không tải được dữ liệu từ server.');
+                });
             }, (err) => {
                 console.error('Firestore onSnapshot error', err);
                 updateSyncStatusUI('error', 'Mất kết nối đồng bộ, đang tự thử lại...');
@@ -3662,9 +3724,20 @@
         function detachFirestoreListener() { if (fbUnsubscribeDoc) { fbUnsubscribeDoc(); fbUnsubscribeDoc = null; } syncReady = false; pendingSyncAfterReady = false; }
         // Nếu người dùng đang gõ dở 1 ô nhập liệu, hoãn việc gộp dữ liệu mới về để tránh làm gián đoạn/
         // mất nội dung đang gõ; tự kiểm tra lại mỗi 1.5s cho đến khi rảnh tay.
-        function applyRemoteSnapshotWhenIdle(remoteData) {
-            if (isUserActivelyTypingInField()) { setTimeout(() => applyRemoteSnapshotWhenIdle(remoteData), 1500); return; }
+        let pendingRemoteSnapshot = null;
+        let pendingRemoteSnapshotTimer = null;
+        async function applyRemoteSnapshotWhenIdle(remoteData) {
+            pendingRemoteSnapshot = remoteData;
+            if (isUserActivelyTypingInField()) {
+                clearTimeout(pendingRemoteSnapshotTimer);
+                await new Promise(resolve => {
+                    pendingRemoteSnapshotTimer = setTimeout(resolve, 1500);
+                });
+                return applyRemoteSnapshotWhenIdle(pendingRemoteSnapshot);
+            }
+            pendingRemoteSnapshot = null;
             mergeRemoteData(remoteData);
+            return true;
         }
         function isUserActivelyTypingInField() {
             const el = document.activeElement;
