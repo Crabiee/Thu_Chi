@@ -3068,12 +3068,51 @@
             return { score, label, tone, overCategories };
         }
         function getWeekdayName(dateStr) { return ['Chủ nhật','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'][new Date(dateStr + 'T00:00:00').getDay()]; }
-        function findAnomalies(monthStats) {
+        function recurringNoteKey(note) {
+            return normalizeNote(note).toLocaleLowerCase().replace(/\s+/g, ' ').trim();
+        }
+        function median(values) {
+            const nums = values.map(Number).filter(Number.isFinite).sort((a,b) => a-b);
+            if (!nums.length) return 0;
+            const mid = Math.floor(nums.length / 2);
+            return nums.length % 2 ? nums[mid] : (nums[mid - 1] + nums[mid]) / 2;
+        }
+        function getRecurringExpenseProfiles(monthStr, lookbackMonths = 6) {
+            const profiles = new Map();
+            for (let offset = -lookbackMonths; offset <= 0; offset++) {
+                const m = offsetMonthStr(monthStr, offset);
+                getMonthStats(m).expenseTxs.forEach(tx => {
+                    const noteKey = recurringNoteKey(tx.notes);
+                    if (!noteKey) return;
+                    const key = `${tx.category}\u0000${noteKey}`;
+                    if (!profiles.has(key)) profiles.set(key, { category: tx.category, noteKey, months: new Set(), amounts: [], notes: [] });
+                    const p = profiles.get(key);
+                    p.months.add(m); p.amounts.push(Number(tx.amount) || 0); p.notes.push(tx);
+                });
+            }
+            profiles.forEach((p) => {
+                p.median = median(p.amounts);
+                p.avg = p.amounts.length ? p.amounts.reduce((a,b) => a+b, 0) / p.amounts.length : 0;
+                p.isRecurring = p.months.size >= 3;
+            });
+            return profiles;
+        }
+        function getRecurringProfileForTx(tx, profiles) {
+            const noteKey = recurringNoteKey(tx.notes);
+            if (!noteKey) return null;
+            return profiles.get(`${tx.category}\u0000${noteKey}`) || null;
+        }
+        function findAnomalies(monthStats, recurringProfiles = new Map()) {
             return monthStats.expenseTxs.map(tx => {
+                const recurring = getRecurringProfileForTx(tx, recurringProfiles);
                 const sameCat = transactions.filter(t => t.type === 'expense' && t.category === tx.category && t.id !== tx.id);
-                const avg = sameCat.length ? sameCat.reduce((s,t) => s + t.amount, 0) / sameCat.length : 0;
-                const isLarge = avg > 0 ? tx.amount >= avg * 2.5 && tx.amount - avg >= 200000 : tx.amount >= monthStats.expense * 0.35 && monthStats.expense > 0;
-                return { tx, avg, isLarge };
+                const avg = recurring?.isRecurring ? recurring.median : (sameCat.length ? sameCat.reduce((s,t) => s + t.amount, 0) / sameCat.length : 0);
+                const isRecurring = Boolean(recurring?.isRecurring);
+                const relativeToRecurring = isRecurring && avg > 0 ? tx.amount / avg : null;
+                const isLarge = isRecurring
+                    ? (relativeToRecurring >= 1.35 && tx.amount - avg >= 200000)
+                    : (avg > 0 ? tx.amount >= avg * 2.5 && tx.amount - avg >= 200000 : tx.amount >= monthStats.expense * 0.35 && monthStats.expense > 0);
+                return { tx, avg, isLarge, isRecurring, recurringMedian: isRecurring ? avg : null };
             }).filter(x => x.isLarge).sort((a,b) => b.tx.amount - a.tx.amount).slice(0,5);
         }
         function getCategoryTrends(currentBreakdown, prevBreakdown) {
@@ -3359,11 +3398,16 @@
             if (budget > 0 && projectedExpense <= budget) return 'Tốc độ hiện tại vẫn đang nằm trong quỹ đạo ngân sách.';
             return 'Chưa đủ dữ liệu để đánh giá kết quả thay đổi; hãy tiếp tục ghi giao dịch đều đặn.';
         }
-        function buildActionPlan({ idealBudget, monthExpense, projectedExpense, remainingDays, topCategories, anomalies, categoryExpenses }) {
-            const topCat = topCategories?.[0];
-            const topCatName = topCat?.[0] || null;
-            const topCatAmount = topCat?.[1] || 0;
-            const topTx = topCatName ? transactions.filter(tx => tx.type === 'expense' && tx.category === topCatName).sort((a,b) => b.amount - a.amount)[0] : null;
+        function buildActionPlan({ idealBudget, monthExpense, projectedExpense, remainingDays, topCategories, anomalies, categoryExpenses, recurringProfiles = new Map() }) {
+            const actionableCategories = (topCategories || []).map(([cat, amount]) => {
+                const txs = transactions.filter(tx => tx.type === 'expense' && tx.category === cat);
+                const nonRecurring = txs.filter(tx => !getRecurringProfileForTx(tx, recurringProfiles)?.isRecurring || (Number(tx.amount) || 0) > (getRecurringProfileForTx(tx, recurringProfiles)?.median || 0) * 1.35);
+                return { cat, amount, nonRecurringAmount: nonRecurring.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0) };
+            }).sort((a,b) => b.nonRecurringAmount - a.nonRecurringAmount);
+            const topCat = actionableCategories.find(x => x.nonRecurringAmount > 0) || topCategories?.[0] ? (actionableCategories.find(x => x.nonRecurringAmount > 0) || { cat: topCategories?.[0]?.[0] || null, amount: topCategories?.[0]?.[1] || 0, nonRecurringAmount: topCategories?.[0]?.[1] || 0 }) : null;
+            const topCatName = topCat?.cat || null;
+            const topCatAmount = topCat?.amount || 0;
+            const topTx = topCatName ? transactions.filter(tx => tx.type === 'expense' && tx.category === topCatName).filter(tx => !getRecurringProfileForTx(tx, recurringProfiles)?.isRecurring).sort((a,b) => b.amount - a.amount)[0] : null;
             if (idealBudget <= 0) return 'Đặt ngân sách tổng trước; sau đó mình sẽ tính mức chi an toàn/ngày và cảnh báo vượt mục tiêu.';
             if (monthExpense <= 0) return 'Chưa có khoản chi trong tháng; cứ ghi chép đều để trợ lý bắt đầu nhận diện thói quen.';
             if (projectedExpense > idealBudget && remainingDays > 0) {
@@ -3379,9 +3423,10 @@
             if (topCatName) {
                 const catBudget = Number(idealCategoryBudgets[topCatName]) || 0;
                 if (catBudget > 0 && (categoryExpenses[topCatName] || 0) >= catBudget * 0.9) {
-                    return `Giữ ${escapeHTML(topCatName)} dưới ${formatCurrency(catBudget)}; hiện đã dùng ${formatCurrency(categoryExpenses[topCatName])}, gần chạm hạn mức danh mục.`;
+                    const recurringOnly = (topCategories || []).filter(([cat]) => cat === topCatName).length && (actionableCategories.find(x => x.cat === topCatName)?.nonRecurringAmount || 0) < 200000;
+                    if (!recurringOnly) return `Giữ ${escapeHTML(topCatName)} dưới ${formatCurrency(catBudget)}; hiện đã dùng ${formatCurrency(categoryExpenses[topCatName])}, gần chạm hạn mức danh mục.`;
                 }
-                return `Theo dõi ${escapeHTML(topCatName)} vì đây là danh mục lớn nhất. Ưu tiên xem các giao dịch có ghi chú rõ trước khi quyết định cắt.`;
+                return `Theo dõi ${escapeHTML(topCatName)} vì đây là danh mục cần chú ý nhất sau khi loại các khoản định kỳ ổn định.`;
             }
             return 'Tiếp tục ghi chép đầy đủ; chưa có tín hiệu đủ mạnh để khuyến nghị thay đổi.';
         }
@@ -3431,8 +3476,9 @@
             setText('ai-compare-text', compare);
 
             const topCategories = Object.entries(categoryExpenses).sort((a,b) => b[1]-a[1]).slice(0,5);
-            const anomalies = findAnomalies(monthStats);
-            const action = buildActionPlan({ idealBudget, monthExpense, projectedExpense, remainingDays, topCategories, anomalies, categoryExpenses });
+            const recurringProfiles = getRecurringExpenseProfiles(selectedMonthStr, 6);
+            const anomalies = findAnomalies(monthStats, recurringProfiles);
+            const action = buildActionPlan({ idealBudget, monthExpense, projectedExpense, remainingDays, topCategories, anomalies, categoryExpenses, recurringProfiles });
             setText('ai-action-text', action);
 
             setText('ai-health-score', `${health.score}/100`);
@@ -3454,9 +3500,12 @@
             renderAIList('ai-causes-list', topCategories.map(([cat, amount], idx) => {
                 const noteEvidence = formatExpenseNoteEvidence(topExpenseNotesForCategory(monthStats.expenseTxs, cat, 2));
                 const share = monthExpense > 0 ? Math.round(amount / monthExpense * 100) : 0;
+                const catRecurringTxs = monthStats.expenseTxs.filter(tx => tx.category === cat).filter(tx => getRecurringProfileForTx(tx, recurringProfiles)?.isRecurring);
+                const recurringAmount = catRecurringTxs.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+                const recurringLabel = recurringAmount > 0 ? ` <span class="text-xs text-slate-400">• ${formatCurrency(recurringAmount)} là chi định kỳ</span>` : '';
                 return {
                     dot: idx === 0 ? 'bg-rose-500' : idx === 1 ? 'bg-amber-500' : 'bg-indigo-500',
-                    html: `<strong>${escapeHTML(cat)}</strong>: ${formatCurrency(amount)} (${share}% tổng chi).${noteEvidence}`
+                    html: `<strong>${escapeHTML(cat)}</strong>: ${formatCurrency(amount)} (${share}% tổng chi).${recurringLabel}${noteEvidence}`
                 };
             }), 'Chưa có khoản chi.');
             setText('ai-top-category-visual', topCategories[0] ? `${topCategories[0][0]} • ${formatCurrency(topCategories[0][1])}` : 'Chưa có');
@@ -3467,7 +3516,7 @@
                 const note = normalizeNote(a.tx.notes);
                 return {
                     dot: 'bg-amber-500',
-                    html: `<strong>${escapeHTML(a.tx.category)}</strong>: ${formatCurrency(a.tx.amount)} ngày ${formatDate(a.tx.date)}${a.avg > 0 ? ` <span class="text-xs text-slate-400">(gấp ${(a.tx.amount / a.avg).toFixed(1)}x mức chi TB danh mục này)</span>` : ''}${note ? ` <span class="block mt-0.5 text-xs text-slate-500">“${escapeHTML(note)}”</span>` : ''}`
+                    html: `<strong>${escapeHTML(a.tx.category)}</strong>: ${formatCurrency(a.tx.amount)} ngày ${formatDate(a.tx.date)}${a.avg > 0 ? ` <span class="text-xs text-slate-400">(${a.isRecurring ? `cao hơn ${((a.tx.amount / a.avg - 1) * 100).toFixed(0)}% mức định kỳ` : `gấp ${(a.tx.amount / a.avg).toFixed(1)}x mức TB danh mục`})</span>` : ''}${note ? ` <span class="block mt-0.5 text-xs text-slate-500">“${escapeHTML(note)}”</span>` : ''}`
                 };
             }), 'Không phát hiện giao dịch bất thường tháng này.');
 
@@ -3486,6 +3535,8 @@
             const mainCause = topCategories[0] ? topCategories[0][0] : 'chưa rõ';
             const mainCauseAmount = topCategories[0] ? topCategories[0][1] : 0;
             const mainCauseEvidence = topCategories[0] ? formatExpenseNoteEvidence(topExpenseNotesForCategory(monthStats.expenseTxs, topCategories[0][0], 3)) : '';
+            const mainCauseRecurring = topCategories[0] ? monthStats.expenseTxs.filter(tx => tx.category === mainCause).some(tx => getRecurringProfileForTx(tx, recurringProfiles)?.isRecurring) : false;
+            const mainCauseRecurringOnly = mainCauseRecurring && monthStats.expenseTxs.filter(tx => tx.category === mainCause).every(tx => { const p = getRecurringProfileForTx(tx, recurringProfiles); return p?.isRecurring; });
             const threeMonth = buildThreeMonthTrend(selectedMonthStr, isCurrentMonth, projectedExpense);
             const mainCatTrend = topCategories[0] ? buildCategoryThreeMonthTrend(selectedMonthStr, topCategories[0][0], isCurrentMonth, elapsedDays, daysInMonth) : null;
             const proxyTotal = (monthStats.proxyIn || 0) + (monthStats.proxyOut || 0);
@@ -3494,7 +3545,7 @@
             const resultInsight = buildResultInsight(isCurrentMonth ? projectedExpense : monthExpense, prevStats.expense, idealBudget, projectedExpense, isCurrentMonth, baseline);
             const summaryLines = [];
             summaryLines.push(`<p><strong>1. Bức tranh hiện tại:</strong> ${idealBudget > 0 ? `Bạn đang dùng <strong>${Math.round(monthExpense / idealBudget * 100)}%</strong> ngân sách.` : 'Bạn chưa đặt ngân sách tổng.'} ${isCurrentMonth && projectedExpense > idealBudget && idealBudget > 0 ? `Nếu không đổi nhịp chi, tháng có thể vượt khoảng <strong>${formatCurrency(projectedExpense - idealBudget)}</strong>.` : ''}${proxyNote}</p>`);
-            summaryLines.push(`<p><strong>2. Vì sao:</strong> <strong>${escapeHTML(mainCause)}</strong> là danh mục lớn nhất với ${formatCurrency(mainCauseAmount)}. ${mainCauseEvidence || 'Chưa có ghi chú đủ rõ để giải thích sâu hơn.'}</p>`);
+            summaryLines.push(`<p><strong>2. Vì sao:</strong> <strong>${escapeHTML(mainCause)}</strong> là danh mục lớn nhất với ${formatCurrency(mainCauseAmount)}.${mainCauseRecurringOnly ? ' Đây có dấu hiệu là khoản chi định kỳ ổn định, nên không xem là vấn đề chỉ vì số tiền lớn.' : ''} ${mainCauseEvidence || 'Chưa có ghi chú đủ rõ để giải thích sâu hơn.'}</p>`);
             if (mainCatTrend?.rising) summaryLines.push(`<p><strong>3. Tín hiệu hành vi:</strong> ${escapeHTML(mainCause)} đang tăng liên tiếp trong 3 tháng. Đây là dấu hiệu nên xử lý ở danh mục này trước thay vì cắt đều toàn bộ chi tiêu.</p>`);
             else if (threeMonth.rising) summaryLines.push(`<p><strong>3. Tín hiệu hành vi:</strong> Tổng chi đang tăng liên tiếp 3 tháng${threeMonth.currentVsAvg !== null ? ` và cao hơn khoảng ${Math.abs(threeMonth.currentVsAvg)}% so với bình quân 2 tháng trước` : ''}.</p>`);
             else if (threeMonth.falling) summaryLines.push(`<p><strong>3. Tín hiệu tích cực:</strong> Tổng chi đang giảm liên tiếp 3 tháng — nên duy trì các hành vi đang tạo ra kết quả này.</p>`);
