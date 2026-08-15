@@ -3245,18 +3245,75 @@
             const [a,b,c] = vals.map(x => x.amount);
             return { vals, rising: c > b && b > a, falling: c < b && b < a, currentVsPrev: b > 0 ? Math.round((c-b)/b*100) : null, projected: isCurrentMonth };
         }
-        function buildResultInsight(currentExpense, prevExpense, budget, projectedExpense, isCurrentMonth = false) {
-            if (prevExpense <= 0 && currentExpense <= 0) return 'Chưa đủ dữ liệu để đánh giá tiến bộ.';
+        function getExpenseThroughDay(monthStr, day) {
+            const safeDay = Math.max(0, Number(day) || 0);
+            if (safeDay <= 0) return 0;
+            return getMonthStats(monthStr).expenseTxs.reduce((sum, tx) => {
+                const d = new Date(tx.date + 'T00:00:00').getDate();
+                return d <= safeDay ? sum + (Number(tx.amount) || 0) : sum;
+            }, 0);
+        }
+        function getAiBaselineKey(monthStr) { return `financepro_ai_baseline_v1_${monthStr}`; }
+        function getOrCreateAiBaseline(monthStr, projectedExpense, idealBudget) {
+            const key = getAiBaselineKey(monthStr);
+            const existing = getStoredJSON(key, null);
+            if (existing && Number(existing.expense) >= 0) return existing;
+            const baseline = {
+                createdAt: new Date().toISOString(),
+                expense: getMonthStats(monthStr).expense,
+                projectedExpense,
+                idealBudget: Number(idealBudget) || 0
+            };
+            _origLocalStorageSetItem(key, JSON.stringify(baseline));
+            return baseline;
+        }
+        function buildResultInsight(currentExpense, prevExpense, budget, projectedExpense, isCurrentMonth = false, baseline = null) {
+            if (baseline && isCurrentMonth && Number(baseline.projectedExpense) > 0) {
+                const baselineProj = Number(baseline.projectedExpense);
+                const delta = projectedExpense - baselineProj;
+                const pct = baselineProj > 0 ? Math.round(Math.abs(delta) / baselineProj * 100) : 0;
+                if (Math.abs(delta) >= 50000) {
+                    return delta < 0
+                        ? `Từ lần phân tích đầu kỳ, dự báo cuối tháng đã giảm ${formatCurrency(Math.abs(delta))} (${pct}%) — nhịp chi đang cải thiện.`
+                        : `Từ lần phân tích đầu kỳ, dự báo cuối tháng đã tăng ${formatCurrency(delta)} (${pct}%) — cần xem lại các khoản phát sinh gần đây.`;
+                }
+            }
             if (prevExpense > 0) {
                 const diff = currentExpense - prevExpense;
                 const pct = Math.round(Math.abs(diff) / prevExpense * 100);
                 const prefix = isCurrentMonth ? 'Theo dự báo hiện tại, ' : '';
-                if (diff < 0) return `${prefix}chi tiêu tháng này có thể giảm ${formatCurrency(Math.abs(diff))} (${pct}%) so với tháng trước — đây là tín hiệu tích cực.`;
-                if (diff > 0) return `${prefix}chi tiêu tháng này có thể tăng ${formatCurrency(diff)} (${pct}%) so với tháng trước; cần xem lại nguyên nhân trước khi siết thêm ngân sách.`;
+                if (diff < 0) return `${prefix}chi tiêu đang thấp hơn tháng trước ${formatCurrency(Math.abs(diff))} (${pct}%).`;
+                if (diff > 0) return `${prefix}chi tiêu đang cao hơn tháng trước ${formatCurrency(diff)} (${pct}%).`;
                 return `${prefix}chi tiêu đang ở mức tương đương tháng trước.`;
             }
             if (budget > 0 && projectedExpense <= budget) return 'Tốc độ hiện tại vẫn đang nằm trong quỹ đạo ngân sách.';
-            return 'Hãy theo dõi lại nhịp chi trong vài ngày tới để đánh giá hiệu quả điều chỉnh.';
+            return 'Chưa đủ dữ liệu để đánh giá kết quả thay đổi; hãy tiếp tục ghi giao dịch đều đặn.';
+        }
+        function buildActionPlan({ idealBudget, monthExpense, projectedExpense, remainingDays, topCategories, anomalies, categoryExpenses }) {
+            const topCat = topCategories?.[0];
+            const topCatName = topCat?.[0] || null;
+            const topCatAmount = topCat?.[1] || 0;
+            const topTx = topCatName ? transactions.filter(tx => tx.type === 'expense' && tx.category === topCatName).sort((a,b) => b.amount - a.amount)[0] : null;
+            if (idealBudget <= 0) return 'Đặt ngân sách tổng trước; sau đó mình sẽ tính mức chi an toàn/ngày và cảnh báo vượt mục tiêu.';
+            if (monthExpense <= 0) return 'Chưa có khoản chi trong tháng; cứ ghi chép đều để trợ lý bắt đầu nhận diện thói quen.';
+            if (projectedExpense > idealBudget && remainingDays > 0) {
+                const reducePerDay = Math.ceil((projectedExpense - idealBudget) / remainingDays);
+                const note = normalizeNote(topTx?.notes);
+                return `Giảm khoảng ${formatCurrency(reducePerDay)}/ngày trong ${remainingDays} ngày còn lại. Ưu tiên ${topCatName ? `rà lại ${escapeHTML(topCatName)} (${formatCurrency(topCatAmount)})` : 'khoản chi linh hoạt'}${note ? `; ví dụ ghi chú “${escapeHTML(note)}”` : ''}.`;
+            }
+            if (anomalies?.length) {
+                const a = anomalies[0];
+                const note = normalizeNote(a.tx.notes);
+                return `Rà lại giao dịch bất thường ${formatCurrency(a.tx.amount)} ở ${escapeHTML(a.tx.category)}${note ? ` — “${escapeHTML(note)}”` : ''} trước khi cắt ngân sách rộng hơn.`;
+            }
+            if (topCatName) {
+                const catBudget = Number(idealCategoryBudgets[topCatName]) || 0;
+                if (catBudget > 0 && (categoryExpenses[topCatName] || 0) >= catBudget * 0.9) {
+                    return `Giữ ${escapeHTML(topCatName)} dưới ${formatCurrency(catBudget)}; hiện đã dùng ${formatCurrency(categoryExpenses[topCatName])}, gần chạm hạn mức danh mục.`;
+                }
+                return `Theo dõi ${escapeHTML(topCatName)} vì đây là danh mục lớn nhất. Ưu tiên xem các giao dịch có ghi chú rõ trước khi quyết định cắt.`;
+            }
+            return 'Tiếp tục ghi chép đầy đủ; chưa có tín hiệu đủ mạnh để khuyến nghị thay đổi.';
         }
 
         function renderSmartFinancialAssistant() {
@@ -3273,7 +3330,10 @@
             const remainingDays = isCurrentMonth ? Math.max(0, daysInMonth - today.getDate()) : 0;
             const projectedExpense = isCurrentMonth ? Math.round((monthExpense / elapsedDays) * daysInMonth) : monthExpense;
             const projectedPercent = idealBudget > 0 ? Math.round((projectedExpense / idealBudget) * 100) : 0;
-            const prevStats = getMonthStats(offsetMonthStr(selectedMonthStr, -1));
+            const prevMonthStr = offsetMonthStr(selectedMonthStr, -1);
+            const prevStats = getMonthStats(prevMonthStr);
+            const comparisonDay = isCurrentMonth ? elapsedDays : daysInMonth;
+            const prevThroughDayExpense = isCurrentMonth ? getExpenseThroughDay(prevMonthStr, comparisonDay) : prevStats.expense;
             const health = calculateFinancialHealth(monthIncome, monthExpense, idealBudget, projectedExpense, categoryExpenses);
             
             setText('ai-summary-text', monthExpense > 0 ? `Đã phân tích ${formatCurrency(monthExpense)} chi tiêu trong tháng ${selectedMonthStr.split('-')[1]}.` : 'Tháng này chưa có chi tiêu để phân tích sâu.');
@@ -3284,18 +3344,27 @@
             const meter = document.getElementById('ai-projection-meter');
             if (meter) { meter.style.width = Math.min(100, projectedPercent || 0) + '%'; meter.className = projectedPercent > 100 ? 'bg-rose-600' : projectedPercent > 80 ? 'bg-amber-500' : 'bg-indigo-600'; }
             
-            const diff = monthExpense - prevStats.expense;
-            let compare = 'Chưa có dữ liệu tháng trước.';
-            if (prevStats.expense <= 0 && monthExpense > 0) compare = `Tháng trước chưa chi, tháng này chi ${formatCurrency(monthExpense)}.`;
-            else if (prevStats.expense > 0) { const diffPercent = Math.round((diff / prevStats.expense) * 100); compare = diff >= 0 ? `Tăng ${formatCurrency(diff)} (+${diffPercent}%) so với tháng trước.` : `Giảm ${formatCurrency(Math.abs(diff))} (${diffPercent}%) so với tháng trước.`; }
+            const compareBase = prevThroughDayExpense;
+            let compare = 'Chưa có đủ dữ liệu tháng trước để so sánh.';
+            if (compareBase <= 0 && monthExpense > 0) {
+                compare = isCurrentMonth ? `Đến ngày ${comparisonDay}, tháng trước chưa có chi tiêu tương ứng.` : 'Tháng trước chưa có chi tiêu.';
+            } else if (compareBase > 0) {
+                const diff = monthExpense - compareBase;
+                const diffPercent = Math.round((diff / compareBase) * 100);
+                compare = isCurrentMonth
+                    ? `${diff >= 0 ? 'Đang cao hơn' : 'Đang thấp hơn'} ${formatCurrency(Math.abs(diff))} (${Math.abs(diffPercent)}%) so với cùng số ngày tháng trước.`
+                    : `${diff >= 0 ? 'Tăng' : 'Giảm'} ${formatCurrency(Math.abs(diff))} (${Math.abs(diffPercent)}%) so với tháng trước.`;
+            }
+            if (isCurrentMonth && projectedExpense > 0 && prevStats.expense > 0) {
+                compare += ` Dự báo cả tháng: ${formatCurrency(projectedExpense)} vs ${formatCurrency(prevStats.expense)} tháng trước.`;
+            }
             setText('ai-compare-text', compare);
-            
-            let action = 'Thiết lập ngân sách tổng để trợ lý đưa gợi ý.';
-            if (idealBudget > 0 && monthExpense > idealBudget) action = `Đã vượt ${formatCurrency(monthExpense - idealBudget)}. Ưu tiên cắt ở danh mục chi lớn nhất và kiểm tra các giao dịch bất thường.`;
-            else if (idealBudget > 0 && isCurrentMonth && projectedExpense > idealBudget && remainingDays > 0) action = `Để về gần mục tiêu, giảm ${formatCurrency(Math.ceil((projectedExpense - idealBudget) / remainingDays))}/ngày trong ${remainingDays} ngày còn lại; ưu tiên khoản chi linh hoạt thay vì cắt đồng đều.`;
-            else if (idealBudget > 0 && isCurrentMonth && remainingDays > 0) action = `Mức chi an toàn còn lại ${formatCurrency(Math.max(0, Math.floor((idealBudget - monthExpense) / remainingDays)))}/ngày.`;
+
+            const topCategories = Object.entries(categoryExpenses).sort((a,b) => b[1]-a[1]).slice(0,5);
+            const anomalies = findAnomalies(monthStats);
+            const action = buildActionPlan({ idealBudget, monthExpense, projectedExpense, remainingDays, topCategories, anomalies, categoryExpenses });
             setText('ai-action-text', action);
-            
+
             setText('ai-health-score', `${health.score}/100`);
             setHTML('ai-health-text', `Xếp loại: <span class="${health.tone} font-bold">${health.label}</span>. ${health.overCategories > 0 ? `Có ${health.overCategories} danh mục vượt.` : ''}`);
             const chip = document.getElementById('ai-health-chip'); if (chip) chip.className = `ai-chip ${health.tone}`;
@@ -3312,7 +3381,6 @@
             setText('ai-visual-status', idealBudget <= 0 ? 'Chưa có mục tiêu tổng.' : (budgetPercentNow > 100 ? `Đã vượt ${formatCurrency(monthExpense - idealBudget)}.` : `Đã chi ${formatCurrency(monthExpense)} / ${formatCurrency(idealBudget)}.`));
             setText('ai-health-gauge-label', health.label);
             
-            const topCategories = Object.entries(categoryExpenses).sort((a,b) => b[1]-a[1]).slice(0,5);
             renderAIList('ai-causes-list', topCategories.map(([cat, amount], idx) => {
                 const noteEvidence = formatExpenseNoteEvidence(topExpenseNotesForCategory(monthStats.expenseTxs, cat, 2));
                 const share = monthExpense > 0 ? Math.round(amount / monthExpense * 100) : 0;
@@ -3325,7 +3393,6 @@
             renderAssistantCharts({ monthStats, daysInMonth, elapsedDays, isCurrentMonth, idealBudget, topCategories, monthExpense });
 
             // Giao dịch bất thường: luôn giải thích bằng ghi chú nếu người dùng có nhập.
-            const anomalies = findAnomalies(monthStats);
             renderAIList('ai-anomalies-list', anomalies.map(a => {
                 const note = normalizeNote(a.tx.notes);
                 return {
@@ -3353,7 +3420,8 @@
             const mainCatTrend = topCategories[0] ? buildCategoryThreeMonthTrend(selectedMonthStr, topCategories[0][0], isCurrentMonth, elapsedDays, daysInMonth) : null;
             const proxyTotal = (monthStats.proxyIn || 0) + (monthStats.proxyOut || 0);
             const proxyNote = proxyTotal > 0 ? ` Ngoài ra có <strong>${formatCurrency(proxyTotal)}</strong> giao dịch trung gian (ủy thác) qua ví — không tính vào thu/chi.` : '';
-            const resultInsight = buildResultInsight(isCurrentMonth ? projectedExpense : monthExpense, prevStats.expense, idealBudget, projectedExpense, isCurrentMonth);
+            const baseline = getOrCreateAiBaseline(selectedMonthStr, projectedExpense, idealBudget);
+            const resultInsight = buildResultInsight(isCurrentMonth ? projectedExpense : monthExpense, prevStats.expense, idealBudget, projectedExpense, isCurrentMonth, baseline);
             const summaryLines = [];
             summaryLines.push(`<p><strong>1. Bức tranh hiện tại:</strong> ${idealBudget > 0 ? `Bạn đang dùng <strong>${Math.round(monthExpense / idealBudget * 100)}%</strong> ngân sách.` : 'Bạn chưa đặt ngân sách tổng.'} ${isCurrentMonth && projectedExpense > idealBudget && idealBudget > 0 ? `Nếu không đổi nhịp chi, tháng có thể vượt khoảng <strong>${formatCurrency(projectedExpense - idealBudget)}</strong>.` : ''}${proxyNote}</p>`);
             summaryLines.push(`<p><strong>2. Vì sao:</strong> <strong>${escapeHTML(mainCause)}</strong> là danh mục lớn nhất với ${formatCurrency(mainCauseAmount)}. ${mainCauseEvidence || 'Chưa có ghi chú đủ rõ để giải thích sâu hơn.'}</p>`);
@@ -3362,7 +3430,7 @@
             else if (threeMonth.falling) summaryLines.push(`<p><strong>3. Tín hiệu tích cực:</strong> Tổng chi đang giảm liên tiếp 3 tháng — nên duy trì các hành vi đang tạo ra kết quả này.</p>`);
             else summaryLines.push(`<p><strong>3. Điều cần theo dõi:</strong> Biến động tháng này chưa cho thấy một xu hướng 3 tháng rõ ràng; ưu tiên theo dõi các giao dịch bất thường và danh mục lớn nhất.</p>`);
             summaryLines.push(`<p><strong>4. Kết quả:</strong> ${resultInsight}</p>`);
-            summaryLines.push(`<p><strong>5. Hành động:</strong> ${escapeHTML(action)} Ưu tiên rà lại ${escapeHTML(mainCause)} trước; dùng phần ghi chú giao dịch để xác định chính xác khoản nào có thể giảm hoặc trì hoãn.</p>`);
+            summaryLines.push(`<p><strong>5. Hành động:</strong> ${action} ${mainCause !== 'chưa rõ' ? `Ưu tiên ${escapeHTML(mainCause)} trước.` : ''}</p>`);
             setHTML('ai-executive-summary', summaryLines.join(''));
         }
 
