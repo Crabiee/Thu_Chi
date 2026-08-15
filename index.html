@@ -957,12 +957,12 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                             <div class="ai-card">
-                                <p class="text-xs font-bold text-slate-500 uppercase mb-2">Dự báo ngân sách</p>
+                                <p class="text-xs font-bold text-slate-500 uppercase mb-2">Dự báo</p>
                                 <p id="ai-projection-text" class="text-sm font-semibold text-slate-800">Chưa có dữ liệu.</p>
                                 <div class="ai-meter mt-3"><div id="ai-projection-meter" class="bg-indigo-600" style="width:0%"></div></div>
                             </div>
                             <div class="ai-card">
-                                <p class="text-xs font-bold text-slate-500 uppercase mb-2">Xu hướng nổi bật</p>
+                                <p class="text-xs font-bold text-slate-500 uppercase mb-2">Điều gì đã thay đổi?</p>
                                 <p id="ai-compare-text" class="text-sm font-semibold text-slate-800">Chưa có dữ liệu.</p>
                             </div>
                             <div class="ai-card">
@@ -970,8 +970,18 @@
                                 <p id="ai-action-text" class="text-sm font-semibold text-slate-800">Chưa có gợi ý.</p>
                             </div>
                             <div class="ai-card">
-                                <p class="text-xs font-bold text-slate-500 uppercase mb-2">Sức khỏe tài chính</p>
+                                <p class="text-xs font-bold text-slate-500 uppercase mb-2">Chỉ số kiểm soát</p>
                                 <p id="ai-health-text" class="text-sm font-semibold text-slate-800">Đang tính toán.</p>
+                            </div>
+                        </div>
+
+                        <div class="ai-card border-indigo-100 bg-indigo-50/40">
+                            <div class="flex items-start gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-compass"></i></div>
+                                <div class="min-w-0">
+                                    <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide">Kết luận cần nhớ</p>
+                                    <div id="ai-executive-summary" class="text-sm text-slate-700 leading-relaxed space-y-2 mt-1"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -987,7 +997,8 @@
 
                     <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
                         <div class="ai-card">
-                            <h4 class="font-bold text-slate-900 mb-3 flex items-center gap-2"><i class="fa-solid fa-magnifying-glass-chart text-rose-500"></i>Nguyên nhân chi nhiều nhất</h4>
+                            <h4 class="font-bold text-slate-900 mb-1 flex items-center gap-2"><i class="fa-solid fa-magnifying-glass-chart text-rose-500"></i>Vì sao chi nhiều?</h4>
+                            <p class="text-xs text-slate-400 mb-3">Ưu tiên danh mục lớn, rồi trích dẫn ghi chú giao dịch để hiểu tiền đang đi vào đâu.</p>
                             <div class="relative w-full mb-3" style="height:180px;"><canvas id="topCategoriesChart"></canvas></div>
                             <ul id="ai-causes-list" class="ai-list text-sm text-slate-600"></ul>
                         </div>
@@ -1029,7 +1040,7 @@
 
                     <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
                         <div class="ai-card">
-                            <h4 class="font-bold text-slate-900 mb-3 flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation text-amber-500"></i>Giao dịch bất thường</h4>
+                            <h4 class="font-bold text-slate-900 mb-3 flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation text-amber-500"></i>Giao dịch cần rà lại</h4>
                             <p class="text-xs text-slate-400 mb-2">So sánh khoản chi đột biến với mức trung bình cùng danh mục.</p>
                             <div class="relative w-full mb-3" style="height:170px;"><canvas id="anomaliesChart"></canvas></div>
                             <ul id="ai-anomalies-list" class="ai-list text-sm text-slate-600"></ul>
@@ -1042,10 +1053,6 @@
                         </div>
                     </div>
 
-                    <div class="ai-card">
-                        <h4 class="font-bold text-slate-900 mb-3 flex items-center gap-2"><i class="fa-solid fa-clipboard-list text-purple-500"></i>Tóm tắt & kế hoạch 3 bước</h4>
-                        <div id="ai-executive-summary" class="text-sm text-slate-600 leading-relaxed space-y-2"></div>
-                    </div>
                 </section>
 
                 <!-- TAB 3: TRANSACTIONS (Có chế độ hiển thị Card trên Mobile) -->
@@ -2729,7 +2736,7 @@
             if (!Object.prototype.hasOwnProperty.call(userAccounts, acc)) return showToast("Tài khoản không tồn tại", "fa-xmark", "text-rose-500");
             if (type === 'transfer' && !Object.prototype.hasOwnProperty.call(userAccounts, toAcc)) return showToast("Tài khoản nhận không tồn tại", "fa-xmark", "text-rose-500");
             const newId = editingTxId || `tx-${Date.now()}-${Math.random().toString(36).slice(2,10)}`;
-            const newData = { id: newId, type, amount:amt, date:document.getElementById('txDate').value, account:acc, category:type==='transfer'?'Chuyển tiền':(type==='proxy'?(cat||'Trung gian'):cat), toAccount:type==='transfer'?toAcc:"", proxyDir:type==='proxy'?proxyDir:undefined, notes:document.getElementById('txNotes').value, updatedAt: new Date().toISOString() };
+            const newData = { id: newId, type, amount:amt, date:document.getElementById('txDate').value, account:acc, category:type==='transfer'?'Chuyển tiền':(type==='proxy'?(cat||'Trung gian'):cat), toAccount:type==='transfer'?toAcc:"", proxyDir:type==='proxy'?proxyDir:null, notes:document.getElementById('txNotes').value, updatedAt: new Date().toISOString() };
             if(editingTxId) {
                 const editIndex = transactions.findIndex(t=>t.id===editingTxId);
                 if (editIndex < 0) { editingTxId = null; return showToast("Giao dịch đã thay đổi ở thiết bị khác. Hãy tải lại dữ liệu rồi thử lại.", "fa-triangle-exclamation", "text-amber-500"); }
@@ -3198,6 +3205,60 @@
                 });
             }
         }
+        function normalizeNote(note) {
+            return String(note ?? '').replace(/\s+/g, ' ').trim();
+        }
+        function topExpenseNotesForCategory(monthExpenseTxs, category, limit = 3) {
+            return monthExpenseTxs
+                .filter(tx => tx.category === category)
+                .sort((a,b) => b.amount - a.amount)
+                .slice(0, limit)
+                .map(tx => ({ amount: tx.amount, date: tx.date, note: normalizeNote(tx.notes) }))
+                .filter(x => x.note);
+        }
+        function formatExpenseNoteEvidence(items) {
+            if (!items.length) return '';
+            return ' Ví dụ: ' + items.map(x => `<span class="text-slate-500">${escapeHTML(x.note)}</span> (${formatCurrency(x.amount)})`).join(' · ');
+        }
+        function buildThreeMonthTrend(monthStr, isCurrentMonth = false, projectedExpense = null) {
+            const months = [offsetMonthStr(monthStr, -2), offsetMonthStr(monthStr, -1), monthStr];
+            const stats = months.map(m => ({ month: m, ...getMonthStats(m) }));
+            const current = isCurrentMonth && projectedExpense !== null ? projectedExpense : stats[2].expense;
+            const previous = stats[1].expense;
+            const older = stats[0].expense;
+            const rising = current > previous && previous > older;
+            const falling = current < previous && previous < older;
+            const avgPrev2 = (older + previous) / 2;
+            const currentVsAvg = avgPrev2 > 0 ? Math.round((current - avgPrev2) / avgPrev2 * 100) : null;
+            return { months, stats, current, rising, falling, currentVsAvg, projected: isCurrentMonth };
+        }
+        function buildCategoryThreeMonthTrend(monthStr, category, isCurrentMonth = false, daysElapsed = 1, daysInMonth = 1) {
+            const vals = [-2,-1,0].map(offset => {
+                const m = offsetMonthStr(monthStr, offset);
+                const stats = getMonthStats(m);
+                let amount = stats.categoryBreakdown[category] || 0;
+                if (offset === 0 && isCurrentMonth && daysElapsed > 0) {
+                    amount = Math.round(amount / daysElapsed * daysInMonth);
+                }
+                return { month:m, amount };
+            });
+            const [a,b,c] = vals.map(x => x.amount);
+            return { vals, rising: c > b && b > a, falling: c < b && b < a, currentVsPrev: b > 0 ? Math.round((c-b)/b*100) : null, projected: isCurrentMonth };
+        }
+        function buildResultInsight(currentExpense, prevExpense, budget, projectedExpense, isCurrentMonth = false) {
+            if (prevExpense <= 0 && currentExpense <= 0) return 'Chưa đủ dữ liệu để đánh giá tiến bộ.';
+            if (prevExpense > 0) {
+                const diff = currentExpense - prevExpense;
+                const pct = Math.round(Math.abs(diff) / prevExpense * 100);
+                const prefix = isCurrentMonth ? 'Theo dự báo hiện tại, ' : '';
+                if (diff < 0) return `${prefix}chi tiêu tháng này có thể giảm ${formatCurrency(Math.abs(diff))} (${pct}%) so với tháng trước — đây là tín hiệu tích cực.`;
+                if (diff > 0) return `${prefix}chi tiêu tháng này có thể tăng ${formatCurrency(diff)} (${pct}%) so với tháng trước; cần xem lại nguyên nhân trước khi siết thêm ngân sách.`;
+                return `${prefix}chi tiêu đang ở mức tương đương tháng trước.`;
+            }
+            if (budget > 0 && projectedExpense <= budget) return 'Tốc độ hiện tại vẫn đang nằm trong quỹ đạo ngân sách.';
+            return 'Hãy theo dõi lại nhịp chi trong vài ngày tới để đánh giá hiệu quả điều chỉnh.';
+        }
+
         function renderSmartFinancialAssistant() {
             const monthEl = document.getElementById('dashboard-month-filter');
             if (!monthEl || !monthEl.value) return;
@@ -3230,8 +3291,8 @@
             setText('ai-compare-text', compare);
             
             let action = 'Thiết lập ngân sách tổng để trợ lý đưa gợi ý.';
-            if (idealBudget > 0 && monthExpense > idealBudget) action = `Đã vượt ${formatCurrency(monthExpense - idealBudget)}. Rà lại danh mục chi nhiều nhất.`;
-            else if (idealBudget > 0 && isCurrentMonth && projectedExpense > idealBudget && remainingDays > 0) action = `Để về gần mục tiêu, giảm ${formatCurrency(Math.ceil((projectedExpense - idealBudget) / remainingDays))}/ngày trong ${remainingDays} ngày còn lại.`;
+            if (idealBudget > 0 && monthExpense > idealBudget) action = `Đã vượt ${formatCurrency(monthExpense - idealBudget)}. Ưu tiên cắt ở danh mục chi lớn nhất và kiểm tra các giao dịch bất thường.`;
+            else if (idealBudget > 0 && isCurrentMonth && projectedExpense > idealBudget && remainingDays > 0) action = `Để về gần mục tiêu, giảm ${formatCurrency(Math.ceil((projectedExpense - idealBudget) / remainingDays))}/ngày trong ${remainingDays} ngày còn lại; ưu tiên khoản chi linh hoạt thay vì cắt đồng đều.`;
             else if (idealBudget > 0 && isCurrentMonth && remainingDays > 0) action = `Mức chi an toàn còn lại ${formatCurrency(Math.max(0, Math.floor((idealBudget - monthExpense) / remainingDays)))}/ngày.`;
             setText('ai-action-text', action);
             
@@ -3252,32 +3313,56 @@
             setText('ai-health-gauge-label', health.label);
             
             const topCategories = Object.entries(categoryExpenses).sort((a,b) => b[1]-a[1]).slice(0,5);
-            renderAIList('ai-causes-list', topCategories.map(([cat, amount], idx) => ({ dot: idx === 0 ? 'bg-rose-500' : idx === 1 ? 'bg-amber-500' : 'bg-indigo-500', html: `<strong>${escapeHTML(cat)}</strong>: ${formatCurrency(amount)} (${monthExpense > 0 ? Math.round(amount / monthExpense * 100) : 0}% tổng chi)` })), 'Chưa có khoản chi.');
+            renderAIList('ai-causes-list', topCategories.map(([cat, amount], idx) => {
+                const noteEvidence = formatExpenseNoteEvidence(topExpenseNotesForCategory(monthStats.expenseTxs, cat, 2));
+                const share = monthExpense > 0 ? Math.round(amount / monthExpense * 100) : 0;
+                return {
+                    dot: idx === 0 ? 'bg-rose-500' : idx === 1 ? 'bg-amber-500' : 'bg-indigo-500',
+                    html: `<strong>${escapeHTML(cat)}</strong>: ${formatCurrency(amount)} (${share}% tổng chi).${noteEvidence}`
+                };
+            }), 'Chưa có khoản chi.');
             setText('ai-top-category-visual', topCategories[0] ? `${topCategories[0][0]} • ${formatCurrency(topCategories[0][1])}` : 'Chưa có');
             renderAssistantCharts({ monthStats, daysInMonth, elapsedDays, isCurrentMonth, idealBudget, topCategories, monthExpense });
 
-            // Giao dịch bất thường (chi tiêu cao đột biến so với trung bình cùng danh mục)
+            // Giao dịch bất thường: luôn giải thích bằng ghi chú nếu người dùng có nhập.
             const anomalies = findAnomalies(monthStats);
-            renderAIList('ai-anomalies-list', anomalies.map(a => ({
-                dot: 'bg-amber-500',
-                html: `<strong>${escapeHTML(a.tx.category)}</strong>: ${formatCurrency(a.tx.amount)} ngày ${formatDate(a.tx.date)}${a.avg > 0 ? ` <span class="text-xs text-slate-400">(gấp ${(a.tx.amount / a.avg).toFixed(1)}x mức chi TB danh mục này)</span>` : ''}`
-            })), 'Không phát hiện giao dịch bất thường tháng này.');
+            renderAIList('ai-anomalies-list', anomalies.map(a => {
+                const note = normalizeNote(a.tx.notes);
+                return {
+                    dot: 'bg-amber-500',
+                    html: `<strong>${escapeHTML(a.tx.category)}</strong>: ${formatCurrency(a.tx.amount)} ngày ${formatDate(a.tx.date)}${a.avg > 0 ? ` <span class="text-xs text-slate-400">(gấp ${(a.tx.amount / a.avg).toFixed(1)}x mức chi TB danh mục này)</span>` : ''}${note ? ` <span class="block mt-0.5 text-xs text-slate-500">“${escapeHTML(note)}”</span>` : ''}`
+                };
+            }), 'Không phát hiện giao dịch bất thường tháng này.');
 
-            // Danh mục biến động mạnh nhất so với tháng trước
+            // Danh mục biến động mạnh nhất so với tháng trước, kèm bằng chứng từ giao dịch.
             const trends = getCategoryTrends(categoryExpenses, prevStats.categoryBreakdown);
-            renderAIList('ai-trends-list', trends.map(t => ({
-                dot: t.diff > 0 ? 'bg-rose-500' : 'bg-emerald-500',
-                html: `<strong>${escapeHTML(t.cat)}</strong>: ${t.diff > 0 ? 'Tăng' : 'Giảm'} ${formatCurrency(Math.abs(t.diff))}${t.pct !== null ? ` (${t.diff > 0 ? '+' : ''}${t.pct}%)` : ' (mới phát sinh)'} so với tháng trước`
-            })), 'Chưa đủ dữ liệu để so sánh xu hướng.');
+            renderAIList('ai-trends-list', trends.map(t => {
+                const trendNotes = t.diff > 0 ? topExpenseNotesForCategory(monthStats.expenseTxs, t.cat, 2) : topExpenseNotesForCategory((prevStats.expenseTxs || []), t.cat, 2);
+                const evidence = formatExpenseNoteEvidence(trendNotes);
+                return {
+                    dot: t.diff > 0 ? 'bg-rose-500' : 'bg-emerald-500',
+                    html: `<strong>${escapeHTML(t.cat)}</strong>: ${t.diff > 0 ? 'Tăng' : 'Giảm'} ${formatCurrency(Math.abs(t.diff))}${t.pct !== null ? ` (${t.diff > 0 ? '+' : ''}${t.pct}%)` : ' (mới phát sinh)'} so với tháng trước.${evidence}`
+                };
+            }), 'Chưa đủ dữ liệu để so sánh xu hướng.');
             renderAnomalyAndTrendCharts(anomalies, trends);
 
             const mainCause = topCategories[0] ? topCategories[0][0] : 'chưa rõ';
+            const mainCauseAmount = topCategories[0] ? topCategories[0][1] : 0;
+            const mainCauseEvidence = topCategories[0] ? formatExpenseNoteEvidence(topExpenseNotesForCategory(monthStats.expenseTxs, topCategories[0][0], 3)) : '';
+            const threeMonth = buildThreeMonthTrend(selectedMonthStr, isCurrentMonth, projectedExpense);
+            const mainCatTrend = topCategories[0] ? buildCategoryThreeMonthTrend(selectedMonthStr, topCategories[0][0], isCurrentMonth, elapsedDays, daysInMonth) : null;
             const proxyTotal = (monthStats.proxyIn || 0) + (monthStats.proxyOut || 0);
             const proxyNote = proxyTotal > 0 ? ` Ngoài ra có <strong>${formatCurrency(proxyTotal)}</strong> giao dịch trung gian (ủy thác) qua ví — không tính vào thu/chi.` : '';
+            const resultInsight = buildResultInsight(isCurrentMonth ? projectedExpense : monthExpense, prevStats.expense, idealBudget, projectedExpense, isCurrentMonth);
             const summaryLines = [];
-            summaryLines.push(`<p><strong>1. Nhận định:</strong> ${idealBudget > 0 ? `Bạn đang ở mức ${Math.round(monthExpense / idealBudget * 100)}% ngân sách.` : 'Bạn chưa đặt ngân sách tổng.'}${proxyNote}</p>`);
-            summaryLines.push(`<p><strong>2. Chú ý:</strong> Danh mục lớn nhất là <strong>${escapeHTML(mainCause)}</strong>.${anomalies.length ? ` Có ${anomalies.length} giao dịch chi bất thường cần rà lại.` : ''}${trends.length ? ` Danh mục biến động mạnh nhất: <strong>${escapeHTML(trends[0].cat)}</strong> (${trends[0].diff > 0 ? 'tăng' : 'giảm'} ${formatCurrency(Math.abs(trends[0].diff))}).` : ''}</p>`);
-            summaryLines.push(`<p><strong>3. Kế hoạch:</strong> Rà lại 3 khoản chi lớn nhất → theo dõi trần chi/ngày → cập nhật hạn mức tháng sau.</p>`);
+            summaryLines.push(`<p><strong>1. Bức tranh hiện tại:</strong> ${idealBudget > 0 ? `Bạn đang dùng <strong>${Math.round(monthExpense / idealBudget * 100)}%</strong> ngân sách.` : 'Bạn chưa đặt ngân sách tổng.'} ${isCurrentMonth && projectedExpense > idealBudget && idealBudget > 0 ? `Nếu không đổi nhịp chi, tháng có thể vượt khoảng <strong>${formatCurrency(projectedExpense - idealBudget)}</strong>.` : ''}${proxyNote}</p>`);
+            summaryLines.push(`<p><strong>2. Vì sao:</strong> <strong>${escapeHTML(mainCause)}</strong> là danh mục lớn nhất với ${formatCurrency(mainCauseAmount)}. ${mainCauseEvidence || 'Chưa có ghi chú đủ rõ để giải thích sâu hơn.'}</p>`);
+            if (mainCatTrend?.rising) summaryLines.push(`<p><strong>3. Tín hiệu hành vi:</strong> ${escapeHTML(mainCause)} đang tăng liên tiếp trong 3 tháng. Đây là dấu hiệu nên xử lý ở danh mục này trước thay vì cắt đều toàn bộ chi tiêu.</p>`);
+            else if (threeMonth.rising) summaryLines.push(`<p><strong>3. Tín hiệu hành vi:</strong> Tổng chi đang tăng liên tiếp 3 tháng${threeMonth.currentVsAvg !== null ? ` và cao hơn khoảng ${Math.abs(threeMonth.currentVsAvg)}% so với bình quân 2 tháng trước` : ''}.</p>`);
+            else if (threeMonth.falling) summaryLines.push(`<p><strong>3. Tín hiệu tích cực:</strong> Tổng chi đang giảm liên tiếp 3 tháng — nên duy trì các hành vi đang tạo ra kết quả này.</p>`);
+            else summaryLines.push(`<p><strong>3. Điều cần theo dõi:</strong> Biến động tháng này chưa cho thấy một xu hướng 3 tháng rõ ràng; ưu tiên theo dõi các giao dịch bất thường và danh mục lớn nhất.</p>`);
+            summaryLines.push(`<p><strong>4. Kết quả:</strong> ${resultInsight}</p>`);
+            summaryLines.push(`<p><strong>5. Hành động:</strong> ${escapeHTML(action)} Ưu tiên rà lại ${escapeHTML(mainCause)} trước; dùng phần ghi chú giao dịch để xác định chính xác khoản nào có thể giảm hoặc trì hoãn.</p>`);
             setHTML('ai-executive-summary', summaryLines.join(''));
         }
 
@@ -3577,6 +3662,9 @@
                 fbApp = firebase.initializeApp(firebaseConfig);
                 fbAuth = firebase.auth();
                 fbDb = firebase.firestore();
+                // Bảo vệ lớp đồng bộ: dữ liệu cũ/ngoại lệ có field undefined không được làm hỏng cả document.
+                // Gọi trước mọi thao tác đọc/ghi Firestore.
+                fbDb.settings({ ignoreUndefinedProperties: true });
                 // Không dùng enablePersistence — tính năng offline cache làm phức tạp logic fromCache
                 // và không cần thiết cho mục đích đồng bộ 2 thiết bị. onSnapshot vẫn hoạt động real-time.
             } catch (err) {
@@ -3954,9 +4042,11 @@
                 updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
             } catch (err) {
                 console.error('pushLocalDataToFirestore error', err);
-                updateSyncStatusUI('error', 'Lưu thất bại, sẽ tự thử lại...');
+                const errCode = err && err.code ? String(err.code) : 'unknown-error';
+                const errMsg = err && err.message ? String(err.message).split('\n')[0].slice(0, 140) : '';
+                updateSyncStatusUI('error', `Lưu thất bại (${errCode}).${errMsg ? ' ' + errMsg : ''} Sẽ thử lại.`);
                 clearTimeout(fbSaveRetryTimer);
-                fbSaveRetryTimer = setTimeout(() => { if (syncReady) pushLocalDataToFirestore(); }, 8000);
+                fbSaveRetryTimer = setTimeout(() => { if (syncReady && fbCurrentUid) pushLocalDataToFirestore(); }, 15000);
             } finally {
                 gDriveState.isSyncing = false;
                 syncPushInFlight = false;
