@@ -253,7 +253,6 @@
         
         /* Dark Mode Contrast Fixes */
         body.dark-mode .text-indigo-900, body.dark-mode .text-indigo-800, body.dark-mode .text-indigo-700, body.dark-mode .text-indigo-600, body.dark-mode .text-indigo-500 { color: #c4b5fd !important; }
-        body.dark-mode .text-blue-600, body.dark-mode .text-blue-700, body.dark-mode .text-blue-800 { color: #93c5fd !important; }
         body.dark-mode .text-emerald-600, body.dark-mode .text-emerald-700, body.dark-mode .text-emerald-800, body.dark-mode .text-emerald-900 { color: #6ee7b7 !important; }
         body.dark-mode .text-blue-600, body.dark-mode .text-blue-700, body.dark-mode .text-blue-800, body.dark-mode .text-blue-900 { color: #93c5fd !important; }
         body.dark-mode .border-blue-500 { border-color: #60a5fa !important; }
@@ -2037,7 +2036,11 @@
 
                             <p class="text-center text-[11px] text-slate-400">Kiến thức đúc kết từ "Hiểu Hết Về Tiền" — DK Publishing.</p>
                         </div>
+                </section>
 
+            </div>
+            <!-- /nội dung tab -->
+        </main>
     </div>
     <!-- /#appRoot -->
 
@@ -2145,19 +2148,37 @@
 
         // ================== SYNC PATCH (áp dụng cho mọi thay đổi dữ liệu cục bộ) ==================
         const DRIVE_SYNC_KEYS = ['personal_transactions_v4', 'personal_deleted_tx_v4', 'personal_categories_v4', 'personal_accounts_v4', 'personal_ideal_budget_v4', 'personal_ideal_cat_budgets_v4'];
-        // Các khóa "cài đặt" (không phải danh sách giao dịch) được gộp theo kiểu "bản mới nhất thắng"
-        // dựa trên dấu thời gian financepro_settings_updated_at, cập nhật mỗi khi 1 trong các khóa này thay đổi.
+        // Settings được merge ĐỘC LẬP theo từng nhóm để 2 thiết bị sửa 2 nhóm khác nhau
+        // không ghi đè lẫn nhau.
         const SETTINGS_SYNC_KEYS = ['personal_categories_v4', 'personal_accounts_v4', 'personal_ideal_budget_v4', 'personal_ideal_cat_budgets_v4'];
+        const SETTINGS_TIMESTAMP_KEYS = {
+            personal_categories_v4: 'financepro_categories_updated_at',
+            personal_accounts_v4: 'financepro_accounts_updated_at',
+            personal_ideal_budget_v4: 'financepro_budget_updated_at',
+            personal_ideal_cat_budgets_v4: 'financepro_category_budgets_updated_at'
+        };
+        const SETTINGS_TIMESTAMP_FIELDS = Object.values(SETTINGS_TIMESTAMP_KEYS);
+        const LEGACY_SETTINGS_TIMESTAMP_KEY = 'financepro_settings_updated_at';
         const _origLocalStorageSetItem = localStorage.setItem.bind(localStorage);
         let localSyncGeneration = 0;
         localStorage.setItem = function (key, value) {
             _origLocalStorageSetItem(key, value);
-            if (SETTINGS_SYNC_KEYS.includes(key)) _origLocalStorageSetItem('financepro_settings_updated_at', new Date().toISOString());
+            if (Object.prototype.hasOwnProperty.call(SETTINGS_TIMESTAMP_KEYS, key)) {
+                _origLocalStorageSetItem(SETTINGS_TIMESTAMP_KEYS[key], new Date().toISOString());
+            }
             if (DRIVE_SYNC_KEYS.includes(key)) {
                 localSyncGeneration++;
                 if (typeof scheduleDriveSync === 'function') scheduleDriveSync();
             }
         };
+
+        function ensureSettingsTimestamps() {
+            const legacyAt = localStorage.getItem(LEGACY_SETTINGS_TIMESTAMP_KEY) || new Date(0).toISOString();
+            SETTINGS_TIMESTAMP_FIELDS.forEach(tsKey => {
+                if (!localStorage.getItem(tsKey)) _origLocalStorageSetItem(tsKey, legacyAt);
+            });
+        }
+
         
         let isBalanceHidden = true; 
         let editingTxId = null;
@@ -2565,6 +2586,11 @@
             setMonthPickerValue('dashboard-month-filter', getCurrentMonthStr(), false);
             setMonthPickerValue('filter-month', getCurrentMonthStr(), false);
             document.getElementById('input-overall-budget').value = idealBudget > 0 ? idealBudget.toLocaleString('vi-VN') : '';
+
+            // Khởi tạo timestamp riêng cho từng nhóm settings trước khi Firebase bắt đầu sync.
+            // Với dữ liệu cũ chưa có timestamp riêng, dùng timestamp legacy; nếu không có thì dùng epoch
+            // để dữ liệu thật trên server có quyền thắng trong lần merge đầu tiên.
+            ensureSettingsTimestamps();
             
             populateAccountSelects();
             updateDashboard(); applyFilters(); renderCategoryBudgets();
@@ -3416,9 +3442,23 @@
         }
         function exportToCSV() {
             if (transactions.length === 0) return showToast("Không có dữ liệu!", "fa-circle-xmark", "text-rose-500");
-            let csv = "ID,Ngay,Loai,Danh muc (Den TK),Tai khoan,Noi dung,So tien\n";
-            transactions.forEach(tx => { const catOrDest = tx.type === 'transfer' ? `Chuyển tới: ${tx.toAccount}` : tx.type === 'proxy' ? `Trung gian (${tx.proxyDir==='in'?'thu hộ':'chi hộ'}): ${tx.category}` : tx.category; csv += `${tx.id},${tx.date},${tx.type},${catOrDest},${tx.account},${tx.notes.replace(/,/g, "-")},${tx.amount}\n`; });
+            const csvEscape = value => {
+                const text = String(value ?? '');
+                return /[\",\n\r]/.test(text) ? `\"${text.replace(/\"/g, '\"\"')}\"` : text;
+            };
+            const header = ['ID','Ngay','Loai','Danh muc (Den TK)','Tai khoan','Noi dung','So tien'];
+            const rows = [header];
+            transactions.forEach(tx => {
+                const catOrDest = tx.type === 'transfer'
+                    ? `Chuyển tới: ${tx.toAccount}`
+                    : tx.type === 'proxy'
+                        ? `Trung gian (${tx.proxyDir==='in'?'thu hộ':'chi hộ'}): ${tx.category}`
+                        : tx.category;
+                rows.push([tx.id, tx.date, tx.type, catOrDest, tx.account, tx.notes || '', tx.amount]);
+            });
+            const csv = rows.map(row => row.map(csvEscape).join(',')).join('\r\n') + '\r\n';
             const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' })); link.download = `chi-tieu-${getCurrentMonthStr()}.csv`; link.click();
+            setTimeout(() => URL.revokeObjectURL(link.href), 0);
         }
         function exportDataJSON() {
             const backupData = { version: "4", timestamp: new Date().toISOString(), transactions: transactions, categories: categories, userAccounts: userAccounts, idealBudget: idealBudget, idealCategoryBudgets: idealCategoryBudgets };
@@ -3431,13 +3471,34 @@
             reader.onload = function(e) {
                 try {
                     const data = JSON.parse(e.target.result);
-                    if (!data.transactions || !data.categories) return showToast("File không hợp lệ!", "fa-xmark", "text-rose-500");
+                    if (!Array.isArray(data.transactions) || !data.categories) return showToast("File không hợp lệ!", "fa-xmark", "text-rose-500");
                     openConfirm("Phục Hồi", "Dữ liệu hiện tại sẽ bị xóa sạch. Bạn chắc chứ?", () => {
-                        localStorage.setItem('personal_transactions_v4', JSON.stringify(data.transactions));
+                        const importAt = new Date().toISOString();
+                        const importedTx = data.transactions.map(tx => ({
+                            ...tx,
+                            updatedAt: tx.updatedAt ? tx.updatedAt : importAt
+                        }));
+                        // Import là restore hoàn chỉnh tại máy này: tombstone cũ không được phép
+                        // tiếp tục xóa các bản ghi vừa phục hồi từ backup.
+                        _origLocalStorageSetItem('personal_deleted_tx_v4', '{}');
+                        localStorage.setItem('personal_transactions_v4', JSON.stringify(importedTx));
                         localStorage.setItem('personal_categories_v4', JSON.stringify(data.categories));
                         if (data.userAccounts) localStorage.setItem('personal_accounts_v4', JSON.stringify(data.userAccounts)); else if (data.initialBalances) localStorage.setItem('personal_accounts_v4', JSON.stringify(data.initialBalances));
-                        if (data.idealBudget !== undefined) localStorage.setItem('personal_ideal_budget_v4', data.idealBudget);
+                        else _origLocalStorageSetItem('personal_accounts_v4', 'null');
+                        if (data.idealBudget !== undefined) localStorage.setItem('personal_ideal_budget_v4', Number(data.idealBudget) || 0);
+                        else _origLocalStorageSetItem('personal_ideal_budget_v4', '0');
                         if (data.idealCategoryBudgets) localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(data.idealCategoryBudgets));
+                        else _origLocalStorageSetItem('personal_ideal_cat_budgets_v4', 'null');
+                        // Backup là một hành động restore mới: các nhóm settings vừa import phải có cùng mốc
+                        // thời gian mới để đồng bộ nhất quán sang thiết bị khác.
+                        const settingsTs = {
+                            personal_categories_v4: importAt,
+                            personal_accounts_v4: importAt,
+                            personal_ideal_budget_v4: importAt,
+                            personal_ideal_cat_budgets_v4: importAt
+                        };
+                        Object.entries(settingsTs).forEach(([key, ts]) => _origLocalStorageSetItem(SETTINGS_TIMESTAMP_KEYS[key], ts));
+                        _origLocalStorageSetItem(LEGACY_SETTINGS_TIMESTAMP_KEY, importAt);
                         showToast("Thành công! Đang tải lại...", "fa-check", "text-emerald-400"); setTimeout(() => window.location.reload(), 1000);
                     });
                 } catch (err) { showToast("Lỗi đọc file!", "fa-xmark", "text-rose-500"); }
@@ -3475,7 +3536,8 @@
             _origLocalStorageSetItem('personal_ideal_budget_v4', '0');
             _origLocalStorageSetItem('personal_ideal_cat_budgets_v4', 'null');
             localStorage.removeItem('financepro_last_synced_at');
-            localStorage.removeItem('financepro_settings_updated_at');
+            localStorage.removeItem(LEGACY_SETTINGS_TIMESTAMP_KEY);
+            SETTINGS_TIMESTAMP_FIELDS.forEach(key => localStorage.removeItem(key));
         }
 
         function updateSyncStatusUI(state, text) {
@@ -3624,12 +3686,13 @@
 
         // ============ HỢP NHẤT DỮ LIỆU (giống bản trước, giữ nguyên logic đã kiểm chứng) ============
         function pruneOldTombstones(tomb) {
-            // App cá nhân: giữ tombstone lâu dài để thiết bị rất cũ không làm sống lại
-            // giao dịch đã xóa sau khi mốc thời gian lưu trữ ngắn hết hạn.
+            // Tombstone phải tồn tại đủ lâu để thiết bị offline không làm sống lại transaction đã xóa.
+            // Không tự xóa theo TTL ở client vì không thể biết chắc mọi thiết bị cũ đã sync xong.
             return Object.assign({}, tomb || {});
         }
 
         function gatherLocalDataForSync() {
+            ensureSettingsTimestamps();
             return {
                 transactions: getStoredJSON('personal_transactions_v4', transactions || []),
                 deletedTx: pruneOldTombstones(getStoredJSON('personal_deleted_tx_v4', {})),
@@ -3637,7 +3700,10 @@
                 userAccounts: getStoredJSON('personal_accounts_v4', userAccounts || null),
                 idealBudget: localStorage.getItem('personal_ideal_budget_v4') ? Number(localStorage.getItem('personal_ideal_budget_v4')) : 0,
                 idealCategoryBudgets: getStoredJSON('personal_ideal_cat_budgets_v4', idealCategoryBudgets || null),
-                settingsUpdatedAt: localStorage.getItem('financepro_settings_updated_at') || null,
+                categoriesUpdatedAt: localStorage.getItem(SETTINGS_TIMESTAMP_KEYS.personal_categories_v4) || null,
+                accountsUpdatedAt: localStorage.getItem(SETTINGS_TIMESTAMP_KEYS.personal_accounts_v4) || null,
+                budgetUpdatedAt: localStorage.getItem(SETTINGS_TIMESTAMP_KEYS.personal_ideal_budget_v4) || null,
+                categoryBudgetsUpdatedAt: localStorage.getItem(SETTINGS_TIMESTAMP_KEYS.personal_ideal_cat_budgets_v4) || null,
                 savedAt: new Date().toISOString()
             };
         }
@@ -3692,19 +3758,42 @@
             const mergedTombJson = JSON.stringify(mergedTomb);
             const localTombKeys = Object.keys(localTomb);
             const tombChanged = Object.keys(mergedTomb).some(id => !localTomb[id] || mergedTomb[id] !== localTomb[id]) || localTombKeys.some(id => !mergedTomb[id]);
-            if (tombChanged) { _origLocalStorageSetItem('personal_deleted_tx_v4', mergedTombJson); }
-
-            const localSettingsAt = localStorage.getItem('financepro_settings_updated_at');
-            const remoteSettingsAt = remoteData.settingsUpdatedAt;
-            const remoteSettingsNewer = !!remoteSettingsAt && (!localSettingsAt || new Date(remoteSettingsAt) > new Date(localSettingsAt));
-            if (remoteSettingsNewer) {
-                if (remoteData.categories) { categories = remoteData.categories; _origLocalStorageSetItem('personal_categories_v4', JSON.stringify(categories)); }
-                if (remoteData.userAccounts) { userAccounts = remoteData.userAccounts; _origLocalStorageSetItem('personal_accounts_v4', JSON.stringify(userAccounts)); }
-                if (remoteData.idealBudget !== undefined) { idealBudget = remoteData.idealBudget; _origLocalStorageSetItem('personal_ideal_budget_v4', remoteData.idealBudget); }
-                if (remoteData.idealCategoryBudgets) { idealCategoryBudgets = remoteData.idealCategoryBudgets; _origLocalStorageSetItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); }
-                _origLocalStorageSetItem('financepro_settings_updated_at', remoteSettingsAt);
+            if (tombChanged) {
+                _origLocalStorageSetItem('personal_deleted_tx_v4', mergedTombJson);
                 changed = true;
             }
+
+            // Settings merge độc lập: mỗi nhóm có timestamp riêng, tránh A sửa category làm B mất account.
+            ensureSettingsTimestamps();
+            const remoteLegacySettingsAt = remoteData.settingsUpdatedAt || null;
+            const settingDefs = [
+                { field: 'categories', stateKey: 'categories', storageKey: 'personal_categories_v4', timestampKey: SETTINGS_TIMESTAMP_KEYS.personal_categories_v4 },
+                { field: 'userAccounts', stateKey: 'userAccounts', storageKey: 'personal_accounts_v4', timestampKey: SETTINGS_TIMESTAMP_KEYS.personal_accounts_v4 },
+                { field: 'idealBudget', stateKey: 'idealBudget', storageKey: 'personal_ideal_budget_v4', timestampKey: SETTINGS_TIMESTAMP_KEYS.personal_ideal_budget_v4 },
+                { field: 'idealCategoryBudgets', stateKey: 'idealCategoryBudgets', storageKey: 'personal_ideal_cat_budgets_v4', timestampKey: SETTINGS_TIMESTAMP_KEYS.personal_ideal_cat_budgets_v4 }
+            ];
+            settingDefs.forEach(def => {
+                const localAt = localStorage.getItem(def.timestampKey) || new Date(0).toISOString();
+                // Tương thích dữ liệu Firestore cũ chỉ có settingsUpdatedAt.
+                const remoteAt = remoteData[def.field + 'UpdatedAt'] || remoteLegacySettingsAt || null;
+                if (!remoteAt || new Date(remoteAt).getTime() <= new Date(localAt).getTime()) return;
+                if (remoteData[def.field] === undefined) return;
+                if (def.stateKey === 'idealBudget') {
+                    idealBudget = Number(remoteData[def.field]) || 0;
+                    _origLocalStorageSetItem(def.storageKey, idealBudget);
+                } else if (def.stateKey === 'categories') {
+                    categories = remoteData[def.field];
+                    _origLocalStorageSetItem(def.storageKey, JSON.stringify(categories));
+                } else if (def.stateKey === 'userAccounts') {
+                    userAccounts = remoteData[def.field];
+                    _origLocalStorageSetItem(def.storageKey, JSON.stringify(userAccounts));
+                } else if (def.stateKey === 'idealCategoryBudgets') {
+                    idealCategoryBudgets = remoteData[def.field];
+                    _origLocalStorageSetItem(def.storageKey, JSON.stringify(idealCategoryBudgets));
+                }
+                _origLocalStorageSetItem(def.timestampKey, remoteAt);
+                changed = true;
+            });
 
             _origLocalStorageSetItem('financepro_last_synced_at', new Date().toISOString());
 
@@ -3788,20 +3877,35 @@
                         remoteData.deletedTx || {}
                     );
 
-                    // Settings dùng "latest timestamp wins" tương tự mergeRemoteData().
-                    const localSettingsAt = localSnapshot.settingsUpdatedAt;
-                    const remoteSettingsAt = remoteData.settingsUpdatedAt || null;
-                    const remoteSettingsNewer = !!remoteSettingsAt &&
-                        (!localSettingsAt || new Date(remoteSettingsAt).getTime() > new Date(localSettingsAt).getTime());
+                    // Settings merge độc lập theo từng nhóm.
+                    const remoteLegacySettingsAt = remoteData.settingsUpdatedAt || null;
+                    const settingDefs = [
+                        { field: 'categories', localValue: localSnapshot.categories, localAt: localSnapshot.categoriesUpdatedAt },
+                        { field: 'userAccounts', localValue: localSnapshot.userAccounts, localAt: localSnapshot.accountsUpdatedAt },
+                        { field: 'idealBudget', localValue: localSnapshot.idealBudget, localAt: localSnapshot.budgetUpdatedAt },
+                        { field: 'idealCategoryBudgets', localValue: localSnapshot.idealCategoryBudgets, localAt: localSnapshot.categoryBudgetsUpdatedAt }
+                    ];
+                    const mergedSettings = {};
+                    settingDefs.forEach(def => {
+                        // Tương thích document Firestore cũ chỉ lưu settingsUpdatedAt.
+                        const remoteAt = remoteData[def.field + 'UpdatedAt'] || remoteLegacySettingsAt || null;
+                        const localAt = def.localAt || new Date(0).toISOString();
+                        const remoteNewer = !!remoteAt && new Date(remoteAt).getTime() > new Date(localAt).getTime();
+                        mergedSettings[def.field] = remoteNewer && remoteData[def.field] !== undefined ? remoteData[def.field] : def.localValue;
+                        mergedSettings[def.field + 'UpdatedAt'] = remoteNewer ? remoteAt : localAt;
+                    });
 
                     const mergedData = {
                         transactions: mergedTx,
                         deletedTx: mergedTomb,
-                        categories: remoteSettingsNewer ? (remoteData.categories ?? localSnapshot.categories) : localSnapshot.categories,
-                        userAccounts: remoteSettingsNewer ? (remoteData.userAccounts ?? localSnapshot.userAccounts) : localSnapshot.userAccounts,
-                        idealBudget: remoteSettingsNewer ? (remoteData.idealBudget ?? localSnapshot.idealBudget) : localSnapshot.idealBudget,
-                        idealCategoryBudgets: remoteSettingsNewer ? (remoteData.idealCategoryBudgets ?? localSnapshot.idealCategoryBudgets) : localSnapshot.idealCategoryBudgets,
-                        settingsUpdatedAt: remoteSettingsNewer ? remoteSettingsAt : localSettingsAt,
+                        categories: mergedSettings.categories,
+                        userAccounts: mergedSettings.userAccounts,
+                        idealBudget: mergedSettings.idealBudget,
+                        idealCategoryBudgets: mergedSettings.idealCategoryBudgets,
+                        categoriesUpdatedAt: mergedSettings.categoriesUpdatedAt,
+                        accountsUpdatedAt: mergedSettings.accountsUpdatedAt,
+                        budgetUpdatedAt: mergedSettings.budgetUpdatedAt,
+                        categoryBudgetsUpdatedAt: mergedSettings.categoryBudgetsUpdatedAt,
                         savedAt: new Date().toISOString()
                     };
 
@@ -3816,24 +3920,25 @@
                     transactions = committedData.transactions || [];
                     _origLocalStorageSetItem('personal_transactions_v4', JSON.stringify(transactions));
                     _origLocalStorageSetItem('personal_deleted_tx_v4', JSON.stringify(committedData.deletedTx || {}));
-                    if (committedData.categories) {
+                    if (committedData.categories !== undefined) {
                         categories = committedData.categories;
                         _origLocalStorageSetItem('personal_categories_v4', JSON.stringify(categories));
+                        _origLocalStorageSetItem(SETTINGS_TIMESTAMP_KEYS.personal_categories_v4, committedData.categoriesUpdatedAt || new Date(0).toISOString());
                     }
-                    if (committedData.userAccounts) {
+                    if (committedData.userAccounts !== undefined) {
                         userAccounts = committedData.userAccounts;
                         _origLocalStorageSetItem('personal_accounts_v4', JSON.stringify(userAccounts));
+                        _origLocalStorageSetItem(SETTINGS_TIMESTAMP_KEYS.personal_accounts_v4, committedData.accountsUpdatedAt || new Date(0).toISOString());
                     }
                     if (committedData.idealBudget !== undefined) {
                         idealBudget = Number(committedData.idealBudget) || 0;
                         _origLocalStorageSetItem('personal_ideal_budget_v4', idealBudget);
+                        _origLocalStorageSetItem(SETTINGS_TIMESTAMP_KEYS.personal_ideal_budget_v4, committedData.budgetUpdatedAt || new Date(0).toISOString());
                     }
-                    if (committedData.idealCategoryBudgets) {
+                    if (committedData.idealCategoryBudgets !== undefined) {
                         idealCategoryBudgets = committedData.idealCategoryBudgets;
                         _origLocalStorageSetItem('personal_ideal_cat_budgets_v4', JSON.stringify(committedData.idealCategoryBudgets));
-                    }
-                    if (committedData.settingsUpdatedAt) {
-                        _origLocalStorageSetItem('financepro_settings_updated_at', committedData.settingsUpdatedAt);
+                        _origLocalStorageSetItem(SETTINGS_TIMESTAMP_KEYS.personal_ideal_cat_budgets_v4, committedData.categoryBudgetsUpdatedAt || new Date(0).toISOString());
                     }
                     _origLocalStorageSetItem('financepro_last_synced_at', new Date().toISOString());
                     populateAccountSelects();
