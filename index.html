@@ -3929,6 +3929,9 @@
         let fbUnsubscribe = [];
         let firestoreV2Ready = false;
         let firestoreV2MigrationInFlight = false;
+        // Nếu local có thay đổi trong lúc Firebase đang tải dữ liệu ban đầu,
+        // ghi nhớ để đẩy lại sau khi syncReady = true.
+        let pendingSyncAfterReady = false;
 
         function isDriveSignedIn() { return !!fbCurrentUid; }
 
