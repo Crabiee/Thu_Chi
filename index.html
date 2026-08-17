@@ -3903,51 +3903,6 @@
         }
 
         // ================== ĐỒNG BỘ (FIREBASE - MIỄN PHÍ, THAY CHO GOOGLE DRIVE) ==================
-        function isDriveSignedIn() { return !!fbCurrentUid; }
-
-        // ============ LOGIN GATE (bắt buộc đăng nhập Google trước khi dùng app) ============
-        function showLoginGate(statusText) {
-            const gate = document.getElementById('loginGate');
-            const app = document.getElementById('appRoot');
-            if (gate) gate.classList.remove('hidden');
-            if (app) app.classList.add('hidden');
-            const st = document.getElementById('gate-status-text');
-            if (st) st.innerText = statusText || '';
-        }
-        function hideLoginGate() {
-            const gate = document.getElementById('loginGate');
-            const app = document.getElementById('appRoot');
-            if (gate) gate.classList.add('hidden');
-            if (app) app.classList.remove('hidden');
-        }
-
-        // Xoá dữ liệu cục bộ (KHÔNG đụng tới dữ liệu trên server) khi phát hiện chuyển sang tài khoản
-        // Google khác trên cùng máy này, để tránh dữ liệu của tài khoản cũ bị ghi đè lên tài khoản mới.
-        function clearLocalSyncedDataForAccountSwitch() {
-            _origLocalStorageSetItem('personal_transactions_v4', '[]');
-            _origLocalStorageSetItem('personal_deleted_tx_v4', '{}');
-            _origLocalStorageSetItem('personal_categories_v4', 'null');
-            _origLocalStorageSetItem('personal_accounts_v4', 'null');
-            _origLocalStorageSetItem('personal_ideal_budget_v4', '0');
-            _origLocalStorageSetItem('personal_ideal_cat_budgets_v4', 'null');
-            localStorage.removeItem('personal_pin_hash_v1');
-            localStorage.removeItem('financepro_last_synced_at');
-            localStorage.removeItem(LEGACY_SETTINGS_TIMESTAMP_KEY);
-            SETTINGS_TIMESTAMP_FIELDS.forEach(key => localStorage.removeItem(key));
-        }
-
-        function updateSyncStatusUI(state, text) {
-            const map = { 'signed-out': { color: 'bg-slate-500', text: 'Chưa đăng nhập' }, 'connecting': { color: 'bg-amber-400 animate-pulse', text: 'Đang kết nối...' }, 'connected': { color: 'bg-emerald-400', text: 'Đã kết nối - đồng bộ real-time' }, 'syncing': { color: 'bg-amber-400 animate-pulse', text: 'Đang đồng bộ...' }, 'error': { color: 'bg-rose-500', text: 'Lỗi kết nối' } };
-            const info = map[state] || map['signed-out'];
-            const dotIds = ['drive-status-dot', 'drive-sidebar-dot'];
-            dotIds.forEach(id => { const el = document.getElementById(id); if (el) el.className = el.id === 'drive-status-dot' ? `w-2.5 h-2.5 rounded-full shrink-0 ${info.color}` : `w-2 h-2 rounded-full absolute right-3 top-1/2 -translate-y-1/2 ${info.color}`; });
-            const label = document.getElementById('drive-status-text'); if (label) label.innerText = text || info.text;
-            const signInBtn = document.getElementById('drive-signin-btn'), signOutBtn = document.getElementById('drive-signout-btn');
-            const connectedLike = (state === 'connected' || state === 'syncing');
-            if (signInBtn) signInBtn.classList.toggle('hidden', connectedLike);
-            if (signOutBtn) signOutBtn.classList.toggle('hidden', !connectedLike);
-        }
-
         // ============ CẤU HÌNH FIREBASE ============
         const firebaseConfig = {
           apiKey: "AIzaSyAZgR0uaFhteIjNVjBku8nu-FQIpkhCjUM",
@@ -4050,6 +4005,49 @@
             };
         }
 
+        // Hợp nhất giao dịch local + remote theo id/updatedAt và tombstone.
+        // Giữ nguyên quy tắc sync của phiên bản cũ để migration sang Firestore v2
+        // không làm thay đổi nghiệp vụ giao dịch.
+        function mergeTransactions(localTx, remoteTx, localTomb, remoteTomb) {
+            const mergedTomb = Object.assign({}, localTomb || {});
+            Object.keys(remoteTomb || {}).forEach(id => {
+                if (!mergedTomb[id] || firestoreTime(remoteTomb[id]) > firestoreTime(mergedTomb[id])) {
+                    mergedTomb[id] = remoteTomb[id];
+                }
+            });
+
+            const byId = new Map();
+            (localTx || []).forEach(tx => {
+                if (tx && tx.id != null) byId.set(String(tx.id), tx);
+            });
+            (remoteTx || []).forEach(remote => {
+                if (!remote || remote.id == null) return;
+                const id = String(remote.id);
+                const local = byId.get(id);
+                if (!local) {
+                    byId.set(id, remote);
+                    return;
+                }
+                const localAt = firestoreTime(local.updatedAt);
+                const remoteAt = firestoreTime(remote.updatedAt);
+                if (remoteAt > localAt) byId.set(id, remote);
+            });
+
+            const merged = [];
+            byId.forEach((tx, id) => {
+                const deletedAt = mergedTomb[id];
+                if (!deletedAt) {
+                    merged.push(tx);
+                    return;
+                }
+                const txUpdatedAt = firestoreTime(tx.updatedAt);
+                // Giao dịch được tạo/sửa sau tombstone được coi là giao dịch mới và giữ lại.
+                if (txUpdatedAt > firestoreTime(deletedAt)) merged.push(tx);
+            });
+
+            return { transactions: merged, deletedTx: mergedTomb };
+        }
+
         function applyMergedTransactions(mergedTx, mergedTomb) {
             const oldTx = getStoredJSON('personal_transactions_v4', transactions || []);
             const oldTomb = getStoredJSON('personal_deleted_tx_v4', {});
@@ -4105,6 +4103,16 @@
             return changed;
         }
 
+        function legacyDataFingerprint(value) {
+            const str = JSON.stringify(value == null ? null : value);
+            let hash = 2166136261;
+            for (let i = 0; i < str.length; i++) {
+                hash ^= str.charCodeAt(i);
+                hash = Math.imul(hash, 16777619);
+            }
+            return (hash >>> 0).toString(16);
+        }
+
         async function migrateLegacyFirestoreToV2(uid) {
             if (firestoreV2MigrationInFlight) return;
             firestoreV2MigrationInFlight = true;
@@ -4113,9 +4121,13 @@
                 const snap = await docRef.get({ source: 'server' });
                 const data = snap.exists ? (snap.data() || {}) : {};
                 if (Number(data.schemaVersion) >= FIRESTORE_SCHEMA_VERSION) return;
-                const legacyTx = Array.isArray(data.transactions) ? data.transactions.map(t => normalizeRemoteTransaction(t, t?.id)).filter(Boolean) : [];
+
+                const legacyRawTx = Array.isArray(data.transactions) ? data.transactions : [];
+                const legacyTx = legacyRawTx.map(t => normalizeRemoteTransaction(t, t?.id)).filter(Boolean);
                 const legacyTomb = data.deletedTx && typeof data.deletedTx === 'object' ? data.deletedTx : {};
 
+                // Phase 1: copy legacy data to v2. Do NOT delete the legacy arrays yet.
+                // If anything fails after this point, the old data remains available for recovery.
                 for (let i = 0; i < legacyTx.length; i += FIRESTORE_BATCH_LIMIT) {
                     const batch = fbDb.batch();
                     legacyTx.slice(i, i + FIRESTORE_BATCH_LIMIT).forEach(tx => {
@@ -4132,6 +4144,8 @@
                     if (tombEntries.length) await batch.commit();
                 }
 
+                // Phase 1 marker only. Legacy arrays are deliberately retained until
+                // loadV2ServerState verifies the v2 collections successfully.
                 const settings = {
                     schemaVersion: FIRESTORE_SCHEMA_VERSION,
                     migratedAt: new Date().toISOString(),
@@ -4146,16 +4160,44 @@
                     categoryBudgetsUpdatedAt: data.categoryBudgetsUpdatedAt || data.settingsUpdatedAt || null,
                     pinUpdatedAt: data.pinUpdatedAt || data.settingsUpdatedAt || null,
                     savedAt: new Date().toISOString(),
-                    // Sentinel: migration completed. Legacy arrays are intentionally retained for one safe release;
-                    // they are removed only after the v2 listeners have successfully loaded.
                     legacyMigrated: true,
-                    transactions: firebase.firestore.FieldValue.delete(),
-                    deletedTx: firebase.firestore.FieldValue.delete()
+                    legacyTxFingerprint: legacyDataFingerprint(legacyRawTx),
+                    legacyTombFingerprint: legacyDataFingerprint(legacyTomb),
+                    legacyTxCount: legacyRawTx.length,
+                    legacyTombCount: tombEntries.length
                 };
                 await docRef.set(settings, { merge: true });
             } finally {
                 firestoreV2MigrationInFlight = false;
             }
+        }
+
+        async function cleanupLegacyFirestoreAfterV2Verification(uid, settings, remoteTx, remoteTomb) {
+            if (!settings || Number(settings.schemaVersion) < FIRESTORE_SCHEMA_VERSION || !settings.legacyMigrated) return;
+            if (!Array.isArray(settings.transactions) && !settings.deletedTx) return;
+
+            const legacyTx = Array.isArray(settings.transactions) ? settings.transactions : [];
+            const legacyTomb = settings.deletedTx && typeof settings.deletedTx === 'object' ? settings.deletedTx : {};
+            const remoteIds = new Set((remoteTx || []).map(tx => String(tx.id)));
+            const remoteTombIds = new Set(Object.keys(remoteTomb || {}));
+
+            // Verify every legacy item exists in its v2 collection before deleting the
+            // legacy arrays. If verification fails, leave the old data untouched.
+            const txVerified = legacyTx.every(tx => tx && tx.id != null && remoteIds.has(String(tx.id)));
+            const tombVerified = Object.keys(legacyTomb).every(id => remoteTombIds.has(String(id)));
+            if (!txVerified || !tombVerified) return;
+
+            // If a legacy client changed the old arrays after migration, do not delete
+            // them. This protects against running an old app version concurrently.
+            if (settings.legacyTxFingerprint && legacyDataFingerprint(legacyTx) !== settings.legacyTxFingerprint) return;
+            if (settings.legacyTombFingerprint && legacyDataFingerprint(legacyTomb) !== settings.legacyTombFingerprint) return;
+
+            const ref = firestoreSettingsRef(uid);
+            await ref.set({
+                transactions: firebase.firestore.FieldValue.delete(),
+                deletedTx: firebase.firestore.FieldValue.delete(),
+                legacyCleanupAt: new Date().toISOString()
+            }, { merge: true });
         }
 
         async function loadV2ServerState(uid) {
@@ -4172,6 +4214,10 @@
             FIRESTORE_TX_CACHE.clear(); remoteTx.forEach(tx => FIRESTORE_TX_CACHE.set(tx.id, tx));
             FIRESTORE_TOMBSTONE_CACHE.clear(); Object.entries(remoteTomb).forEach(([id, at]) => FIRESTORE_TOMBSTONE_CACHE.set(id, at));
             mergeRemoteV2Data(remoteTx, remoteTomb, settings);
+            // Cleanup is intentionally last: v2 has been read successfully and local merge
+            // has completed. Failure here is non-destructive; legacy data simply remains.
+            try { await cleanupLegacyFirestoreAfterV2Verification(uid, settings, remoteTx, remoteTomb); }
+            catch (cleanupErr) { console.warn('Legacy Firestore cleanup deferred', cleanupErr); }
             return { settings, remoteTx, remoteTomb };
         }
 
@@ -4325,8 +4371,10 @@
                 showToast('Đã đồng bộ - dữ liệu mới nhất từ mọi thiết bị.', 'fa-check', 'text-emerald-400');
             } catch (err) {
                 console.error('manualSyncNow v2 error', err);
-                showToast('Không tải/lưu được dữ liệu mới nhất, kiểm tra lại mạng/rules Firestore.', 'fa-triangle-exclamation', 'text-rose-500');
-                updateSyncStatusUI('error', 'Đồng bộ thất bại, thử lại sau.');
+                const errCode = err && err.code ? String(err.code) : 'unknown-error';
+                const errMsg = err && err.message ? String(err.message).split('\n')[0].slice(0, 160) : '';
+                showToast(`Đồng bộ lỗi (${errCode}).`, 'fa-triangle-exclamation', 'text-rose-500');
+                updateSyncStatusUI('error', `Đồng bộ lỗi (${errCode}).${errMsg ? ' ' + errMsg : ''}`);
             }
         }
 
@@ -4375,7 +4423,9 @@
                 } catch (err) {
                     firestoreV2Ready = false; syncReady = false;
                     console.error('Firestore v2 startup error', err);
-                    updateSyncStatusUI('error', 'Không tải được dữ liệu. Kiểm tra Firestore Rules.');
+                    const errCode = err && err.code ? String(err.code) : 'unknown-error';
+                    const errMsg = err && err.message ? String(err.message).split('\n')[0].slice(0, 160) : '';
+                    updateSyncStatusUI('error', `Đồng bộ lỗi (${errCode}).${errMsg ? ' ' + errMsg : ''}`);
                 }
             });
             fbAuth.getRedirectResult().catch(err => { if (err && err.code) console.error('getRedirectResult error', err); });
