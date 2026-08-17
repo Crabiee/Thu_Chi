@@ -2191,24 +2191,140 @@
         };
         const SETTINGS_TIMESTAMP_FIELDS = Object.values(SETTINGS_TIMESTAMP_KEYS);
         const LEGACY_SETTINGS_TIMESTAMP_KEY = 'financepro_settings_updated_at';
+        const _origLocalStorageGetItem = localStorage.getItem.bind(localStorage);
         const _origLocalStorageSetItem = localStorage.setItem.bind(localStorage);
         const _origLocalStorageRemoveItem = localStorage.removeItem.bind(localStorage);
-        let localSyncGeneration = 0;
-        localStorage.setItem = function (key, value) {
-            _origLocalStorageSetItem(key, value);
+        const SETTINGS_UID_PREFIX = 'financepro_uid_settings_v1_';
+        const TX_UID_STORAGE_PREFIX = 'financepro_uid_transactions_v1_';
+        const TOMBSTONE_UID_STORAGE_PREFIX = 'financepro_uid_deleted_tx_v1_';
+        function scopedTransactionStorageKey(uid = fbCurrentUid) {
+            return uid ? `${TX_UID_STORAGE_PREFIX}${uid}` : 'personal_transactions_v4';
+        }
+        function scopedTombstoneStorageKey(uid = fbCurrentUid) {
+            return uid ? `${TOMBSTONE_UID_STORAGE_PREFIX}${uid}` : 'personal_deleted_tx_v4';
+        }
+        function scopedSettingsKey(key, uid = fbCurrentUid) {
+            return (uid && (SETTINGS_SYNC_KEYS.includes(key) || SETTINGS_TIMESTAMP_FIELDS.includes(key))) ? `${SETTINGS_UID_PREFIX}${uid}__${key}` : key;
+        }
+        function getScopedSetting(key, uid = fbCurrentUid) {
+            return _origLocalStorageGetItem(scopedSettingsKey(key, uid));
+        }
+        function setScopedSetting(key, value, uid = fbCurrentUid) {
+            const scopedKey = scopedSettingsKey(key, uid);
+            _origLocalStorageSetItem(scopedKey, String(value));
             if (Object.prototype.hasOwnProperty.call(SETTINGS_TIMESTAMP_KEYS, key)) {
-                _origLocalStorageSetItem(SETTINGS_TIMESTAMP_KEYS[key], new Date().toISOString());
+                const ts = new Date().toISOString();
+                _origLocalStorageSetItem(scopedSettingsKey(SETTINGS_TIMESTAMP_KEYS[key], uid), ts);
+            }
+            if (DRIVE_SYNC_KEYS.includes(key) && typeof scheduleDriveSync === 'function') {
+                localSyncGeneration++;
+                scheduleDriveSync();
+            }
+        }
+        function removeScopedSetting(key, uid = fbCurrentUid) {
+            _origLocalStorageRemoveItem(scopedSettingsKey(key, uid));
+            if (Object.prototype.hasOwnProperty.call(SETTINGS_TIMESTAMP_KEYS, key)) {
+                _origLocalStorageRemoveItem(scopedSettingsKey(SETTINGS_TIMESTAMP_KEYS[key], uid));
             }
             if (DRIVE_SYNC_KEYS.includes(key)) {
                 localSyncGeneration++;
                 if (typeof scheduleDriveSync === 'function') scheduleDriveSync();
             }
-        };
+        }
+        function migrateLegacyTransactionFallbackToUid(uid, allowLegacyMigration) {
+            if (!uid || !allowLegacyMigration) return false;
+            const legacyTx = _origLocalStorageGetItem('personal_transactions_v4');
+            const legacyTomb = _origLocalStorageGetItem('personal_deleted_tx_v4');
+            let migrated = false;
+            if (legacyTx !== null && _origLocalStorageGetItem(scopedTransactionStorageKey(uid)) === null) {
+                _origLocalStorageSetItem(scopedTransactionStorageKey(uid), legacyTx);
+                migrated = true;
+            }
+            if (legacyTomb !== null && _origLocalStorageGetItem(scopedTombstoneStorageKey(uid)) === null) {
+                _origLocalStorageSetItem(scopedTombstoneStorageKey(uid), legacyTomb);
+                migrated = true;
+            }
+            return migrated;
+        }
 
+        function clearScopedTransactionStorageForUid(uid) {
+            if (!uid) return;
+            _origLocalStorageRemoveItem(scopedTransactionStorageKey(uid));
+            _origLocalStorageRemoveItem(scopedTombstoneStorageKey(uid));
+        }
+
+        function migrateLegacySettingsToUid(uid) {
+            if (!uid) return false;
+            let migrated = false;
+            SETTINGS_SYNC_KEYS.forEach(key => {
+                const scopedKey = scopedSettingsKey(key, uid);
+                if (_origLocalStorageGetItem(scopedKey) !== null) return;
+                const legacyValue = _origLocalStorageGetItem(key);
+                if (legacyValue !== null) {
+                    _origLocalStorageSetItem(scopedKey, legacyValue);
+                    const tsKey = SETTINGS_TIMESTAMP_KEYS[key];
+                    if (tsKey) {
+                        const legacyTs = _origLocalStorageGetItem(tsKey);
+                        if (legacyTs) _origLocalStorageSetItem(scopedSettingsKey(tsKey, uid), legacyTs);
+                    }
+                    migrated = true;
+                }
+            });
+            return migrated;
+        }
+        function clearScopedSettingsForUid(uid) {
+            if (!uid) return;
+            SETTINGS_SYNC_KEYS.forEach(key => {
+                _origLocalStorageRemoveItem(scopedSettingsKey(key, uid));
+                const tsKey = SETTINGS_TIMESTAMP_KEYS[key];
+                if (tsKey) _origLocalStorageRemoveItem(scopedSettingsKey(tsKey, uid));
+            });
+        }
+        function loadSettingsFromScopedStorage() {
+            const savedCats = getScopedSetting('personal_categories_v4');
+            const savedAccs = getScopedSetting('personal_accounts_v4');
+            const savedBudget = getScopedSetting('personal_ideal_budget_v4');
+            const savedCatBudgets = getScopedSetting('personal_ideal_cat_budgets_v4');
+            const savedPin = getScopedSetting('personal_pin_hash_v1');
+            categories = savedCats ? safeParseJSON(savedCats, null) : { income: ["Lương", "Thưởng", "Đầu tư", "Lãi Đầu tư/Tiết kiệm", "Kinh doanh", "Khác"], expense: ["Ăn uống", "Di chuyển", "Nhà cửa", "Mua sắm", "Giải trí", "Sức khỏe", "Giáo dục", "Lỗ Đầu tư/Tất toán sớm", "Khác"] };
+            if (!categories || !Array.isArray(categories.income) || !Array.isArray(categories.expense)) {
+                categories = { income: ["Lương", "Thưởng", "Đầu tư", "Lãi Đầu tư/Tiết kiệm", "Kinh doanh", "Khác"], expense: ["Ăn uống", "Di chuyển", "Nhà cửa", "Mua sắm", "Giải trí", "Sức khỏe", "Giáo dục", "Lỗ Đầu tư/Tất toán sớm", "Khác"] };
+            }
+            userAccounts = savedAccs ? safeParseJSON(savedAccs, null) : { "Tiền mặt": 0, "TCB": 0, "TPBank": 0, "Vietinbank": 0 };
+            if (!userAccounts || typeof userAccounts !== 'object' || Array.isArray(userAccounts)) userAccounts = { "Tiền mặt": 0, "TCB": 0, "TPBank": 0, "Vietinbank": 0 };
+            idealBudget = savedBudget ? Number(savedBudget) || 0 : 0;
+            idealCategoryBudgets = savedCatBudgets ? safeParseJSON(savedCatBudgets, {}) : {};
+            if (savedPin === null) _origLocalStorageRemoveItem(scopedSettingsKey('personal_pin_hash_v1'));
+        }
+        let localSyncGeneration = 0;
+        localStorage.getItem = function(key) {
+            if (SETTINGS_SYNC_KEYS.includes(key) || SETTINGS_TIMESTAMP_FIELDS.includes(key)) return getScopedSetting(key);
+            if (key === 'personal_transactions_v4') return _origLocalStorageGetItem(scopedTransactionStorageKey());
+            if (key === 'personal_deleted_tx_v4') return _origLocalStorageGetItem(scopedTombstoneStorageKey());
+            return _origLocalStorageGetItem(key);
+        };
+        localStorage.setItem = function(key, value) {
+            if (SETTINGS_SYNC_KEYS.includes(key)) { setScopedSetting(key, value); return; }
+            if (SETTINGS_TIMESTAMP_FIELDS.includes(key)) { _origLocalStorageSetItem(scopedSettingsKey(key), value); return; }
+            if (key === 'personal_transactions_v4') { _origLocalStorageSetItem(scopedTransactionStorageKey(), String(value)); return; }
+            if (key === 'personal_deleted_tx_v4') { _origLocalStorageSetItem(scopedTombstoneStorageKey(), String(value)); return; }
+            _origLocalStorageSetItem(key, value);
+            if (DRIVE_SYNC_KEYS.includes(key)) {
+                localSyncGeneration++;
+                if (typeof scheduleDriveSync === 'function') scheduleDriveSync();
+            }
+        };
+        localStorage.removeItem = function(key) {
+            if (SETTINGS_SYNC_KEYS.includes(key)) { removeScopedSetting(key); return; }
+            if (SETTINGS_TIMESTAMP_FIELDS.includes(key)) { _origLocalStorageRemoveItem(scopedSettingsKey(key)); return; }
+            if (key === 'personal_transactions_v4') { _origLocalStorageRemoveItem(scopedTransactionStorageKey()); return; }
+            if (key === 'personal_deleted_tx_v4') { _origLocalStorageRemoveItem(scopedTombstoneStorageKey()); return; }
+            _origLocalStorageRemoveItem(key);
+        };
         function ensureSettingsTimestamps() {
-            const legacyAt = localStorage.getItem(LEGACY_SETTINGS_TIMESTAMP_KEY) || new Date(0).toISOString();
+            const fallbackAt = fbCurrentUid ? new Date(0).toISOString() : (_origLocalStorageGetItem(LEGACY_SETTINGS_TIMESTAMP_KEY) || new Date(0).toISOString());
             SETTINGS_TIMESTAMP_FIELDS.forEach(tsKey => {
-                if (!localStorage.getItem(tsKey)) _origLocalStorageSetItem(tsKey, legacyAt);
+                if (!_origLocalStorageGetItem(scopedSettingsKey(tsKey))) _origLocalStorageSetItem(scopedSettingsKey(tsKey), fallbackAt);
             });
         }
 
@@ -2223,6 +2339,10 @@
         // cookie "accounts.google.com" hay không -> hết hẳn tình trạng phải bấm nút mới đồng bộ được.
         // Firestore onSnapshot() đẩy dữ liệu real-time, không cần polling định kỳ.
         const ACTIVE_ACCOUNT_KEY = 'financepro_active_account_email';
+        // Legacy transaction data từng nằm trong LocalStorage trước khi dữ liệu được bind theo account.
+        // Khi browser chưa xác định được chủ tài khoản, không được tự động gán dữ liệu đó cho Google
+        // account vừa đăng nhập. Marker này giữ dữ liệu cũ nguyên vẹn nhưng chặn migration âm thầm.
+        const LEGACY_LOCAL_TRANSACTIONS_QUARANTINE_KEY = 'financepro_legacy_local_transactions_quarantined_v1';
         let gDriveState = { email: localStorage.getItem(ACTIVE_ACCOUNT_KEY) || null, isSyncing: false };
         let fbApp = null, fbAuth = null, fbDb = null;
         let fbCurrentUid = null;
@@ -2267,13 +2387,14 @@
             return (value && value !== 'null' && value !== 'undefined') ? value : '';
         }
 
-        async function migrateLegacyPlainPinIfNeeded() {
-            const legacy = localStorage.getItem('financepro_pin');
+        async function migrateLegacyPlainPinIfNeeded(allowLegacyMigration = false) {
+            if (!allowLegacyMigration || !fbCurrentUid) return;
+            const legacy = _origLocalStorageGetItem('financepro_pin');
             if (!legacy || getStoredPinHash()) return;
             try {
                 const hashed = await hashPin(legacy);
-                localStorage.setItem('personal_pin_hash_v1', hashed);
-                localStorage.removeItem('financepro_pin');
+                setScopedSetting('personal_pin_hash_v1', hashed);
+                _origLocalStorageRemoveItem('financepro_pin');
             } catch (err) {
                 console.warn('FinancePro: không thể migrate PIN cũ.', err);
             }
@@ -2461,7 +2582,7 @@
             window.scrollTo({top: 0, behavior: 'smooth'});
 
             if (tabName === 'dashboard') updateDashboard();
-            if (tabName === 'assistant') { updateDashboard(); renderSmartFinancialAssistant(); }
+            if (tabName === 'assistant') { updateDashboard(); }
             if (tabName === 'transactions') applyFilters();
             if (tabName === 'budget') renderCategoryBudgets();
             if (tabName === 'categories') renderCategoryManager();
@@ -2630,8 +2751,17 @@
             const savedTxs = localStorage.getItem('personal_transactions_v4');
             const savedCats = localStorage.getItem('personal_categories_v4');
             const savedAccs = localStorage.getItem('personal_accounts_v4');
-            legacyLocalTransactions = savedTxs ? safeParseJSON(savedTxs, []) : [];
-            legacyLocalTransactions.forEach(tx => { if (!tx.updatedAt) tx.updatedAt = new Date(0).toISOString(); });
+            const knownLocalAccount = localStorage.getItem(ACTIVE_ACCOUNT_KEY);
+            const legacyQuarantined = localStorage.getItem(LEGACY_LOCAL_TRANSACTIONS_QUARANTINE_KEY) === '1';
+            // Chỉ cho phép legacy transaction data tham gia migration khi browser đã biết chắc
+            // dữ liệu đó thuộc account hiện tại. Nếu chưa có account binding, giữ nguyên dữ liệu
+            // trong LocalStorage nhưng không đưa nó vào đường migrate tự động.
+            if (knownLocalAccount && !legacyQuarantined) {
+                legacyLocalTransactions = savedTxs ? safeParseJSON(savedTxs, []) : [];
+                legacyLocalTransactions.forEach(tx => { if (!tx.updatedAt) tx.updatedAt = new Date(0).toISOString(); });
+            } else {
+                legacyLocalTransactions = [];
+            }
             transactions = [];
             if (localStorage.getItem('personal_ideal_budget_v4')) idealBudget = Number(localStorage.getItem('personal_ideal_budget_v4')) || 0;
             if (localStorage.getItem('personal_ideal_cat_budgets_v4')) idealCategoryBudgets = getStoredJSON('personal_ideal_cat_budgets_v4', {});
@@ -2659,7 +2789,7 @@
             // Với dữ liệu cũ chưa có timestamp riêng, dùng timestamp legacy; nếu không có thì dùng epoch
             // để dữ liệu thật trên server có quyền thắng trong lần merge đầu tiên.
             ensureSettingsTimestamps();
-            migrateLegacyPlainPinIfNeeded();
+            // PIN legacy chỉ được migrate sau khi đã xác định đúng Google account.
             
             populateAccountSelects();
             updateDashboard(); applyFilters(); renderCategoryBudgets();
@@ -2813,7 +2943,7 @@
             markTransactionDirty(newData.id);
             if (txStorageUid) queueTxStorageWrite(async () => {
                 if (txIdbAvailable) await idbPutTransaction(txStorageUid, newData);
-                else _origLocalStorageSetItem('personal_transactions_v4', JSON.stringify(transactions));
+                else localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions));
             });
             showToast("Lưu thành công", "fa-check", "text-emerald-400");
             closeModal('transactionModal'); updateDashboard(); applyFilters(); renderCategoryBudgets();
@@ -2827,7 +2957,7 @@
                 pendingSyncAfterReady = true;
             }
         }
-        function handleDeleteTxClick(id) { openConfirm("Xóa", "Không khôi phục được", () => { const deleting = transactions.find(t => String(t.id) === String(id)); const deleteVersion = Math.max(1, Number(deleting?.syncVersion) || 0) + 1; transactions = transactions.filter(t=>t.id!==id); recordTombstone(id, deleteVersion); markTombstoneDirty(id); queueTxStorageWrite(async () => { if (txStorageUid && txIdbAvailable) await idbDeleteTransaction(txStorageUid, id); else _origLocalStorageSetItem('personal_transactions_v4', JSON.stringify(transactions)); }); updateDashboard(); applyFilters(); renderCategoryBudgets(); showToast("Đã xóa", "fa-trash", "text-rose-400"); if (fbCurrentUid && firestoreV2Ready && syncReady) { clearTimeout(fbSaveTimer); void pushLocalDataToFirestore(); } else if (fbCurrentUid) pendingSyncAfterReady = true; }); }
+        function handleDeleteTxClick(id) { openConfirm("Xóa", "Không khôi phục được", () => { const deleting = transactions.find(t => String(t.id) === String(id)); const deleteVersion = Math.max(1, Number(deleting?.syncVersion) || 0) + 1; transactions = transactions.filter(t=>t.id!==id); recordTombstone(id, deleteVersion); markTombstoneDirty(id); queueTxStorageWrite(async () => { if (txStorageUid && txIdbAvailable) await idbDeleteTransaction(txStorageUid, id); else localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions)); }); updateDashboard(); applyFilters(); renderCategoryBudgets(); showToast("Đã xóa", "fa-trash", "text-rose-400"); if (fbCurrentUid && firestoreV2Ready && syncReady) { clearTimeout(fbSaveTimer); void pushLocalDataToFirestore(); } else if (fbCurrentUid) pendingSyncAfterReady = true; }); }
 
         // ================== TOMBSTONE (đánh dấu đã xóa) CHO ĐỒNG BỘ NHIỀU THIẾT BỊ ==================
         // Vì mỗi thiết bị lưu localStorage riêng, khi hợp nhất (merge) dữ liệu giữa các thiết bị ta không
@@ -2848,7 +2978,7 @@
         function applyFilters() {
             const m = document.getElementById('filter-month').value, t = document.getElementById('filter-type').value, a = document.getElementById('filter-account').value, s = document.getElementById('filter-sort').value;
             let f = transactions.filter(x => (!m||x.date.startsWith(m)) && (t==='all'||x.type===t) && (a==='all'||x.account===a||(x.type==='transfer'&&x.toAccount===a)));
-            f.sort((x,y) => s==='desc' ? new Date(y.date)-new Date(x.date) : new Date(x.date)-new Date(y.date));
+            f.sort((x,y) => { const dateDiff = s==='desc' ? new Date(y.date)-new Date(x.date) : new Date(x.date)-new Date(y.date); if (dateDiff) return dateDiff; return s==='desc' ? String(y.id).localeCompare(String(x.id)) : String(x.id).localeCompare(String(y.id)); });
             document.getElementById('transaction-count').innerText = f.length;
             
             const tbody = document.getElementById('all-transactions-tbody'); tbody.innerHTML='';
@@ -2971,7 +3101,7 @@
             
             document.getElementById('dash-chart-year-lbl').innerText = m.split('-')[0];
             renderCharts(cExp, yIn, yEx);
-            if (typeof renderSmartFinancialAssistant === 'function') renderSmartFinancialAssistant();
+            if (typeof renderSmartFinancialAssistant === 'function' && !document.getElementById('tab-assistant')?.classList.contains('hidden')) renderSmartFinancialAssistant();
             if (!document.getElementById('tab-budget').classList.contains('hidden')) renderCategoryBudgets();
         }
 
@@ -3652,8 +3782,18 @@
             });
         }
         function handleAddCategory(t) { const n = document.getElementById(`new-${t}-cat-input`).value.trim(); if(n&&!categories[t].includes(n)) { categories[t].push(n); localStorage.setItem('personal_categories_v4', JSON.stringify(categories)); document.getElementById(`new-${t}-cat-input`).value=''; renderCategoryManager(); showToast("Đã thêm danh mục!", "fa-check", "text-emerald-400"); } }
-        function handleEditCategoryClick(type, oldName) { openPrompt("Đổi tên danh mục", oldName, (newName) => { const trimmedName = newName.trim(); if (!trimmedName || trimmedName === oldName || categories[type].includes(trimmedName)) return; categories[type][categories[type].indexOf(oldName)] = trimmedName; if (CATEGORY_ICONS[oldName]) CATEGORY_ICONS[trimmedName] = CATEGORY_ICONS[oldName]; let isUpdated = false; transactions.forEach(tx => { if (tx.type === type && tx.category === oldName) { tx.category = trimmedName; tx.updatedAt = new Date().toISOString(); isUpdated = true; } }); if (type === 'expense' && idealCategoryBudgets[oldName] !== undefined) { idealCategoryBudgets[trimmedName] = idealCategoryBudgets[oldName]; delete idealCategoryBudgets[oldName]; localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); } if (isUpdated) { transactions.forEach(tx => { if (tx.type === type && tx.category === trimmedName) { markTransactionDirty(tx.id); } }); if (txStorageUid) queueTxStorageWrite(() => idbReplaceTransactions(txStorageUid, transactions)); else _origLocalStorageSetItem('personal_transactions_v4', JSON.stringify(transactions)); } localStorage.setItem('personal_categories_v4', JSON.stringify(categories)); renderCategoryManager(); updateFormCategories(); updateDashboard(); showToast("Đổi tên thành công", "fa-check", "text-emerald-400"); }); }
-        function handleDeleteCategoryClick(type, cat) { if (categories[type].length <= 1) return showToast("Phải giữ lại ít nhất 1", "fa-xmark", "text-rose-500"); openConfirm("Xóa Danh Mục", `Xóa "${cat}"?`, () => { categories[type] = categories[type].filter(c => c !== cat); localStorage.setItem('personal_categories_v4', JSON.stringify(categories)); if (type === 'expense') { delete idealCategoryBudgets[cat]; localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); } renderCategoryManager(); updateFormCategories(); updateDashboard(); showToast("Đã xóa", "fa-trash", "text-rose-400"); }); }
+        function handleEditCategoryClick(type, oldName) { openPrompt("Đổi tên danh mục", oldName, (newName) => { const trimmedName = newName.trim(); if (!trimmedName || trimmedName === oldName || categories[type].includes(trimmedName)) return; categories[type][categories[type].indexOf(oldName)] = trimmedName; if (CATEGORY_ICONS[oldName]) CATEGORY_ICONS[trimmedName] = CATEGORY_ICONS[oldName]; let isUpdated = false; transactions.forEach(tx => { if (tx.type === type && tx.category === oldName) { tx.category = trimmedName; tx.updatedAt = new Date().toISOString(); tx.syncVersion = Math.max(1, Number(tx.syncVersion) || 0) + 1; isUpdated = true; } }); if (type === 'expense' && idealCategoryBudgets[oldName] !== undefined) { idealCategoryBudgets[trimmedName] = idealCategoryBudgets[oldName]; delete idealCategoryBudgets[oldName]; localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); } if (isUpdated) { transactions.forEach(tx => { if (tx.type === type && tx.category === trimmedName) { markTransactionDirty(tx.id); } }); if (txStorageUid) queueTxStorageWrite(() => idbReplaceTransactions(txStorageUid, transactions)); else localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions)); } localStorage.setItem('personal_categories_v4', JSON.stringify(categories)); renderCategoryManager(); updateFormCategories(); updateDashboard(); showToast("Đổi tên thành công", "fa-check", "text-emerald-400"); }); }
+        function handleDeleteCategoryClick(type, cat) {
+            if (categories[type].length <= 1) return showToast("Phải giữ lại ít nhất 1", "fa-xmark", "text-rose-500");
+            const usedCount = transactions.filter(tx => tx.type === type && tx.category === cat).length;
+            if (usedCount > 0) return showToast(`Không thể xóa \"${cat}\": đang được ${usedCount} giao dịch sử dụng. Hãy đổi tên danh mục thay vì xóa.`, "fa-triangle-exclamation", "text-amber-500");
+            openConfirm("Xóa Danh Mục", `Xóa "${cat}"?`, () => {
+                categories[type] = categories[type].filter(c => c !== cat);
+                localStorage.setItem('personal_categories_v4', JSON.stringify(categories));
+                if (type === 'expense') { delete idealCategoryBudgets[cat]; localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); }
+                renderCategoryManager(); updateFormCategories(); updateDashboard(); showToast("Đã xóa", "fa-trash", "text-rose-400");
+            });
+        }
 
         // ================== GUIDE & EXPORT ==================
         let calcMode = 'simple';
@@ -3881,26 +4021,37 @@
                     if (!validation.ok) return showToast(validation.message, 'fa-xmark', 'text-rose-500');
                     openConfirm("Phục Hồi", "Dữ liệu hiện tại sẽ bị xóa sạch. Bạn chắc chứ?", () => {
                         const importAt = new Date().toISOString();
-                        const importedTx = data.transactions.map(tx => ({
+                        // Import/Restore is an explicit user action that should be able to
+                        // restore records even when the cloud still contains an older
+                        // tombstone. Give every restored transaction a fresh, monotonic
+                        // version based on the current timestamp so Firestore rules and
+                        // conflict resolution treat the restore as a newer state.
+                        const restoreVersionBase = Date.now();
+                        const importedTx = data.transactions.map((tx, index) => ({
                             ...tx,
-                            updatedAt: tx.updatedAt ? tx.updatedAt : importAt
+                            updatedAt: importAt,
+                            syncVersion: Math.max(
+                                1,
+                                Number(tx.syncVersion) || 0,
+                                restoreVersionBase + index
+                            )
                         }));
                         // Import là restore hoàn chỉnh tại máy này: tombstone cũ không được phép
                         // tiếp tục xóa các bản ghi vừa phục hồi từ backup.
-                        _origLocalStorageSetItem('personal_deleted_tx_v4', '{}');
+                        localStorage.setItem('personal_deleted_tx_v4', '{}');
                         transactions = importedTx;
                         DIRTY_TX_IDS.clear(); DIRTY_TOMBSTONE_IDS.clear();
                         DIRTY_TX_VERSIONS.clear(); DIRTY_TOMBSTONE_VERSIONS.clear();
                         importedTx.forEach(tx => markTransactionDirty(tx.id));
-                        if (txStorageUid) { queueTxStorageWrite(async () => { if (txIdbAvailable) await idbReplaceTransactions(txStorageUid, importedTx); else _origLocalStorageSetItem('personal_transactions_v4', JSON.stringify(importedTx)); }); }
+                        if (txStorageUid) { queueTxStorageWrite(async () => { if (txIdbAvailable) await idbReplaceTransactions(txStorageUid, importedTx); else localStorage.setItem('personal_transactions_v4', JSON.stringify(importedTx)); }); }
                         localStorage.setItem('personal_categories_v4', JSON.stringify(data.categories));
                         if (data.userAccounts) localStorage.setItem('personal_accounts_v4', JSON.stringify(data.userAccounts)); else if (data.initialBalances) localStorage.setItem('personal_accounts_v4', JSON.stringify(data.initialBalances));
-                        else _origLocalStorageSetItem('personal_accounts_v4', 'null');
+                        else localStorage.setItem('personal_accounts_v4', 'null');
                         if (data.idealBudget !== undefined) localStorage.setItem('personal_ideal_budget_v4', Number(data.idealBudget) || 0);
-                        else _origLocalStorageSetItem('personal_ideal_budget_v4', '0');
+                        else localStorage.setItem('personal_ideal_budget_v4', '0');
                         if (data.idealCategoryBudgets) localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(data.idealCategoryBudgets));
-                        else _origLocalStorageSetItem('personal_ideal_cat_budgets_v4', 'null');
-                        if (data.pinHash) localStorage.setItem('personal_pin_hash_v1', String(data.pinHash)); else _origLocalStorageRemoveItem('personal_pin_hash_v1');
+                        else localStorage.setItem('personal_ideal_cat_budgets_v4', 'null');
+                        if (data.pinHash) localStorage.setItem('personal_pin_hash_v1', String(data.pinHash)); else localStorage.removeItem('personal_pin_hash_v1');
                         // Backup là một hành động restore mới: các nhóm settings vừa import phải có cùng mốc
                         // thời gian mới để đồng bộ nhất quán sang thiết bị khác.
                         const settingsTs = {
@@ -3910,7 +4061,7 @@
                             personal_ideal_cat_budgets_v4: importAt,
                             personal_pin_hash_v1: importAt
                         };
-                        Object.entries(settingsTs).forEach(([key, ts]) => _origLocalStorageSetItem(SETTINGS_TIMESTAMP_KEYS[key], ts));
+                        Object.entries(settingsTs).forEach(([key, ts]) => _origLocalStorageSetItem(scopedSettingsKey(SETTINGS_TIMESTAMP_KEYS[key]), ts));
                         _origLocalStorageSetItem(LEGACY_SETTINGS_TIMESTAMP_KEY, importAt);
                         showToast("Thành công! Đang tải lại...", "fa-check", "text-emerald-400"); setTimeout(() => window.location.reload(), 1000);
                     });
@@ -3989,16 +4140,20 @@
         }
 
         function clearLocalSyncedDataForAccountSwitch() {
-            localStorage.removeItem('personal_transactions_v4');
-            _origLocalStorageSetItem('personal_deleted_tx_v4', '{}');
-            _origLocalStorageSetItem('personal_categories_v4', 'null');
-            _origLocalStorageSetItem('personal_accounts_v4', 'null');
-            _origLocalStorageSetItem('personal_ideal_budget_v4', '0');
-            _origLocalStorageSetItem('personal_ideal_cat_budgets_v4', 'null');
-            localStorage.removeItem('personal_pin_hash_v1');
-            localStorage.removeItem('financepro_last_synced_at');
-            localStorage.removeItem(LEGACY_SETTINGS_TIMESTAMP_KEY);
-            SETTINGS_TIMESTAMP_FIELDS.forEach(key => localStorage.removeItem(key));
+            const oldUid = _origLocalStorageGetItem('financepro_active_account_uid');
+            const newAccountMarker = _origLocalStorageGetItem(ACTIVE_ACCOUNT_KEY);
+            if (oldUid) {
+                clearScopedTransactionStorageForUid(oldUid);
+                clearScopedSettingsForUid(oldUid);
+            } else {
+                _origLocalStorageRemoveItem('personal_transactions_v4');
+                _origLocalStorageSetItem('personal_deleted_tx_v4', '{}');
+            }
+            _origLocalStorageRemoveItem('financepro_last_synced_at');
+            _origLocalStorageRemoveItem(LEGACY_SETTINGS_TIMESTAMP_KEY);
+            SETTINGS_TIMESTAMP_FIELDS.forEach(key => _origLocalStorageRemoveItem(scopedSettingsKey(key)));
+            // Không xóa dữ liệu legacy mù; chỉ đánh dấu để tránh tái nhập nhầm sang account khác.
+            if (newAccountMarker) _origLocalStorageSetItem(LEGACY_LOCAL_TRANSACTIONS_QUARANTINE_KEY, '1');
         }
 
         function updateSyncStatusUI(state, text) {
@@ -4167,12 +4322,17 @@
             txStorageUid = uid;
             if (!txIdbAvailable) {
                 if (allowLegacyMigration && legacy.length) transactions = legacy;
+                else {
+                    const fallback = _origLocalStorageGetItem(scopedTransactionStorageKey(uid));
+                    if (fallback) transactions = safeParseJSON(fallback, []);
+                }
                 txStorageUid = uid;
                 return;
             }
             if (!stored || legacy.length) await idbReplaceTransactions(uid, transactions);
             if (allowLegacyMigration && legacy.length) {
-                localStorage.removeItem('personal_transactions_v4');
+                _origLocalStorageRemoveItem('personal_transactions_v4');
+                _origLocalStorageRemoveItem('personal_deleted_tx_v4');
                 legacyLocalTransactions = [];
             }
         }
@@ -4227,19 +4387,24 @@
 
         function localSyncSnapshot() {
             ensureSettingsTimestamps();
+            const cat = getStoredJSON('personal_categories_v4', categories || null);
+            const acc = getStoredJSON('personal_accounts_v4', userAccounts || null);
+            const budgetRaw = getScopedSetting('personal_ideal_budget_v4');
+            const catBudgets = getStoredJSON('personal_ideal_cat_budgets_v4', idealCategoryBudgets || null);
+            const pinHash = getScopedSetting('personal_pin_hash_v1');
             return {
                 transactions: transactions || [],
                 deletedTx: pruneOldTombstones(getStoredJSON('personal_deleted_tx_v4', {})),
-                categories: getStoredJSON('personal_categories_v4', categories || null),
-                userAccounts: getStoredJSON('personal_accounts_v4', userAccounts || null),
-                idealBudget: localStorage.getItem('personal_ideal_budget_v4') ? Number(localStorage.getItem('personal_ideal_budget_v4')) : 0,
-                idealCategoryBudgets: getStoredJSON('personal_ideal_cat_budgets_v4', idealCategoryBudgets || null),
-                pinHash: localStorage.getItem('personal_pin_hash_v1') || null,
-                categoriesUpdatedAt: localStorage.getItem(SETTINGS_TIMESTAMP_KEYS.personal_categories_v4) || null,
-                accountsUpdatedAt: localStorage.getItem(SETTINGS_TIMESTAMP_KEYS.personal_accounts_v4) || null,
-                budgetUpdatedAt: localStorage.getItem(SETTINGS_TIMESTAMP_KEYS.personal_ideal_budget_v4) || null,
-                categoryBudgetsUpdatedAt: localStorage.getItem(SETTINGS_TIMESTAMP_KEYS.personal_ideal_cat_budgets_v4) || null,
-                pinUpdatedAt: localStorage.getItem(SETTINGS_TIMESTAMP_KEYS.personal_pin_hash_v1) || null
+                categories: cat,
+                userAccounts: acc,
+                idealBudget: budgetRaw ? Number(budgetRaw) : 0,
+                idealCategoryBudgets: catBudgets,
+                pinHash: pinHash || null,
+                categoriesUpdatedAt: getScopedSetting(SETTINGS_TIMESTAMP_KEYS.personal_categories_v4) || null,
+                accountsUpdatedAt: getScopedSetting(SETTINGS_TIMESTAMP_KEYS.personal_accounts_v4) || null,
+                budgetUpdatedAt: getScopedSetting(SETTINGS_TIMESTAMP_KEYS.personal_ideal_budget_v4) || null,
+                categoryBudgetsUpdatedAt: getScopedSetting(SETTINGS_TIMESTAMP_KEYS.personal_ideal_cat_budgets_v4) || null,
+                pinUpdatedAt: getScopedSetting(SETTINGS_TIMESTAMP_KEYS.personal_pin_hash_v1) || null
             };
         }
 
@@ -4266,10 +4431,22 @@
             });
             const merged = [];
             byId.forEach((tx, id) => {
-                const deletedAt = tombstoneAt(mergedTomb[id]);
-                if (!deletedAt) { merged.push(tx); return; }
-                const txUpdatedAt = syncVersionTime(tx);
-                if (txUpdatedAt > firestoreTime(deletedAt)) merged.push(tx);
+                const tomb = normalizeTombstone(mergedTomb[id]);
+                if (!tomb) { merged.push(tx); return; }
+
+                // syncVersion is the authoritative ordering mechanism for a transaction
+                // versus its tombstone. updatedAt/deletedAt are only a tie-breaker.
+                const txVersion = Math.max(1, Number(tx?.syncVersion) || 1);
+                const tombVersion = Math.max(1, Number(tomb.syncVersion) || 1);
+                if (txVersion > tombVersion) {
+                    merged.push(tx);
+                    return;
+                }
+                if (txVersion < tombVersion) return;
+
+                const txAt = firestoreTime(tx?.updatedAt);
+                const tombAt = firestoreTime(tomb.deletedAt);
+                if (txAt > tombAt) merged.push(tx);
             });
             return { transactions: merged, deletedTx: mergedTomb };
         }
@@ -4280,11 +4457,11 @@
             const newMap = new Map((mergedTx || []).map(tx => [String(tx.id), tx]));
             queueTxStorageWrite(async () => {
                 if (!txIdbAvailable) {
-                    _origLocalStorageSetItem('personal_transactions_v4', JSON.stringify(mergedTx || []));
+                    localStorage.setItem('personal_transactions_v4', JSON.stringify(mergedTx || []));
                     return;
                 }
                 const db = await openTransactionDB();
-                if (!db) { _origLocalStorageSetItem('personal_transactions_v4', JSON.stringify(mergedTx || [])); return; }
+                if (!db) { localStorage.setItem('personal_transactions_v4', JSON.stringify(mergedTx || [])); return; }
                 await new Promise((resolve, reject) => {
                     const tx = db.transaction(TX_IDB_STORE, 'readwrite');
                     const store = tx.objectStore(TX_IDB_STORE);
@@ -4309,7 +4486,7 @@
             if (!changed) return false;
             transactions = mergedTx;
             persistMergedTransactions(oldTx, mergedTx, mergedTomb);
-            _origLocalStorageSetItem('personal_deleted_tx_v4', JSON.stringify(mergedTomb || {}));
+            localStorage.setItem('personal_deleted_tx_v4', JSON.stringify(mergedTomb || {}));
             populateAccountSelects(); updateDashboard(); applyFilters(); renderCategoryBudgets();
             if (typeof renderCategoryManager === 'function') renderCategoryManager();
             return true;
@@ -4336,17 +4513,17 @@
                     if (!remoteAt || firestoreTime(remoteAt) <= firestoreTime(localAt) || remoteSettings[def.field] === undefined) return;
                     if (def.stateKey === 'idealBudget') {
                         idealBudget = Number(remoteSettings[def.field]) || 0;
-                        _origLocalStorageSetItem(def.storageKey, idealBudget);
+                        localStorage.setItem(def.storageKey, idealBudget);
                     } else if (def.stateKey === 'pinHash') {
-                        if (remoteSettings[def.field]) _origLocalStorageSetItem(def.storageKey, String(remoteSettings[def.field])); else localStorage.removeItem(def.storageKey);
+                        if (remoteSettings[def.field]) localStorage.setItem(def.storageKey, String(remoteSettings[def.field])); else localStorage.removeItem(def.storageKey);
                     } else if (def.stateKey === 'categories') {
-                        categories = remoteSettings[def.field]; _origLocalStorageSetItem(def.storageKey, JSON.stringify(categories));
+                        categories = remoteSettings[def.field]; localStorage.setItem(def.storageKey, JSON.stringify(categories));
                     } else if (def.stateKey === 'userAccounts') {
-                        userAccounts = remoteSettings[def.field]; _origLocalStorageSetItem(def.storageKey, JSON.stringify(userAccounts));
+                        userAccounts = remoteSettings[def.field]; localStorage.setItem(def.storageKey, JSON.stringify(userAccounts));
                     } else {
-                        idealCategoryBudgets = remoteSettings[def.field]; _origLocalStorageSetItem(def.storageKey, JSON.stringify(idealCategoryBudgets));
+                        idealCategoryBudgets = remoteSettings[def.field]; localStorage.setItem(def.storageKey, JSON.stringify(idealCategoryBudgets));
                     }
-                    _origLocalStorageSetItem(def.timestampKey, remoteAt); changed = true;
+                    _origLocalStorageSetItem(scopedSettingsKey(def.timestampKey), remoteAt); changed = true;
                 });
                 if (changed) { populateAccountSelects(); updateDashboard(); applyFilters(); renderCategoryBudgets(); renderCategoryManager(); }
             }
@@ -4583,7 +4760,7 @@
                         if (!DIRTY_TOMBSTONE_IDS.has(change.doc.id) && locallyChanged[change.doc.id]) { delete locallyChanged[change.doc.id]; localTombChanged = true; }
                     } else { const v = change.doc.data() || {}; if (v.deletedAt) { const tomb = { deletedAt: String(v.deletedAt), syncVersion: Math.max(1, Number(v.syncVersion) || 1) }; FIRESTORE_TOMBSTONE_CACHE.set(change.doc.id, tomb); changed[change.doc.id] = tomb; } }
                 });
-                if (localTombChanged) _origLocalStorageSetItem('personal_deleted_tx_v4', JSON.stringify(locallyChanged));
+                if (localTombChanged) localStorage.setItem('personal_deleted_tx_v4', JSON.stringify(locallyChanged));
                 const changedValues = snap.docChanges().map(change => change.type === 'removed' ? null : change.doc.data() || {}).filter(Boolean);
                 if (changedValues.length) updateSyncCursorFromDocs(uid, [], changedValues);
                 if (Object.keys(changed).length) mergeRemoteV2Data([], changed, null);
@@ -4708,53 +4885,96 @@
             });
 
             if (localChanged) {
-                _origLocalStorageSetItem('personal_deleted_tx_v4', JSON.stringify(tomb));
-                if (txStorageUid) queueTxStorageWrite(() => txIdbAvailable ? idbReplaceTransactions(txStorageUid, transactions) : (_origLocalStorageSetItem('personal_transactions_v4', JSON.stringify(transactions)), Promise.resolve()));
+                localStorage.setItem('personal_deleted_tx_v4', JSON.stringify(tomb));
+                if (txStorageUid) queueTxStorageWrite(() => txIdbAvailable ? idbReplaceTransactions(txStorageUid, transactions) : (localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions)), Promise.resolve()));
                 populateAccountSelects(); updateDashboard(); applyFilters(); renderCategoryBudgets();
             }
             return retryIds;
         }
 
-        async function pushTransactionChunk(uid, snapshot, ids, capturedDirtyVersions) {
-            if (!ids.length) return { retryIds: new Set() };
-            const txBatch = fbDb.batch();
-            let hasTxWrites = false;
-            const tombEntries = [];
+        async function commitTransactionWrites(uid, snapshot, ids) {
+            if (!ids.length) return;
             const localById = new Map((snapshot.transactions || []).map(tx => [String(tx.id), tx]));
+            const batch = fbDb.batch();
+            let count = 0;
             ids.forEach(rawId => {
                 const id = String(rawId);
-                const txRef = firestoreTransactionsRef(uid).doc(id);
                 const localTx = normalizeLocalTransaction(localById.get(id) || null);
                 const localTomb = normalizeTombstone(snapshot.deletedTx?.[id]);
                 if (localTx && (!localTomb || firestoreTime(localTx.updatedAt) > firestoreTime(localTomb.deletedAt))) {
-                    txBatch.set(txRef, { ...localTx, syncVersion: Math.max(1, Number(localTx.syncVersion) || 1), serverUpdatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
-                    hasTxWrites = true;
-                    // Tombstones are intentionally retained server-side. A newer transaction supersedes an older tombstone.
-                } else if (localTomb) {
-                    tombEntries.push({ id, tomb: localTomb });
+                    batch.set(firestoreTransactionsRef(uid).doc(id), {
+                        ...localTx,
+                        syncVersion: Math.max(1, Number(localTx.syncVersion) || 1),
+                        serverUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                    count++;
                 }
             });
+            if (count) await batch.commit();
+        }
+
+        async function commitTombstoneWrites(uid, snapshot, ids) {
+            if (!ids.length) return;
+            const localById = new Map((snapshot.deletedTx ? Object.entries(snapshot.deletedTx) : []));
+            const batch = fbDb.batch();
+            let count = 0;
+            ids.forEach(rawId => {
+                const id = String(rawId);
+                const tomb = normalizeTombstone(localById.get(id));
+                const localTx = normalizeLocalTransaction((snapshot.transactions || []).find(tx => String(tx.id) === id));
+                if (tomb && (!localTx || firestoreTime(tomb.deletedAt) >= firestoreTime(localTx.updatedAt))) {
+                    batch.set(firestoreTombstonesRef(uid).doc(id), {
+                        deletedAt: String(tomb.deletedAt),
+                        syncVersion: Math.max(1, Number(tomb.syncVersion) || 1),
+                        serverDeletedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                    count++;
+                }
+            });
+            if (count) await batch.commit();
+        }
+
+        async function commitWithConflictIsolation(uid, snapshot, ids, capturedDirtyVersions, writer) {
+            const uniqueIds = Array.from(new Set((ids || []).map(id => String(id))));
+            if (!uniqueIds.length) return new Set();
             try {
-                if (hasTxWrites) await txBatch.commit();
-                for (let i = 0; i < tombEntries.length; i += 10) {
-                    const tombBatch = fbDb.batch();
-                    tombEntries.slice(i, i + 10).forEach(({ id, tomb }) => {
-                        tombBatch.set(firestoreTombstonesRef(uid).doc(id), {
-                            deletedAt: String(tomb.deletedAt),
-                            syncVersion: Math.max(1, Number(tomb.syncVersion) || 1),
-                            serverDeletedAt: firebase.firestore.FieldValue.serverTimestamp()
-                        }, { merge: true });
-                    });
-                    await tombBatch.commit();
-                }
-                return { retryIds: new Set() };
+                await writer(uniqueIds);
+                return new Set();
             } catch (err) {
-                if (err?.code === 'permission-denied') {
-                    const retryIds = await reconcileFirestoreConflicts(uid, ids, capturedDirtyVersions);
-                    return { retryIds };
+                if (err?.code !== 'permission-denied') throw err;
+                // Fast path: a whole batch normally commits atomically. If one document is stale,
+                // bisect the batch so only the conflicting IDs need reconciliation rather than
+                // re-reading every transaction in the batch.
+                if (uniqueIds.length === 1) {
+                    return await reconcileFirestoreConflicts(uid, uniqueIds, capturedDirtyVersions);
                 }
-                throw err;
+                const mid = Math.ceil(uniqueIds.length / 2);
+                const leftRetry = await commitWithConflictIsolation(uid, snapshot, uniqueIds.slice(0, mid), capturedDirtyVersions, writer);
+                const rightRetry = await commitWithConflictIsolation(uid, snapshot, uniqueIds.slice(mid), capturedDirtyVersions, writer);
+                const merged = new Set(leftRetry);
+                rightRetry.forEach(id => merged.add(String(id)));
+                return merged;
             }
+        }
+
+        async function pushTransactionChunk(uid, snapshot, ids, capturedDirtyVersions) {
+            if (!ids.length) return { retryIds: new Set() };
+            const retryIds = new Set();
+            const txIds = [];
+            const tombIds = [];
+            const localById = new Map((snapshot.transactions || []).map(tx => [String(tx.id), tx]));
+            ids.forEach(rawId => {
+                const id = String(rawId);
+                const localTx = normalizeLocalTransaction(localById.get(id) || null);
+                const localTomb = normalizeTombstone(snapshot.deletedTx?.[id]);
+                if (localTx && (!localTomb || firestoreTime(localTx.updatedAt) > firestoreTime(localTomb.deletedAt))) txIds.push(id);
+                else if (localTomb) tombIds.push(id);
+            });
+            const txRetry = await commitWithConflictIsolation(uid, snapshot, txIds, capturedDirtyVersions, part => commitTransactionWrites(uid, snapshot, part));
+            const tombRetry = await commitWithConflictIsolation(uid, snapshot, tombIds, capturedDirtyVersions, part => commitTombstoneWrites(uid, snapshot, part));
+            txRetry.forEach(id => retryIds.add(String(id)));
+            tombRetry.forEach(id => retryIds.add(String(id)));
+            return { retryIds };
         }
 
         async function pushSettingsV2(uid, snapshot) {
@@ -4895,15 +5115,30 @@
                 try {
                     const prevAccount = localStorage.getItem(ACTIVE_ACCOUNT_KEY);
                     const currentAccount = user.email || user.uid;
-                    if (prevAccount && prevAccount !== currentAccount) {
+                    const hasKnownPreviousAccount = !!prevAccount;
+                    if (hasKnownPreviousAccount && prevAccount !== currentAccount) {
                         clearLocalSyncedDataForAccountSwitch();
                         showToast('Đã chuyển sang tài khoản Google khác. Đang tải dữ liệu riêng...', 'fa-right-left', 'text-indigo-400');
                     }
-                    const sameAccount = !prevAccount || prevAccount === currentAccount;
+                    // Không được coi local legacy data là thuộc tài khoản mới khi browser chưa từng
+                    // lưu ACTIVE_ACCOUNT_KEY. Trường hợp này cần ưu tiên dữ liệu server của UID hiện tại
+                    // để tránh vô tình nhập dữ liệu của một người/tài khoản khác vào account mới.
+                    // Legacy local data chỉ được migrate tự động khi đã xác định chắc chắn đây là cùng account.
+                    const sameAccount = hasKnownPreviousAccount && prevAccount === currentAccount;
+                    if (!hasKnownPreviousAccount && localStorage.getItem('personal_transactions_v4')) {
+                        _origLocalStorageSetItem(LEGACY_LOCAL_TRANSACTIONS_QUARANTINE_KEY, '1');
+                    }
                     _origLocalStorageSetItem(ACTIVE_ACCOUNT_KEY, currentAccount);
                     _origLocalStorageSetItem('financepro_active_account_uid', user.uid);
+                    if (sameAccount) {
+                        migrateLegacySettingsToUid(user.uid);
+                        migrateLegacyTransactionFallbackToUid(user.uid, true);
+                    }
                     gDriveState.email = currentAccount;
                     fbCurrentUid = user.uid;
+                    loadSettingsFromScopedStorage();
+                    if (sameAccount) await migrateLegacyPlainPinIfNeeded(true);
+                    ensureSettingsTimestamps();
                     hideLoginGate(); updateAccountEmailUI();
                     updateSyncStatusUI('syncing', 'Đang chuẩn bị dữ liệu cục bộ...');
                     stopV2Listeners();
@@ -4962,10 +5197,19 @@
             } catch (err) { console.warn('visibility sync failed', err); updateSyncStatusUI('error', 'Mất kết nối đồng bộ, đang thử lại...'); }
         });
 
+        window.addEventListener('online', () => {
+            if (!fbCurrentUid || !fbDb || !firestoreV2Ready || !syncReady) return;
+            clearTimeout(fbSaveRetryTimer);
+            if (DIRTY_TX_IDS.size || DIRTY_TOMBSTONE_IDS.size || pendingSyncAfterReady) {
+                pendingSyncAfterReady = false;
+                scheduleDriveSync();
+            }
+        });
+
         window.addEventListener('pagehide', () => {
             if (fbCurrentUid && fbDb && firestoreV2Ready && syncReady) {
                 clearTimeout(fbSaveTimer);
-                if (!syncPushInFlight) pushLocalDataToFirestore();
+                if (!syncPushInFlight) void pushLocalDataToFirestore();
                 else syncPushRequested = true;
             }
         });
