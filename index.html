@@ -4011,6 +4011,69 @@
             return { ok: true };
         }
 
+        function sameTransactionBusinessState(a, b) {
+            const fields = ['id','type','amount','date','account','category','toAccount','proxyDir','notes','syncVersion'];
+            return fields.every(k => String(a?.[k] ?? '') === String(b?.[k] ?? ''));
+        }
+        function sameTombstoneState(a, b) {
+            return String(a?.deletedAt ?? '') === String(b?.deletedAt ?? '')
+                && Number(a?.syncVersion || 1) === Number(b?.syncVersion || 1);
+        }
+        async function waitForSyncIdle(timeoutMs = 30000) {
+            const started = Date.now();
+            while (syncPushInFlight) {
+                if (Date.now() - started > timeoutMs) throw new Error('sync-busy-timeout');
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+        }
+        async function verifyFullCloudRestore(uid, expectedTransactions, expectedTombstones, expectedSettings) {
+            const [settingsSnap, txSnap, tombSnap] = await Promise.all([
+                firestoreSettingsRef(uid).get({ source: 'server' }),
+                firestoreTransactionsRef(uid).get({ source: 'server' }),
+                firestoreTombstonesRef(uid).get({ source: 'server' })
+            ]);
+            const remoteTx = new Map();
+            txSnap.docs.forEach(doc => {
+                const tx = normalizeRemoteTransaction(doc.data(), doc.id);
+                if (tx) remoteTx.set(String(tx.id), tx);
+            });
+            const remoteTomb = new Map();
+            tombSnap.docs.forEach(doc => {
+                const tomb = normalizeTombstone(doc.data());
+                if (tomb) remoteTomb.set(String(doc.id), tomb);
+            });
+            const expectedTx = new Map((expectedTransactions || []).map(tx => [String(tx.id), normalizeLocalTransaction(tx)]));
+            const expectedTomb = new Map(Object.entries(expectedTombstones || {}).map(([id, v]) => [String(id), normalizeTombstone(v)]).filter(([,v]) => !!v));
+            // Every logical state in the backup must exist on the cloud with the same version/content.
+            for (const [id, tx] of expectedTx) {
+                const remote = remoteTx.get(id);
+                if (!remote || !sameTransactionBusinessState(remote, tx)) throw new Error('restore-verify-transaction-' + id);
+            }
+            for (const [id, tomb] of expectedTomb) {
+                const remote = remoteTomb.get(id);
+                if (!remote || !sameTombstoneState(remote, tomb)) throw new Error('restore-verify-tombstone-' + id);
+            }
+            // Any remote transaction not in the backup must be logically deleted by our restore tombstone.
+            for (const [id] of remoteTx) {
+                if (!expectedTx.has(id) && !expectedTomb.has(id)) throw new Error('restore-verify-extra-transaction-' + id);
+            }
+            // Settings are an explicit full restore: the cloud must equal the imported values.
+            const remote = settingsSnap.exists ? settingsSnap.data() || {} : {};
+            const settingPairs = [
+                ['categories', expectedSettings.categories],
+                ['userAccounts', expectedSettings.userAccounts],
+                ['idealBudget', expectedSettings.idealBudget],
+                ['idealCategoryBudgets', expectedSettings.idealCategoryBudgets],
+                ['pinHash', expectedSettings.pinHash]
+            ];
+            for (const [key, expected] of settingPairs) {
+                const a = JSON.stringify(remote[key] ?? null);
+                const b = JSON.stringify(expected ?? null);
+                if (a !== b) throw new Error('restore-verify-setting-' + key);
+            }
+            return true;
+        }
+
         function importDataJSON(event) {
             const file = event.target.files[0]; if (!file) return;
             const reader = new FileReader();
@@ -4019,51 +4082,139 @@
                     const data = JSON.parse(e.target.result);
                     const validation = validateImportedBackup(data);
                     if (!validation.ok) return showToast(validation.message, 'fa-xmark', 'text-rose-500');
-                    openConfirm("Phục Hồi", "Dữ liệu hiện tại sẽ bị xóa sạch. Bạn chắc chứ?", () => {
-                        const importAt = new Date().toISOString();
-                        // Import/Restore is an explicit user action that should be able to
-                        // restore records even when the cloud still contains an older
-                        // tombstone. Give every restored transaction a fresh, monotonic
-                        // version based on the current timestamp so Firestore rules and
-                        // conflict resolution treat the restore as a newer state.
-                        const restoreVersionBase = Date.now();
-                        const importedTx = data.transactions.map((tx, index) => ({
-                            ...tx,
-                            updatedAt: importAt,
-                            syncVersion: Math.max(
-                                1,
-                                Number(tx.syncVersion) || 0,
-                                restoreVersionBase + index
-                            )
-                        }));
-                        // Import là restore hoàn chỉnh tại máy này: tombstone cũ không được phép
-                        // tiếp tục xóa các bản ghi vừa phục hồi từ backup.
-                        localStorage.setItem('personal_deleted_tx_v4', '{}');
-                        transactions = importedTx;
-                        DIRTY_TX_IDS.clear(); DIRTY_TOMBSTONE_IDS.clear();
-                        DIRTY_TX_VERSIONS.clear(); DIRTY_TOMBSTONE_VERSIONS.clear();
-                        importedTx.forEach(tx => markTransactionDirty(tx.id));
-                        if (txStorageUid) { queueTxStorageWrite(async () => { if (txIdbAvailable) await idbReplaceTransactions(txStorageUid, importedTx); else localStorage.setItem('personal_transactions_v4', JSON.stringify(importedTx)); }); }
-                        localStorage.setItem('personal_categories_v4', JSON.stringify(data.categories));
-                        if (data.userAccounts) localStorage.setItem('personal_accounts_v4', JSON.stringify(data.userAccounts)); else if (data.initialBalances) localStorage.setItem('personal_accounts_v4', JSON.stringify(data.initialBalances));
-                        else localStorage.setItem('personal_accounts_v4', 'null');
-                        if (data.idealBudget !== undefined) localStorage.setItem('personal_ideal_budget_v4', Number(data.idealBudget) || 0);
-                        else localStorage.setItem('personal_ideal_budget_v4', '0');
-                        if (data.idealCategoryBudgets) localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(data.idealCategoryBudgets));
-                        else localStorage.setItem('personal_ideal_cat_budgets_v4', 'null');
-                        if (data.pinHash) localStorage.setItem('personal_pin_hash_v1', String(data.pinHash)); else localStorage.removeItem('personal_pin_hash_v1');
-                        // Backup là một hành động restore mới: các nhóm settings vừa import phải có cùng mốc
-                        // thời gian mới để đồng bộ nhất quán sang thiết bị khác.
-                        const settingsTs = {
-                            personal_categories_v4: importAt,
-                            personal_accounts_v4: importAt,
-                            personal_ideal_budget_v4: importAt,
-                            personal_ideal_cat_budgets_v4: importAt,
-                            personal_pin_hash_v1: importAt
-                        };
-                        Object.entries(settingsTs).forEach(([key, ts]) => _origLocalStorageSetItem(scopedSettingsKey(SETTINGS_TIMESTAMP_KEYS[key]), ts));
-                        _origLocalStorageSetItem(LEGACY_SETTINGS_TIMESTAMP_KEY, importAt);
-                        showToast("Thành công! Đang tải lại...", "fa-check", "text-emerald-400"); setTimeout(() => window.location.reload(), 1000);
+                    openConfirm("Phục Hồi", "Dữ liệu hiện tại sẽ bị xóa sạch. Bạn chắc chứ?", async () => {
+                        try {
+                            const importAt = new Date().toISOString();
+                            const restoreVersionBase = Date.now();
+
+                            // Full restore:
+                            // - read current server state first;
+                            // - imported records get a version newer than any server state for that ID;
+                            // - server records absent from the backup receive tombstones locally,
+                            //   so the restore also removes them from the cloud.
+                            const remoteTxById = new Map();
+                            const remoteTombById = new Map();
+
+                            if (fbCurrentUid && fbDb && firestoreV2Ready) {
+                                const [txSnap, tombSnap] = await Promise.all([
+                                    firestoreTransactionsRef(fbCurrentUid).get({ source: 'server' }),
+                                    firestoreTombstonesRef(fbCurrentUid).get({ source: 'server' })
+                                ]);
+                                txSnap.docs.forEach(doc => {
+                                    const tx = normalizeRemoteTransaction(doc.data(), doc.id);
+                                    if (tx) remoteTxById.set(String(tx.id), tx);
+                                });
+                                tombSnap.docs.forEach(doc => {
+                                    const tomb = normalizeTombstone(doc.data());
+                                    if (tomb) remoteTombById.set(String(doc.id), tomb);
+                                });
+                            }
+
+                            const backupIds = new Set(data.transactions.map(tx => String(tx.id)));
+                            const importedTx = data.transactions.map((tx, index) => {
+                                const id = String(tx.id);
+                                const remoteTx = remoteTxById.get(id);
+                                const remoteTomb = remoteTombById.get(id);
+                                const remoteMaxVersion = Math.max(
+                                    remoteTx ? transactionVersion(remoteTx) : 0,
+                                    remoteTomb ? tombstoneVersion(remoteTomb) : 0
+                                );
+                                return {
+                                    ...tx,
+                                    id,
+                                    updatedAt: importAt,
+                                    syncVersion: Math.max(
+                                        1,
+                                        Number(tx.syncVersion) || 0,
+                                        restoreVersionBase + index,
+                                        remoteMaxVersion + 1
+                                    )
+                                };
+                            });
+
+                            const restoreTomb = {};
+                            remoteTxById.forEach((remoteTx, id) => {
+                                if (backupIds.has(id)) return;
+                                const remoteTomb = remoteTombById.get(id);
+                                restoreTomb[id] = {
+                                    deletedAt: importAt,
+                                    syncVersion: Math.max(
+                                        transactionVersion(remoteTx),
+                                        remoteTomb ? tombstoneVersion(remoteTomb) : 0
+                                    ) + 1
+                                };
+                            });
+                            remoteTombById.forEach((remoteTomb, id) => {
+                                if (!backupIds.has(id) && !restoreTomb[id]) restoreTomb[id] = remoteTomb;
+                            });
+
+                            localStorage.setItem('personal_deleted_tx_v4', JSON.stringify(restoreTomb));
+                            transactions = importedTx;
+
+                            DIRTY_TX_IDS.clear();
+                            DIRTY_TOMBSTONE_IDS.clear();
+                            DIRTY_TX_VERSIONS.clear();
+                            DIRTY_TOMBSTONE_VERSIONS.clear();
+
+                            importedTx.forEach(tx => markTransactionDirty(tx.id));
+                            Object.keys(restoreTomb).forEach(id => markTombstoneDirty(id));
+
+                            if (txStorageUid) {
+                                queueTxStorageWrite(async () => {
+                                    if (txIdbAvailable) await idbReplaceTransactions(txStorageUid, importedTx);
+                                    else localStorage.setItem('personal_transactions_v4', JSON.stringify(importedTx));
+                                });
+                            }
+
+                            localStorage.setItem('personal_categories_v4', JSON.stringify(data.categories));
+                            if (data.userAccounts) localStorage.setItem('personal_accounts_v4', JSON.stringify(data.userAccounts));
+                            else if (data.initialBalances) localStorage.setItem('personal_accounts_v4', JSON.stringify(data.initialBalances));
+                            else localStorage.setItem('personal_accounts_v4', 'null');
+
+                            if (data.idealBudget !== undefined) localStorage.setItem('personal_ideal_budget_v4', Number(data.idealBudget) || 0);
+                            else localStorage.setItem('personal_ideal_budget_v4', '0');
+
+                            if (data.idealCategoryBudgets) localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(data.idealCategoryBudgets));
+                            else localStorage.setItem('personal_ideal_cat_budgets_v4', 'null');
+
+                            if (data.pinHash) localStorage.setItem('personal_pin_hash_v1', String(data.pinHash));
+                            else localStorage.removeItem('personal_pin_hash_v1');
+
+                            const settingsTs = {
+                                personal_categories_v4: importAt,
+                                personal_accounts_v4: importAt,
+                                personal_ideal_budget_v4: importAt,
+                                personal_ideal_cat_budgets_v4: importAt,
+                                personal_pin_hash_v1: importAt
+                            };
+                            Object.entries(settingsTs).forEach(([key, ts]) => {
+                                _origLocalStorageSetItem(scopedSettingsKey(SETTINGS_TIMESTAMP_KEYS[key]), ts);
+                            });
+                            _origLocalStorageSetItem(LEGACY_SETTINGS_TIMESTAMP_KEY, importAt);
+
+                            populateAccountSelects();
+                            updateDashboard();
+                            applyFilters();
+                            renderCategoryBudgets();
+
+                            if (fbCurrentUid && firestoreV2Ready && syncReady) {
+                                await waitForSyncIdle();
+                                clearTimeout(fbSaveTimer);
+                                await pushLocalDataToFirestore({ forceRestore: true });
+                                const restoreSnapshot = localSyncSnapshot();
+                                await verifyFullCloudRestore(fbCurrentUid, importedTx, restoreTomb, restoreSnapshot);
+                                showToast("Phục hồi hoàn tất: dữ liệu local và cloud đã khớp. Đang tải lại...", "fa-check", "text-emerald-400");
+                                setTimeout(() => window.location.reload(), 1000);
+                            } else if (fbCurrentUid) {
+                                pendingSyncAfterReady = true;
+                                showToast("Đã phục hồi trên máy. Cloud sẽ được cập nhật khi đồng bộ lại.", "fa-cloud-arrow-up", "text-amber-500");
+                            } else {
+                                showToast("Đã phục hồi trên máy. Đăng nhập Google để đồng bộ lên cloud.", "fa-cloud-arrow-up", "text-amber-500");
+                            }
+                        } catch (err) {
+                            console.error('FinancePro import/restore error', err);
+                            showToast("Không thể phục hồi dữ liệu lên phiên hiện tại.", "fa-triangle-exclamation", "text-rose-500");
+                        }
                     });
                 } catch (err) { showToast("Lỗi đọc file!", "fa-xmark", "text-rose-500"); }
                 event.target.value = '';
@@ -4184,7 +4335,6 @@
         function firestoreTimestampFromMs(ms) {
             return firebase.firestore.Timestamp.fromMillis(Math.max(0, Number(ms) || 0));
         }
-        function syncVersionTime(tx) { return Number(tx?.serverUpdatedAtMs) || firestoreTime(tx?.serverUpdatedAt) || firestoreTime(tx?.updatedAt); }
 
         function normalizeRemoteTransaction(tx, fallbackId) {
             if (!tx || typeof tx !== 'object') return null;
@@ -4221,6 +4371,31 @@
             if (!value || typeof value !== 'object') return 1;
             return Math.max(1, Number(value.syncVersion) || 1);
         }
+        // ================== SYNC ORDERING HELPERS ==================
+        // syncVersion is the authoritative ordering key for transaction/tombstone state.
+        // Timestamps are only used when two states have the same logical version.
+        function transactionVersion(value) {
+            return Math.max(1, Number(value?.syncVersion) || 1);
+        }
+        function compareTransactions(a, b) {
+            const av = transactionVersion(a);
+            const bv = transactionVersion(b);
+            if (av !== bv) return av - bv;
+            return firestoreTime(a?.updatedAt) - firestoreTime(b?.updatedAt);
+        }
+        function compareTombstones(a, b) {
+            const av = tombstoneVersion(a);
+            const bv = tombstoneVersion(b);
+            if (av !== bv) return av - bv;
+            return firestoreTime(tombstoneAt(a)) - firestoreTime(tombstoneAt(b));
+        }
+        function compareTransactionToTombstone(tx, tomb) {
+            const av = transactionVersion(tx);
+            const bv = tombstoneVersion(tomb);
+            if (av !== bv) return av - bv;
+            return firestoreTime(tx?.updatedAt) - firestoreTime(tombstoneAt(tomb));
+        }
+
         function normalizeTombstone(value, fallbackVersion = 1) {
             const deletedAt = tombstoneAt(value);
             if (!deletedAt) return null;
@@ -4316,7 +4491,7 @@
                 if (!normalized) return;
                 const id = String(normalized.id);
                 const old = byId.get(id);
-                if (!old || firestoreTime(normalized.updatedAt) > firestoreTime(old.updatedAt)) byId.set(id, normalized);
+                if (!old || compareTransactions(normalized, old) > 0) byId.set(id, normalized);
             });
             transactions = Array.from(byId.values());
             txStorageUid = uid;
@@ -4408,9 +4583,8 @@
             };
         }
 
-        // Hợp nhất giao dịch local + remote theo id/updatedAt và tombstone.
-        // Giữ nguyên quy tắc sync của phiên bản cũ để migration sang Firestore v2
-        // không làm thay đổi nghiệp vụ giao dịch.
+        // Hợp nhất giao dịch local + remote theo syncVersion và tombstone.
+        // updatedAt/deletedAt chỉ là tie-breaker khi hai trạng thái có cùng syncVersion.
         function mergeTransactions(localTx, remoteTx, localTomb, remoteTomb) {
             const mergedTomb = Object.assign({}, localTomb || {});
             Object.keys(mergedTomb).forEach(id => { const normalized = normalizeTombstone(mergedTomb[id]); if (normalized) mergedTomb[id] = normalized; });
@@ -4418,7 +4592,7 @@
                 if (DIRTY_TOMBSTONE_IDS.has(String(id))) return;
                 const incoming = normalizeTombstone(remoteTomb[id]);
                 if (!incoming) return;
-                if (!mergedTomb[id] || firestoreTime(incoming.deletedAt) > firestoreTime(tombstoneAt(mergedTomb[id]))) mergedTomb[id] = incoming;
+                if (!mergedTomb[id] || compareTombstones(incoming, mergedTomb[id]) > 0) mergedTomb[id] = incoming;
             });
             const byId = new Map();
             (localTx || []).forEach(tx => { if (tx && tx.id != null) byId.set(String(tx.id), tx); });
@@ -4427,7 +4601,7 @@
                 const id = String(remote.id);
                 if (DIRTY_TX_IDS.has(id) || DIRTY_TOMBSTONE_IDS.has(id)) return;
                 const local = byId.get(id);
-                if (!local || syncVersionTime(remote) >= syncVersionTime(local)) byId.set(id, remote);
+                if (!local || compareTransactions(remote, local) >= 0) byId.set(id, remote);
             });
             const merged = [];
             byId.forEach((tx, id) => {
@@ -4436,17 +4610,7 @@
 
                 // syncVersion is the authoritative ordering mechanism for a transaction
                 // versus its tombstone. updatedAt/deletedAt are only a tie-breaker.
-                const txVersion = Math.max(1, Number(tx?.syncVersion) || 1);
-                const tombVersion = Math.max(1, Number(tomb.syncVersion) || 1);
-                if (txVersion > tombVersion) {
-                    merged.push(tx);
-                    return;
-                }
-                if (txVersion < tombVersion) return;
-
-                const txAt = firestoreTime(tx?.updatedAt);
-                const tombAt = firestoreTime(tomb.deletedAt);
-                if (txAt > tombAt) merged.push(tx);
+                if (compareTransactionToTombstone(tx, tomb) > 0) merged.push(tx);
             });
             return { transactions: merged, deletedTx: mergedTomb };
         }
@@ -4467,7 +4631,7 @@
                     const store = tx.objectStore(TX_IDB_STORE);
                     for (const [id, item] of newMap) {
                         const prev = oldMap.get(id);
-                        if (!prev || syncVersionTime(prev) !== syncVersionTime(item)) store.put({ key: txDbKey(txStorageUid, id), uid: txStorageUid, tx: item });
+                        if (!prev || compareTransactions(prev, item) !== 0) store.put({ key: txDbKey(txStorageUid, id), uid: txStorageUid, tx: item });
                     }
                     for (const id of oldMap.keys()) if (!newMap.has(id)) store.delete(txDbKey(txStorageUid, id));
                     tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
@@ -4479,10 +4643,18 @@
             const oldTx = transactions || [];
             const oldTomb = getStoredJSON('personal_deleted_tx_v4', {});
             const oldById = new Map(oldTx.map(t => [String(t.id), t]));
-            const changed = mergedTx.length !== oldTx.length || mergedTx.some(t => {
+            const txChanged = mergedTx.length !== oldTx.length || mergedTx.some(t => {
                 const old = oldById.get(String(t.id));
-                return !old || syncVersionTime(old) !== syncVersionTime(t);
-            }) || Object.keys(mergedTomb).length !== Object.keys(oldTomb).length || Object.keys(mergedTomb).some(id => mergedTomb[id] !== oldTomb[id]);
+                return !old || compareTransactions(old, t) !== 0;
+            });
+            const mergedTombIds = Object.keys(mergedTomb);
+            const oldTombIds = Object.keys(oldTomb);
+            const tombChanged = mergedTombIds.length !== oldTombIds.length
+                || mergedTombIds.some(id => {
+                    const old = oldTomb[id];
+                    return !old || compareTombstones(old, mergedTomb[id]) !== 0;
+                });
+            const changed = txChanged || tombChanged;
             if (!changed) return false;
             transactions = mergedTx;
             persistMergedTransactions(oldTx, mergedTx, mergedTomb);
@@ -4901,7 +5073,7 @@
                 const id = String(rawId);
                 const localTx = normalizeLocalTransaction(localById.get(id) || null);
                 const localTomb = normalizeTombstone(snapshot.deletedTx?.[id]);
-                if (localTx && (!localTomb || firestoreTime(localTx.updatedAt) > firestoreTime(localTomb.deletedAt))) {
+                if (localTx && (!localTomb || compareTransactionToTombstone(localTx, localTomb) > 0)) {
                     batch.set(firestoreTransactionsRef(uid).doc(id), {
                         ...localTx,
                         syncVersion: Math.max(1, Number(localTx.syncVersion) || 1),
@@ -4922,7 +5094,7 @@
                 const id = String(rawId);
                 const tomb = normalizeTombstone(localById.get(id));
                 const localTx = normalizeLocalTransaction((snapshot.transactions || []).find(tx => String(tx.id) === id));
-                if (tomb && (!localTx || firestoreTime(tomb.deletedAt) >= firestoreTime(localTx.updatedAt))) {
+                if (tomb && (!localTx || compareTransactionToTombstone(localTx, tomb) <= 0)) {
                     batch.set(firestoreTombstonesRef(uid).doc(id), {
                         deletedAt: String(tomb.deletedAt),
                         syncVersion: Math.max(1, Number(tomb.syncVersion) || 1),
@@ -4967,7 +5139,7 @@
                 const id = String(rawId);
                 const localTx = normalizeLocalTransaction(localById.get(id) || null);
                 const localTomb = normalizeTombstone(snapshot.deletedTx?.[id]);
-                if (localTx && (!localTomb || firestoreTime(localTx.updatedAt) > firestoreTime(localTomb.deletedAt))) txIds.push(id);
+                if (localTx && (!localTomb || compareTransactionToTombstone(localTx, localTomb) > 0)) txIds.push(id);
                 else if (localTomb) tombIds.push(id);
             });
             const txRetry = await commitWithConflictIsolation(uid, snapshot, txIds, capturedDirtyVersions, part => commitTransactionWrites(uid, snapshot, part));
@@ -4977,8 +5149,9 @@
             return { retryIds };
         }
 
-        async function pushSettingsV2(uid, snapshot) {
+        async function pushSettingsV2(uid, snapshot, options = {}) {
             const ref = firestoreSettingsRef(uid);
+            const forceRestore = !!options.forceRestore;
             await fbDb.runTransaction(async transaction => {
                 const snap = await transaction.get(ref);
                 const remote = snap.exists ? snap.data() : {};
@@ -4992,7 +5165,11 @@
                 ];
                 defs.forEach(def => {
                     const remoteAt = remote[def.field + 'UpdatedAt'] || remote.settingsUpdatedAt || null;
-                    if (!remoteAt || firestoreTime(def.localAt) > firestoreTime(remoteAt)) {
+                    // Normal sync remains timestamp-based for settings because settings do not
+                    // participate in the transaction/tombstone syncVersion sequence.
+                    // Explicit Restore is different: it is a user command whose contract is
+                    // to make the cloud settings exactly equal to the imported backup.
+                    if (forceRestore || !remoteAt || firestoreTime(def.localAt) > firestoreTime(remoteAt)) {
                         merged[def.field] = def.localValue;
                         merged[def.field + 'UpdatedAt'] = def.localAt || new Date().toISOString();
                     }
@@ -5001,7 +5178,7 @@
             });
         }
 
-        async function pushLocalDataToFirestore() {
+        async function pushLocalDataToFirestore(options = {}) {
             if (!fbCurrentUid || !fbDb || !firestoreV2Ready) return;
             if (syncPushInFlight) { syncPushRequested = true; return; }
             syncPushInFlight = true; syncPushRequested = false;
@@ -5017,7 +5194,7 @@
                     const result = await pushTransactionChunk(fbCurrentUid, snapshot, chunkIds, capturedDirtyVersions);
                     result.retryIds.forEach(id => retryIds.add(String(id)));
                 }
-                await pushSettingsV2(fbCurrentUid, snapshot);
+                await pushSettingsV2(fbCurrentUid, snapshot, options);
                 if (fbDb && typeof fbDb.waitForPendingWrites === 'function') await fbDb.waitForPendingWrites();
 
                 // Chỉ clear dirty flag nếu phiên bản dirty chưa thay đổi kể từ lúc push bắt đầu.
