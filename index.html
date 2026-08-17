@@ -990,8 +990,8 @@
 </div>
 <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
 <div class="ai-card">
-<h4 class="font-bold text-slate-900 mb-1 flex items-center gap-2"><i class="fa-solid fa-magnifying-glass-chart text-rose-500"></i>Vì sao chi nhiều?</h4>
-<p class="text-xs text-slate-400 mb-3">Ưu tiên danh mục lớn, rồi trích dẫn ghi chú giao dịch để hiểu tiền đang đi vào đâu.</p>
+<h4 class="font-bold text-slate-900 mb-1 flex items-center gap-2"><i class="fa-solid fa-magnifying-glass-chart text-rose-500"></i>Điều gì đáng chú ý?</h4>
+<p class="text-xs text-slate-400 mb-3">Tách chi cố định/định kỳ khỏi chi linh hoạt; chỉ coi biến động, bất thường hoặc áp lực ngân sách là tín hiệu cần hành động.</p>
 <div class="relative w-full mb-3" style="height:180px;"><canvas id="topCategoriesChart"></canvas></div>
 <ul class="ai-list text-sm text-slate-600" id="ai-causes-list"></ul>
 </div>
@@ -3398,22 +3398,55 @@
             if (budget > 0 && projectedExpense <= budget) return 'Tốc độ hiện tại vẫn đang nằm trong quỹ đạo ngân sách.';
             return 'Chưa đủ dữ liệu để đánh giá kết quả thay đổi; hãy tiếp tục ghi giao dịch đều đặn.';
         }
-        function buildActionPlan({ idealBudget, monthExpense, projectedExpense, remainingDays, topCategories, anomalies, categoryExpenses, recurringProfiles = new Map(), monthExpenseTxs = [] }) {
-            const actionableCategories = (topCategories || []).map(([cat, amount]) => {
-                const txs = monthExpenseTxs.filter(tx => tx.type === 'expense' && tx.category === cat);
-                const nonRecurring = txs.filter(tx => !getRecurringProfileForTx(tx, recurringProfiles)?.isRecurring || (Number(tx.amount) || 0) > (getRecurringProfileForTx(tx, recurringProfiles)?.median || 0) * 1.35);
-                return { cat, amount, nonRecurringAmount: nonRecurring.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0) };
-            }).sort((a,b) => b.nonRecurringAmount - a.nonRecurringAmount);
-            const topCat = actionableCategories.find(x => x.nonRecurringAmount > 0) || topCategories?.[0] ? (actionableCategories.find(x => x.nonRecurringAmount > 0) || { cat: topCategories?.[0]?.[0] || null, amount: topCategories?.[0]?.[1] || 0, nonRecurringAmount: topCategories?.[0]?.[1] || 0 }) : null;
+        function buildAssistantCategoryInsights({ monthStats, prevStats, categoryExpenses, recurringProfiles = new Map(), anomalies = [] }) {
+            return Object.entries(categoryExpenses || {}).map(([cat, amount]) => {
+                const txs = (monthStats.expenseTxs || []).filter(tx => tx.category === cat);
+                const recurringTxs = txs.filter(tx => getRecurringProfileForTx(tx, recurringProfiles)?.isRecurring);
+                const recurringAmount = recurringTxs.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+                const nonRecurringAmount = Math.max(0, amount - recurringAmount);
+                const prevAmount = prevStats?.categoryBreakdown?.[cat] || 0;
+                const diff = amount - prevAmount;
+                const positiveDiff = Math.max(0, diff);
+                const recurringProfilesForCat = recurringTxs.map(tx => getRecurringProfileForTx(tx, recurringProfiles)).filter(Boolean);
+                const recurringMedian = recurringProfilesForCat.length ? median(recurringProfilesForCat.map(p => p.median)) : 0;
+                const recurringVariation = recurringMedian > 0 ? (amount - recurringMedian) / recurringMedian : null;
+                const isRecurringOnly = txs.length > 0 && recurringTxs.length === txs.length;
+                const stableRecurring = isRecurringOnly && recurringVariation !== null && Math.abs(recurringVariation) <= 0.15;
+                const anomalyCount = anomalies.filter(a => a.tx.category === cat).length;
+                const catBudget = Number(idealCategoryBudgets[cat]) || 0;
+                const budgetOver = catBudget > 0 ? Math.max(0, amount - catBudget) : 0;
+                const budgetRatio = catBudget > 0 ? amount / catBudget : 0;
+                const attentionScore =
+                    nonRecurringAmount +
+                    positiveDiff * 0.65 +
+                    budgetOver * (stableRecurring ? 0.15 : 0.9) +
+                    anomalyCount * 500000 +
+                    (stableRecurring ? 0 : Math.max(0, recurringVariation || 0) * Math.max(0, amount) * 0.5);
+                return {
+                    cat, amount, prevAmount, diff, recurringAmount, nonRecurringAmount,
+                    recurringMedian, recurringVariation, isRecurringOnly, stableRecurring,
+                    anomalyCount, catBudget, budgetOver, budgetRatio, attentionScore
+                };
+            }).sort((a,b) => b.attentionScore - a.attentionScore);
+        }
+
+        function buildActionPlan({ idealBudget, monthExpense, projectedExpense, remainingDays, attentionCategories = [], anomalies, categoryExpenses, recurringProfiles = new Map(), monthExpenseTxs = [] }) {
+            const topCat = attentionCategories.find(x => x.nonRecurringAmount > 0 || x.anomalyCount > 0 || x.budgetOver > 0 || Math.abs(x.diff) >= 200000) || null;
             const topCatName = topCat?.cat || null;
             const topCatAmount = topCat?.amount || 0;
-            const topTx = topCatName ? monthExpenseTxs.filter(tx => tx.type === 'expense' && tx.category === topCatName).filter(tx => !getRecurringProfileForTx(tx, recurringProfiles)?.isRecurring).sort((a,b) => b.amount - a.amount)[0] : null;
+            const topTx = topCatName ? monthExpenseTxs
+                .filter(tx => tx.type === 'expense' && tx.category === topCatName)
+                .filter(tx => {
+                    const p = getRecurringProfileForTx(tx, recurringProfiles);
+                    return !p?.isRecurring || (Number(tx.amount) || 0) > (p?.median || 0) * 1.2;
+                })
+                .sort((a,b) => b.amount - a.amount)[0] : null;
             if (idealBudget <= 0) return 'Đặt ngân sách tổng trước; sau đó mình sẽ tính mức chi an toàn/ngày và cảnh báo vượt mục tiêu.';
             if (monthExpense <= 0) return 'Chưa có khoản chi trong tháng; cứ ghi chép đều để trợ lý bắt đầu nhận diện thói quen.';
             if (projectedExpense > idealBudget && remainingDays > 0) {
                 const reducePerDay = Math.ceil((projectedExpense - idealBudget) / remainingDays);
                 const note = normalizeNote(topTx?.notes);
-                return `Giảm khoảng ${formatCurrency(reducePerDay)}/ngày trong ${remainingDays} ngày còn lại. Ưu tiên ${topCatName ? `rà lại ${escapeHTML(topCatName)} (${formatCurrency(topCatAmount)})` : 'khoản chi linh hoạt'}${note ? `; ví dụ ghi chú “${escapeHTML(note)}”` : ''}.`;
+                return `Giảm khoảng ${formatCurrency(reducePerDay)}/ngày trong ${remainingDays} ngày còn lại. ${topCatName ? `Ưu tiên rà lại ${escapeHTML(topCatName)} (${formatCurrency(topCatAmount)})` : 'Ưu tiên các khoản chi linh hoạt'}${note ? `; ví dụ ghi chú “${escapeHTML(note)}”` : ''}.`;
             }
             if (anomalies?.length) {
                 const a = anomalies[0];
@@ -3422,13 +3455,15 @@
             }
             if (topCatName) {
                 const catBudget = Number(idealCategoryBudgets[topCatName]) || 0;
-                if (catBudget > 0 && (categoryExpenses[topCatName] || 0) >= catBudget * 0.9) {
-                    const recurringOnly = (topCategories || []).filter(([cat]) => cat === topCatName).length && (actionableCategories.find(x => x.cat === topCatName)?.nonRecurringAmount || 0) < 200000;
-                    if (!recurringOnly) return `Giữ ${escapeHTML(topCatName)} dưới ${formatCurrency(catBudget)}; hiện đã dùng ${formatCurrency(categoryExpenses[topCatName])}, gần chạm hạn mức danh mục.`;
+                if (catBudget > 0 && (categoryExpenses[topCatName] || 0) >= catBudget * 0.9 && !topCat.stableRecurring) {
+                    return `Giữ ${escapeHTML(topCatName)} dưới ${formatCurrency(catBudget)}; hiện đã dùng ${formatCurrency(categoryExpenses[topCatName])}, gần chạm hạn mức danh mục.`;
                 }
-                return `Theo dõi ${escapeHTML(topCatName)} vì đây là danh mục cần chú ý nhất sau khi loại các khoản định kỳ ổn định.`;
+                if (topCat.stableRecurring && Math.abs(topCat.diff) < Math.max(200000, topCat.amount * 0.1)) {
+                    return 'Các khoản định kỳ lớn đang ổn định; chưa cần cắt riêng khoản này. Hãy tập trung vào phần chi linh hoạt nếu ngân sách đang căng.';
+                }
+                return `Ưu tiên xem lại ${escapeHTML(topCatName)} vì đây là tín hiệu đáng chú ý nhất sau khi loại các khoản định kỳ ổn định.`;
             }
-            return 'Tiếp tục ghi chép đầy đủ; chưa có tín hiệu đủ mạnh để khuyến nghị thay đổi.';
+            return 'Chưa có tín hiệu đủ mạnh để khuyến nghị thay đổi; các khoản chi lớn hiện chủ yếu mang tính định kỳ/ổn định.';
         }
 
         function renderSmartFinancialAssistant() {
@@ -3478,7 +3513,9 @@
             const topCategories = Object.entries(categoryExpenses).sort((a,b) => b[1]-a[1]).slice(0,5);
             const recurringProfiles = getRecurringExpenseProfiles(selectedMonthStr, 6);
             const anomalies = findAnomalies(monthStats, recurringProfiles);
-            const action = buildActionPlan({ idealBudget, monthExpense, projectedExpense, remainingDays, topCategories, anomalies, categoryExpenses, recurringProfiles, monthExpenseTxs: monthStats.expenseTxs });
+            const attentionCategories = buildAssistantCategoryInsights({ monthStats, prevStats, categoryExpenses, recurringProfiles, anomalies });
+            const attentionCategory = attentionCategories.find(x => x.nonRecurringAmount > 0 || x.anomalyCount > 0 || x.budgetOver > 0 || Math.abs(x.diff) >= 200000) || null;
+            const action = buildActionPlan({ idealBudget, monthExpense, projectedExpense, remainingDays, attentionCategories, anomalies, categoryExpenses, recurringProfiles, monthExpenseTxs: monthStats.expenseTxs });
             setText('ai-action-text', action);
 
             setText('ai-health-score', `${health.score}/100`);
@@ -3532,26 +3569,32 @@
             }), 'Chưa đủ dữ liệu để so sánh xu hướng.');
             renderAnomalyAndTrendCharts(anomalies, trends);
 
-            const mainCause = topCategories[0] ? topCategories[0][0] : 'chưa rõ';
-            const mainCauseAmount = topCategories[0] ? topCategories[0][1] : 0;
-            const mainCauseEvidence = topCategories[0] ? formatExpenseNoteEvidence(topExpenseNotesForCategory(monthStats.expenseTxs, topCategories[0][0], 3)) : '';
-            const mainCauseRecurring = topCategories[0] ? monthStats.expenseTxs.filter(tx => tx.category === mainCause).some(tx => getRecurringProfileForTx(tx, recurringProfiles)?.isRecurring) : false;
-            const mainCauseRecurringOnly = mainCauseRecurring && monthStats.expenseTxs.filter(tx => tx.category === mainCause).every(tx => { const p = getRecurringProfileForTx(tx, recurringProfiles); return p?.isRecurring; });
+            const largestCategory = topCategories[0] ? topCategories[0][0] : 'chưa rõ';
+            const largestCategoryAmount = topCategories[0] ? topCategories[0][1] : 0;
+            const largestCategoryEvidence = topCategories[0] ? formatExpenseNoteEvidence(topExpenseNotesForCategory(monthStats.expenseTxs, topCategories[0][0], 3)) : '';
+            const insightCategory = attentionCategory?.cat || largestCategory;
+            const insightCategoryAmount = attentionCategory?.amount || largestCategoryAmount;
+            const insightEvidence = attentionCategory ? formatExpenseNoteEvidence(topExpenseNotesForCategory(monthStats.expenseTxs, attentionCategory.cat, 3)) : largestCategoryEvidence;
             const threeMonth = buildThreeMonthTrend(selectedMonthStr, isCurrentMonth, projectedExpense);
-            const mainCatTrend = topCategories[0] ? buildCategoryThreeMonthTrend(selectedMonthStr, topCategories[0][0], isCurrentMonth, elapsedDays, daysInMonth) : null;
+            const mainCatTrend = attentionCategory ? buildCategoryThreeMonthTrend(selectedMonthStr, attentionCategory.cat, isCurrentMonth, elapsedDays, daysInMonth) : null;
             const proxyTotal = (monthStats.proxyIn || 0) + (monthStats.proxyOut || 0);
             const proxyNote = proxyTotal > 0 ? ` Ngoài ra có <strong>${formatCurrency(proxyTotal)}</strong> giao dịch trung gian (ủy thác) qua ví — không tính vào thu/chi.` : '';
             const baseline = getOrCreateAiBaseline(selectedMonthStr, projectedExpense, idealBudget);
             const resultInsight = buildResultInsight(isCurrentMonth ? projectedExpense : monthExpense, prevStats.expense, idealBudget, projectedExpense, isCurrentMonth, baseline);
             const summaryLines = [];
             summaryLines.push(`<p><strong>1. Bức tranh hiện tại:</strong> ${idealBudget > 0 ? `Bạn đang dùng <strong>${Math.round(monthExpense / idealBudget * 100)}%</strong> ngân sách.` : 'Bạn chưa đặt ngân sách tổng.'} ${isCurrentMonth && projectedExpense > idealBudget && idealBudget > 0 ? `Nếu không đổi nhịp chi, tháng có thể vượt khoảng <strong>${formatCurrency(projectedExpense - idealBudget)}</strong>.` : ''}${proxyNote}</p>`);
-            summaryLines.push(`<p><strong>2. Vì sao:</strong> <strong>${escapeHTML(mainCause)}</strong> là danh mục lớn nhất với ${formatCurrency(mainCauseAmount)}.${mainCauseRecurringOnly ? ' Đây có dấu hiệu là khoản chi định kỳ ổn định, nên không xem là vấn đề chỉ vì số tiền lớn.' : ''} ${mainCauseEvidence || 'Chưa có ghi chú đủ rõ để giải thích sâu hơn.'}</p>`);
-            if (mainCatTrend?.rising) summaryLines.push(`<p><strong>3. Tín hiệu hành vi:</strong> ${escapeHTML(mainCause)} đang tăng liên tiếp trong 3 tháng. Đây là dấu hiệu nên xử lý ở danh mục này trước thay vì cắt đều toàn bộ chi tiêu.</p>`);
+            if (attentionCategory) {
+                const changeText = attentionCategory.diff > 0 ? ` tăng ${formatCurrency(attentionCategory.diff)} so với tháng trước` : attentionCategory.diff < 0 ? ` giảm ${formatCurrency(Math.abs(attentionCategory.diff))} so với tháng trước` : '';
+                summaryLines.push(`<p><strong>2. Điều đáng chú ý:</strong> <strong>${escapeHTML(insightCategory)}</strong> có ${formatCurrency(insightCategoryAmount)}${changeText}.${attentionCategory.stableRecurring ? ' Khoản này vẫn mang tính định kỳ; chỉ đáng lưu ý vì đang có biến động hoặc áp lực ngân sách.' : ''} ${insightEvidence || 'Chưa có ghi chú đủ rõ để giải thích sâu hơn.'}</p>`);
+            } else {
+                summaryLines.push(`<p><strong>2. Điều đáng chú ý:</strong> Chưa có danh mục nào cần can thiệp rõ ràng. Khoản chi lớn nhất hiện là <strong>${escapeHTML(largestCategory)}</strong> (${formatCurrency(largestCategoryAmount)}).${largestCategoryEvidence ? ` ${largestCategoryEvidence}` : ''}</p>`);
+            }
+            if (mainCatTrend?.rising && attentionCategory) summaryLines.push(`<p><strong>3. Tín hiệu hành vi:</strong> ${escapeHTML(attentionCategory.cat)} đang tăng liên tiếp trong 3 tháng. Đây là dấu hiệu nên xử lý ở danh mục này trước thay vì cắt đều toàn bộ chi tiêu.</p>`);
             else if (threeMonth.rising) summaryLines.push(`<p><strong>3. Tín hiệu hành vi:</strong> Tổng chi đang tăng liên tiếp 3 tháng${threeMonth.currentVsAvg !== null ? ` và cao hơn khoảng ${Math.abs(threeMonth.currentVsAvg)}% so với bình quân 2 tháng trước` : ''}.</p>`);
             else if (threeMonth.falling) summaryLines.push(`<p><strong>3. Tín hiệu tích cực:</strong> Tổng chi đang giảm liên tiếp 3 tháng — nên duy trì các hành vi đang tạo ra kết quả này.</p>`);
-            else summaryLines.push(`<p><strong>3. Điều cần theo dõi:</strong> Biến động tháng này chưa cho thấy một xu hướng 3 tháng rõ ràng; ưu tiên theo dõi các giao dịch bất thường và danh mục lớn nhất.</p>`);
+            else summaryLines.push(`<p><strong>3. Điều cần theo dõi:</strong> Biến động tháng này chưa cho thấy một xu hướng 3 tháng rõ ràng; ưu tiên theo dõi các giao dịch bất thường và những khoản chi linh hoạt.</p>`);
             summaryLines.push(`<p><strong>4. Kết quả:</strong> ${resultInsight}</p>`);
-            summaryLines.push(`<p><strong>5. Hành động:</strong> ${action} ${mainCause !== 'chưa rõ' ? `Ưu tiên ${escapeHTML(mainCause)} trước.` : ''}</p>`);
+            summaryLines.push(`<p><strong>5. Hành động:</strong> ${action}</p>`);
             setHTML('ai-executive-summary', summaryLines.join(''));
         }
 
