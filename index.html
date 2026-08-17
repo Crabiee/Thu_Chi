@@ -963,11 +963,13 @@
 </div>
 <div class="ai-card">
 <p class="text-xs font-bold text-slate-500 uppercase mb-2">Việc cần làm ngay</p>
-<p class="text-sm font-semibold text-slate-800" id="ai-action-text">Chưa có gợi ý.</p>
+<div class="space-y-2 text-sm text-slate-800" id="ai-action-text">Chưa có gợi ý.</div>
 </div>
 <div class="ai-card">
-<p class="text-xs font-bold text-slate-500 uppercase mb-2">Chỉ số kiểm soát</p>
-<p class="text-sm font-semibold text-slate-800" id="ai-health-text">Đang tính toán.</p>
+<p class="text-xs font-bold text-slate-500 uppercase mb-2">Tiền giữ lại</p>
+<p class="text-lg font-extrabold text-emerald-600" id="ai-retained-amount">--</p>
+<p class="text-xs text-slate-500 mt-1" id="ai-retained-rate">Chưa đủ dữ liệu.</p>
+<p class="text-xs font-semibold mt-2" id="ai-retained-compare">—</p>
 </div>
 </div>
 <div class="ai-card border-indigo-100 bg-indigo-50/40">
@@ -988,54 +990,7 @@
 <p class="text-xs text-slate-400 mb-2">So sánh chi tiêu lũy kế thực tế (từng ngày) với tốc độ lý tưởng để không vượt ngân sách tháng — khác với biểu đồ Tổng Quan vốn chỉ so sánh theo từng tháng.</p>
 <div class="relative w-full" style="height:220px;"><canvas id="paceChart"></canvas></div>
 </div>
-<div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-<div class="ai-card">
-<h4 class="font-bold text-slate-900 mb-1 flex items-center gap-2"><i class="fa-solid fa-magnifying-glass-chart text-rose-500"></i>Điều gì đáng chú ý?</h4>
-<p class="text-xs text-slate-400 mb-3">Biểu đồ chỉ cho biết cơ cấu chi tiêu; phần nhận định ưu tiên biến động, ngân sách và các khoản không mang tính định kỳ.</p>
-<div class="relative w-full mb-3" style="height:180px;"><canvas id="topCategoriesChart"></canvas></div>
-<ul class="ai-list text-sm text-slate-600" id="ai-causes-list"></ul>
-</div>
-<div class="ai-card">
-<h4 class="font-bold text-slate-900 mb-3 flex items-center gap-2"><i class="fa-solid fa-gauge-high text-indigo-500"></i>Visual kiểm soát ngân sách</h4>
-<div class="space-y-4">
-<div class="grid grid-cols-2 gap-3">
-<div class="flex flex-col items-center">
-<div class="relative w-full" style="height:120px;"><canvas id="budgetDoughnut"></canvas></div>
-<p class="text-xs font-bold text-slate-500 uppercase mt-1">Ngân sách</p>
-<p class="text-xs text-slate-500 text-center mt-0.5" id="ai-visual-status">Chưa có dữ liệu.</p>
-</div>
-<div class="flex flex-col items-center">
-<div class="relative w-full" style="height:120px;"><canvas id="healthGauge"></canvas></div>
-<p class="text-xs font-bold text-slate-500 uppercase mt-1">Sức khỏe tài chính</p>
-<p class="text-xs text-slate-500 text-center mt-0.5" id="ai-health-gauge-label">--</p>
-</div>
-</div>
-<div>
-<div class="flex justify-between text-xs font-semibold text-slate-500 mb-1">
-<span>Đã dùng ngân sách</span>
-<span id="ai-remaining-budget">Còn lại: 0 ₫</span>
-</div>
-<div class="ai-meter"><div class="bg-indigo-600" id="ai-visual-budget-bar" style="width:0%"></div></div>
-</div>
-<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-<div class="bg-slate-50 border border-slate-100 rounded-xl p-3">
-<p class="text-xs font-bold text-slate-500 uppercase mb-1">Mức chi an toàn/ngày</p>
-<p class="text-sm font-bold text-emerald-600" id="ai-safe-daily">0 ₫</p>
-</div>
-<div class="bg-slate-50 border border-slate-100 rounded-xl p-3">
-<p class="text-xs font-bold text-slate-500 uppercase mb-1">Khoản chi lớn nhất · tham khảo</p>
-<p class="text-sm font-bold text-slate-800" id="ai-top-category-visual">Chưa có</p>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-<div class="ai-card">
-<h4 class="font-bold text-slate-900 mb-3 flex items-center gap-2"><i class="fa-solid fa-calendar-check text-emerald-500"></i>Chi phí định kỳ</h4>
-<p class="text-xs text-slate-400 mb-3">Theo dõi các khoản lặp lại theo tháng và chỉ làm nổi bật khi số tiền thay đổi đáng kể so với mức thường thấy.</p>
-<ul class="ai-list text-sm text-slate-600" id="ai-recurring-list"></ul>
-</div>
+<div class="grid grid-cols-1 gap-6">
 <div class="ai-card">
 <h4 class="font-bold text-slate-900 mb-3 flex items-center gap-2"><i class="fa-solid fa-arrow-trend-up text-rose-500"></i>Danh mục biến động mạnh nhất</h4>
 <p class="text-xs text-slate-400 mb-2">So với cùng danh mục ở tháng trước.</p>
@@ -3467,17 +3422,17 @@
         }
 
         function buildActionPlan({ idealBudget, monthExpense, projectedExpense, remainingDays, attentionCategories = [], categoryExpenses, recurringProfiles = new Map(), monthExpenseTxs = [] }) {
-            if (idealBudget <= 0) return 'Đặt ngân sách tổng trước; sau đó mình sẽ tính mức chi an toàn/ngày và xác định phần chi linh hoạt cần chú ý.';
-            if (monthExpense <= 0) return 'Chưa có khoản chi trong tháng; cứ ghi chép đều để trợ lý bắt đầu nhận diện thói quen.';
+            const safe = (value) => escapeHTML(String(value ?? ''));
+            const make = (title, detail, meta = '') => `<div class="rounded-xl border border-slate-200 bg-white/70 px-3 py-2"><div class="font-extrabold text-slate-800 leading-snug">${title}</div>${detail ? `<div class="text-xs text-slate-500 mt-1 leading-relaxed">${detail}</div>` : ''}${meta ? `<div class="text-xs font-semibold text-indigo-600 mt-1">${meta}</div>` : ''}</div>`;
+            if (idealBudget <= 0) return make('Chưa có ngân sách tổng', 'Đặt ngân sách để trợ lý tính mức chi an toàn và xác định phần chi linh hoạt cần chú ý.');
+            if (monthExpense <= 0) return make('Chưa có khoản chi trong tháng', 'Tiếp tục ghi giao dịch để trợ lý bắt đầu nhận diện thay đổi và đưa ra khuyến nghị.');
 
             const actionable = attentionCategories.filter(x => !x.stableRecurringOnly);
-            const strongSignal = actionable
-                .slice()
-                .sort((a,b) => {
-                    const aPriority = (a.budgetOver > 0 ? 3 : 0) + (a.recurringChangeNotable ? 2 : 0) + (a.diff > 0 ? 1 : 0);
-                    const bPriority = (b.budgetOver > 0 ? 3 : 0) + (b.recurringChangeNotable ? 2 : 0) + (b.diff > 0 ? 1 : 0);
-                    return bPriority - aPriority || b.attentionScore - a.attentionScore;
-                })[0] || null;
+            const strongSignal = actionable.slice().sort((a,b) => {
+                const aPriority = (a.budgetOver > 0 ? 3 : 0) + (a.recurringChangeNotable ? 2 : 0) + (a.diff > 0 ? 1 : 0);
+                const bPriority = (b.budgetOver > 0 ? 3 : 0) + (b.recurringChangeNotable ? 2 : 0) + (b.diff > 0 ? 1 : 0);
+                return bPriority - aPriority || b.attentionScore - a.attentionScore;
+            })[0] || null;
             const flexibleCandidate = actionable.filter(x => x.nonRecurringAmount > 0).sort((a,b) => b.attentionScore - a.attentionScore)[0] || null;
             const topCat = strongSignal || flexibleCandidate;
             const topCatName = topCat?.cat || null;
@@ -3488,28 +3443,41 @@
                     return !p?.isRecurring || (Number(tx.amount) || 0) > (p?.median || 0) * 1.2;
                 })
                 .sort((a,b) => b.amount - a.amount)[0] : null;
+            const note = normalizeNote(topTx?.notes);
 
             if (projectedExpense > idealBudget && remainingDays > 0) {
                 const reducePerDay = Math.ceil((projectedExpense - idealBudget) / remainingDays);
-                const note = normalizeNote(topTx?.notes);
-                const targetText = topCatName
-                    ? `ưu tiên phần chi linh hoạt ở ${escapeHTML(topCatName)}${note ? `; ví dụ “${escapeHTML(note)}”` : ''}`
-                    : 'ưu tiên các khoản chi linh hoạt và chưa định kỳ';
-                return `Giảm khoảng ${formatCurrency(reducePerDay)}/ngày trong ${remainingDays} ngày còn lại; ${targetText}. Các khoản định kỳ ổn định không phải mục tiêu cắt đầu tiên.`;
+                const priority = topCatName ? `Ưu tiên: ${safe(topCatName)}` : 'Ưu tiên: các khoản chi linh hoạt';
+                const evidence = note ? `Ví dụ tháng này: “${safe(note)}”${topTx?.amount ? ` (${formatCurrency(topTx.amount)})` : ''}` : 'Chưa có ghi chú đủ rõ để nêu khoản cụ thể.';
+                return make(`Giảm khoảng ${formatCurrency(reducePerDay)}/ngày`, `${remainingDays} ngày còn lại để đưa dự báo về gần ngân sách.`, `${priority}<br>${evidence}`);
             }
 
             if (topCatName) {
                 const catBudget = Number(idealCategoryBudgets[topCatName]) || 0;
                 if (catBudget > 0 && (categoryExpenses[topCatName] || 0) >= catBudget * 0.9) {
-                    return `Theo dõi ${escapeHTML(topCatName)}: đã dùng ${formatCurrency(categoryExpenses[topCatName])} trên hạn mức ${formatCurrency(catBudget)}; ưu tiên rà phần chi linh hoạt trong danh mục.`;
+                    return make(`Theo dõi ${safe(topCatName)}`, `Đã dùng ${formatCurrency(categoryExpenses[topCatName])} / ${formatCurrency(catBudget)} hạn mức danh mục.`, 'Ưu tiên rà phần chi linh hoạt trong danh mục.');
                 }
                 if (topCat.recurringChangeNotable && topCat.recurringAmount > 0) {
-                    return `Kiểm tra thay đổi của khoản định kỳ trong ${escapeHTML(topCatName)} so với mức thường thấy; chưa cần cắt toàn bộ chi phí cố định.`;
+                    return make(`Kiểm tra biến động ở ${safe(topCatName)}`, 'Khoản định kỳ có thay đổi đáng kể so với mức thường thấy.', 'Không cần cắt toàn bộ chi phí cố định.');
                 }
-                return `Ưu tiên xem lại phần chi linh hoạt ở ${escapeHTML(topCatName)}; các khoản định kỳ ổn định chỉ cần theo dõi.`;
+                return make(`Ưu tiên phần chi linh hoạt ở ${safe(topCatName)}`, note ? `Giao dịch tiêu biểu: “${safe(note)}”${topTx?.amount ? ` (${formatCurrency(topTx.amount)})` : ''}` : 'Chưa có ghi chú đủ rõ để giải thích sâu hơn.', 'Các khoản định kỳ ổn định chỉ cần theo dõi.');
             }
 
-            return 'Chưa có tín hiệu đủ mạnh để khuyến nghị thay đổi; các khoản chi lớn hiện chủ yếu là định kỳ hoặc ổn định.';
+            return make('Chưa cần thay đổi lớn', 'Chưa có tín hiệu đủ mạnh để khuyến nghị cắt giảm; các khoản chi lớn hiện chủ yếu ổn định hoặc định kỳ.');
+        }
+
+        function getCashFlowThroughDay(monthStr, day) {
+            const safeDay = Math.max(0, Number(day) || 0);
+            if (safeDay <= 0) return { income: 0, expense: 0, net: 0 };
+            let income = 0, expense = 0;
+            transactions.forEach(tx => {
+                if (!tx.date || !tx.date.startsWith(monthStr)) return;
+                const d = new Date(tx.date + 'T00:00:00').getDate();
+                if (d > safeDay) return;
+                if (tx.type === 'income') income += Number(tx.amount) || 0;
+                else if (tx.type === 'expense') expense += Number(tx.amount) || 0;
+            });
+            return { income, expense, net: income - expense };
         }
 
         function renderSmartFinancialAssistant() {
@@ -3536,6 +3504,30 @@
             
             const projection = idealBudget <= 0 ? 'Chưa có mục tiêu tổng, nên chưa dự báo được.' : (isCurrentMonth ? `Nếu giữ tốc độ hiện tại, dự chi ${formatCurrency(projectedExpense)} (${projectedPercent}%).` : `Tháng kết thúc ở mức ${formatCurrency(monthExpense)} (${Math.round((monthExpense / idealBudget) * 100)}%).`);
             setText('ai-projection-text', projection);
+            const retainedCurrent = isCurrentMonth ? getCashFlowThroughDay(selectedMonthStr, comparisonDay) : { income: monthIncome, expense: monthExpense, net: monthIncome - monthExpense };
+            const retainedPrevious = isCurrentMonth ? getCashFlowThroughDay(prevMonthStr, comparisonDay) : { income: prevStats.income, expense: prevStats.expense, net: prevStats.income - prevStats.expense };
+            const retainedRate = retainedCurrent.income > 0 ? (retainedCurrent.net / retainedCurrent.income) * 100 : null;
+            const prevRetainedRate = retainedPrevious.income > 0 ? (retainedPrevious.net / retainedPrevious.income) * 100 : null;
+            setText('ai-retained-amount', `${retainedCurrent.net >= 0 ? '+' : ''}${formatCurrency(retainedCurrent.net)}`);
+            const retainedAmountEl = document.getElementById('ai-retained-amount');
+            if (retainedAmountEl) retainedAmountEl.className = `text-lg font-extrabold ${retainedCurrent.net >= 0 ? 'text-emerald-600' : 'text-rose-600'}`;
+            setText('ai-retained-rate', retainedRate === null ? 'Chưa có đủ dữ liệu thu nhập.' : `${isCurrentMonth ? 'Tạm tính đến hiện tại' : 'Tỷ lệ giữ lại'}: ${retainedRate.toFixed(1)}% thu nhập`);
+            const retainedDiff = retainedCurrent.net - retainedPrevious.net;
+            const retainedCompare = retainedPrevious.income > 0 || retainedPrevious.expense > 0
+                ? `${retainedDiff >= 0 ? 'Tăng' : 'Giảm'} ${formatCurrency(Math.abs(retainedDiff))}${isCurrentMonth ? ' so với cùng số ngày tháng trước' : ' so với tháng trước'}.`
+                : 'Chưa đủ dữ liệu tháng trước để so sánh.';
+            setText('ai-retained-compare', retainedCompare);
+            setText('ai-retained-income', formatCurrency(retainedCurrent.income));
+            setText('ai-retained-expense', formatCurrency(retainedCurrent.expense));
+            const retainedInsight = retainedRate === null
+                ? 'Hãy ghi nhận thu nhập để theo dõi tỷ lệ giữ lại.'
+                : retainedCurrent.net < 0
+                    ? 'Chi tiêu đang cao hơn thu nhập trong kỳ này.'
+                    : retainedRate >= 20
+                        ? 'Bạn đang giữ lại một phần thu nhập khá tốt.'
+                        : 'Bạn vẫn giữ lại được tiền, nhưng tỷ lệ còn khá thấp.';
+            setText('ai-retained-insight', retainedInsight);
+
             
             const meter = document.getElementById('ai-projection-meter');
             if (meter) { meter.style.width = Math.min(100, projectedPercent || 0) + '%'; meter.className = projectedPercent > 100 ? 'bg-rose-600' : projectedPercent > 80 ? 'bg-amber-500' : 'bg-indigo-600'; }
@@ -3561,9 +3553,8 @@
             currentAssistantRecurringProfiles = recurringProfiles;
             const attentionCategories = buildAssistantCategoryInsights({ monthStats, prevStats, categoryExpenses, recurringProfiles });
             const attentionCategory = attentionCategories.find(x => !x.stableRecurringOnly && (x.nonRecurringAmount > 0 || x.budgetOver > 0 || x.recurringChangeNotable || Math.abs(x.diff) >= 200000)) || null;
-            const recurringInsights = buildRecurringInsights(monthStats, prevStats, recurringProfiles);
             const action = buildActionPlan({ idealBudget, monthExpense, projectedExpense, remainingDays, attentionCategories, categoryExpenses, recurringProfiles, monthExpenseTxs: monthStats.expenseTxs });
-            setText('ai-action-text', action);
+            setHTML('ai-action-text', action);
 
             setText('ai-health-score', `${health.score}/100`);
             setHTML('ai-health-text', `Xếp loại: <span class="${health.tone} font-bold">${health.label}</span>. ${health.overCategories > 0 ? `Có ${health.overCategories} danh mục vượt.` : ''}`);
@@ -3599,18 +3590,6 @@
             }), 'Chưa có khoản chi.');
             setText('ai-top-category-visual', topCategories[0] ? `${topCategories[0][0]} • ${formatCurrency(topCategories[0][1])}` : 'Chưa có');
             renderAssistantCharts({ monthStats, daysInMonth, elapsedDays, isCurrentMonth, idealBudget, topCategories, monthExpense });
-
-            renderAIList('ai-recurring-list', recurringInsights.map(r => {
-                const statusClass = r.tone === 'amber' ? 'text-amber-500' : r.tone === 'indigo' ? 'text-indigo-500' : 'text-emerald-500';
-                const comparison = r.prev > 0 && r.pctPrev !== null
-                    ? `${r.diffPrev > 0 ? '+' : ''}${r.pctPrev}% so với tháng trước`
-                    : 'chưa đủ tháng trước để so sánh';
-                const typicalText = r.typical > 0 ? `mức thường thấy ${formatCurrency(r.typical)}` : '';
-                return {
-                    dot: r.status === 'Ổn định' ? 'bg-emerald-500' : (r.status === 'Tăng' ? 'bg-amber-500' : 'bg-indigo-500'),
-                    html: `<strong>${escapeHTML(r.category)}</strong>: ${formatCurrency(r.amount)} <span class="${statusClass} font-semibold">• ${r.status}</span>. ${comparison}${typicalText ? ` · ${typicalText}` : ''}${r.note ? ` <span class="block mt-0.5 text-xs text-slate-500">“${escapeHTML(r.note)}”</span>` : ''}`
-                };
-            }), 'Chưa đủ lịch sử để nhận diện khoản chi định kỳ.');
 
             // Danh mục biến động mạnh nhất so với tháng trước, kèm bằng chứng từ giao dịch.
             const trends = getCategoryTrends(categoryExpenses, prevStats.categoryBreakdown, attentionCategories);
