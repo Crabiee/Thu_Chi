@@ -2178,7 +2178,7 @@
         let charts = {};
 
         // ================== SYNC PATCH (áp dụng cho mọi thay đổi dữ liệu cục bộ) ==================
-        const DRIVE_SYNC_KEYS = ['personal_transactions_v4', 'personal_deleted_tx_v4', 'personal_categories_v4', 'personal_accounts_v4', 'personal_ideal_budget_v4', 'personal_ideal_cat_budgets_v4', 'personal_pin_hash_v1'];
+        const DRIVE_SYNC_KEYS = ['personal_categories_v4', 'personal_accounts_v4', 'personal_ideal_budget_v4', 'personal_ideal_cat_budgets_v4', 'personal_pin_hash_v1'];
         // Settings được merge ĐỘC LẬP theo từng nhóm để 2 thiết bị sửa 2 nhóm khác nhau
         // không ghi đè lẫn nhau.
         const SETTINGS_SYNC_KEYS = ['personal_categories_v4', 'personal_accounts_v4', 'personal_ideal_budget_v4', 'personal_ideal_cat_budgets_v4', 'personal_pin_hash_v1'];
@@ -2192,6 +2192,7 @@
         const SETTINGS_TIMESTAMP_FIELDS = Object.values(SETTINGS_TIMESTAMP_KEYS);
         const LEGACY_SETTINGS_TIMESTAMP_KEY = 'financepro_settings_updated_at';
         const _origLocalStorageSetItem = localStorage.setItem.bind(localStorage);
+        const _origLocalStorageRemoveItem = localStorage.removeItem.bind(localStorage);
         let localSyncGeneration = 0;
         localStorage.setItem = function (key, value) {
             _origLocalStorageSetItem(key, value);
@@ -2262,7 +2263,8 @@
         }
 
         function getStoredPinHash() {
-            return localStorage.getItem('personal_pin_hash_v1') || '';
+            const value = localStorage.getItem('personal_pin_hash_v1');
+            return (value && value !== 'null' && value !== 'undefined') ? value : '';
         }
 
         async function migrateLegacyPlainPinIfNeeded() {
@@ -2628,13 +2630,9 @@
             const savedTxs = localStorage.getItem('personal_transactions_v4');
             const savedCats = localStorage.getItem('personal_categories_v4');
             const savedAccs = localStorage.getItem('personal_accounts_v4');
-            if (savedTxs) transactions = safeParseJSON(savedTxs, []);
-            // Dữ liệu cũ (trước bản cập nhật đồng bộ) chưa có updatedAt -> gán tạm mốc thời gian hiện tại
-            // để logic hợp nhất (merge) sau này có cơ sở so sánh; các chỉnh sửa mới sau đó sẽ tự có
-            // dấu thời gian chính xác và luôn "thắng" so với dữ liệu cũ chưa từng được sửa lại.
-            let migratedLegacyTx = false;
-            transactions.forEach(tx => { if (!tx.updatedAt) { tx.updatedAt = new Date(0).toISOString(); migratedLegacyTx = true; } });
-            if (migratedLegacyTx) localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions));
+            legacyLocalTransactions = savedTxs ? safeParseJSON(savedTxs, []) : [];
+            legacyLocalTransactions.forEach(tx => { if (!tx.updatedAt) tx.updatedAt = new Date(0).toISOString(); });
+            transactions = [];
             if (localStorage.getItem('personal_ideal_budget_v4')) idealBudget = Number(localStorage.getItem('personal_ideal_budget_v4')) || 0;
             if (localStorage.getItem('personal_ideal_cat_budgets_v4')) idealCategoryBudgets = getStoredJSON('personal_ideal_cat_budgets_v4', {});
             
@@ -2800,7 +2798,9 @@
             if (!Object.prototype.hasOwnProperty.call(userAccounts, acc)) return showToast("Tài khoản không tồn tại", "fa-xmark", "text-rose-500");
             if (type === 'transfer' && !Object.prototype.hasOwnProperty.call(userAccounts, toAcc)) return showToast("Tài khoản nhận không tồn tại", "fa-xmark", "text-rose-500");
             const newId = editingTxId || `tx-${Date.now()}-${Math.random().toString(36).slice(2,10)}`;
-            const newData = { id: newId, type, amount:amt, date:document.getElementById('txDate').value, account:acc, category:type==='transfer'?'Chuyển tiền':(type==='proxy'?(cat||'Trung gian'):cat), toAccount:type==='transfer'?toAcc:"", proxyDir:type==='proxy'?proxyDir:null, notes:document.getElementById('txNotes').value, updatedAt: new Date().toISOString() };
+            const existingTx = editingTxId ? transactions.find(t => String(t.id) === String(editingTxId)) : null;
+            const nextSyncVersion = Math.max(1, Number(existingTx?.syncVersion) || 0) + 1;
+            const newData = { id: newId, type, amount:amt, date:document.getElementById('txDate').value, account:acc, category:type==='transfer'?'Chuyển tiền':(type==='proxy'?(cat||'Trung gian'):cat), toAccount:type==='transfer'?toAcc:"", proxyDir:type==='proxy'?proxyDir:null, notes:document.getElementById('txNotes').value, updatedAt: new Date().toISOString(), syncVersion: nextSyncVersion };
             if(editingTxId) {
                 const editIndex = transactions.findIndex(t=>t.id===editingTxId);
                 if (editIndex < 0) { editingTxId = null; return showToast("Giao dịch đã thay đổi ở thiết bị khác. Hãy tải lại dữ liệu rồi thử lại.", "fa-triangle-exclamation", "text-amber-500"); }
@@ -2810,7 +2810,11 @@
             // để lần đồng bộ tới không bị máy khác xóa mất bản ghi vừa tạo.
             clearTombstone(newData.id);
             
-            localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions));
+            markTransactionDirty(newData.id);
+            if (txStorageUid) queueTxStorageWrite(async () => {
+                if (txIdbAvailable) await idbPutTransaction(txStorageUid, newData);
+                else _origLocalStorageSetItem('personal_transactions_v4', JSON.stringify(transactions));
+            });
             showToast("Lưu thành công", "fa-check", "text-emerald-400");
             closeModal('transactionModal'); updateDashboard(); applyFilters(); renderCategoryBudgets();
             // Giao dịch là dữ liệu quan trọng: đẩy ngay thay vì chỉ chờ debounce 500ms.
@@ -2823,21 +2827,21 @@
                 pendingSyncAfterReady = true;
             }
         }
-        function handleDeleteTxClick(id) { openConfirm("Xóa", "Không khôi phục được", () => { transactions = transactions.filter(t=>t.id!==id); recordTombstone(id); localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions)); updateDashboard(); applyFilters(); renderCategoryBudgets(); showToast("Đã xóa", "fa-trash", "text-rose-400"); if (fbCurrentUid && firestoreV2Ready && syncReady) { clearTimeout(fbSaveTimer); void pushLocalDataToFirestore(); } else if (fbCurrentUid) pendingSyncAfterReady = true; }); }
+        function handleDeleteTxClick(id) { openConfirm("Xóa", "Không khôi phục được", () => { const deleting = transactions.find(t => String(t.id) === String(id)); const deleteVersion = Math.max(1, Number(deleting?.syncVersion) || 0) + 1; transactions = transactions.filter(t=>t.id!==id); recordTombstone(id, deleteVersion); markTombstoneDirty(id); queueTxStorageWrite(async () => { if (txStorageUid && txIdbAvailable) await idbDeleteTransaction(txStorageUid, id); else _origLocalStorageSetItem('personal_transactions_v4', JSON.stringify(transactions)); }); updateDashboard(); applyFilters(); renderCategoryBudgets(); showToast("Đã xóa", "fa-trash", "text-rose-400"); if (fbCurrentUid && firestoreV2Ready && syncReady) { clearTimeout(fbSaveTimer); void pushLocalDataToFirestore(); } else if (fbCurrentUid) pendingSyncAfterReady = true; }); }
 
         // ================== TOMBSTONE (đánh dấu đã xóa) CHO ĐỒNG BỘ NHIỀU THIẾT BỊ ==================
         // Vì mỗi thiết bị lưu localStorage riêng, khi hợp nhất (merge) dữ liệu giữa các thiết bị ta không
         // thể chỉ dựa vào "giao dịch có mặt hay không" (vì thiết bị A xóa 1 giao dịch không đồng nghĩa nó
         // biến mất trên Drive nếu thiết bị B chưa kịp đồng bộ). Do đó ta ghi lại "đã xóa lúc nào" để khi
         // gộp dữ liệu, biết được nên giữ hay bỏ 1 bản ghi.
-        function recordTombstone(id) {
+        function recordTombstone(id, syncVersion = 1) {
             const tomb = getStoredJSON('personal_deleted_tx_v4', {});
-            tomb[id] = new Date().toISOString();
+            tomb[id] = { deletedAt: new Date().toISOString(), syncVersion: Math.max(1, Number(syncVersion) || 1) };
             localStorage.setItem('personal_deleted_tx_v4', JSON.stringify(tomb));
         }
         function clearTombstone(id) {
             const tomb = getStoredJSON('personal_deleted_tx_v4', {});
-            if (tomb[id]) { delete tomb[id]; localStorage.setItem('personal_deleted_tx_v4', JSON.stringify(tomb)); }
+            if (tomb[id]) { delete tomb[id]; localStorage.setItem('personal_deleted_tx_v4', JSON.stringify(tomb)); markTombstoneDirty(id); }
         }
 
         // ================== GIAO DIỆN SỔ SÁCH (TABLE + CARDS) ==================
@@ -3648,7 +3652,7 @@
             });
         }
         function handleAddCategory(t) { const n = document.getElementById(`new-${t}-cat-input`).value.trim(); if(n&&!categories[t].includes(n)) { categories[t].push(n); localStorage.setItem('personal_categories_v4', JSON.stringify(categories)); document.getElementById(`new-${t}-cat-input`).value=''; renderCategoryManager(); showToast("Đã thêm danh mục!", "fa-check", "text-emerald-400"); } }
-        function handleEditCategoryClick(type, oldName) { openPrompt("Đổi tên danh mục", oldName, (newName) => { const trimmedName = newName.trim(); if (!trimmedName || trimmedName === oldName || categories[type].includes(trimmedName)) return; categories[type][categories[type].indexOf(oldName)] = trimmedName; if (CATEGORY_ICONS[oldName]) CATEGORY_ICONS[trimmedName] = CATEGORY_ICONS[oldName]; let isUpdated = false; transactions.forEach(tx => { if (tx.type === type && tx.category === oldName) { tx.category = trimmedName; tx.updatedAt = new Date().toISOString(); isUpdated = true; } }); if (type === 'expense' && idealCategoryBudgets[oldName] !== undefined) { idealCategoryBudgets[trimmedName] = idealCategoryBudgets[oldName]; delete idealCategoryBudgets[oldName]; localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); } if (isUpdated) localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions)); localStorage.setItem('personal_categories_v4', JSON.stringify(categories)); renderCategoryManager(); updateFormCategories(); updateDashboard(); showToast("Đổi tên thành công", "fa-check", "text-emerald-400"); }); }
+        function handleEditCategoryClick(type, oldName) { openPrompt("Đổi tên danh mục", oldName, (newName) => { const trimmedName = newName.trim(); if (!trimmedName || trimmedName === oldName || categories[type].includes(trimmedName)) return; categories[type][categories[type].indexOf(oldName)] = trimmedName; if (CATEGORY_ICONS[oldName]) CATEGORY_ICONS[trimmedName] = CATEGORY_ICONS[oldName]; let isUpdated = false; transactions.forEach(tx => { if (tx.type === type && tx.category === oldName) { tx.category = trimmedName; tx.updatedAt = new Date().toISOString(); isUpdated = true; } }); if (type === 'expense' && idealCategoryBudgets[oldName] !== undefined) { idealCategoryBudgets[trimmedName] = idealCategoryBudgets[oldName]; delete idealCategoryBudgets[oldName]; localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); } if (isUpdated) { transactions.forEach(tx => { if (tx.type === type && tx.category === trimmedName) { markTransactionDirty(tx.id); } }); if (txStorageUid) queueTxStorageWrite(() => idbReplaceTransactions(txStorageUid, transactions)); else _origLocalStorageSetItem('personal_transactions_v4', JSON.stringify(transactions)); } localStorage.setItem('personal_categories_v4', JSON.stringify(categories)); renderCategoryManager(); updateFormCategories(); updateDashboard(); showToast("Đổi tên thành công", "fa-check", "text-emerald-400"); }); }
         function handleDeleteCategoryClick(type, cat) { if (categories[type].length <= 1) return showToast("Phải giữ lại ít nhất 1", "fa-xmark", "text-rose-500"); openConfirm("Xóa Danh Mục", `Xóa "${cat}"?`, () => { categories[type] = categories[type].filter(c => c !== cat); localStorage.setItem('personal_categories_v4', JSON.stringify(categories)); if (type === 'expense') { delete idealCategoryBudgets[cat]; localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); } renderCategoryManager(); updateFormCategories(); updateDashboard(); showToast("Đã xóa", "fa-trash", "text-rose-400"); }); }
 
         // ================== GUIDE & EXPORT ==================
@@ -3834,7 +3838,7 @@
             setTimeout(() => URL.revokeObjectURL(link.href), 0);
         }
         function exportDataJSON() {
-            const backupData = { version: "5", timestamp: new Date().toISOString(), transactions: transactions, categories: categories, userAccounts: userAccounts, idealBudget: idealBudget, idealCategoryBudgets: idealCategoryBudgets, pinHash: getStoredPinHash() || null };
+            const backupData = { version: "6", timestamp: new Date().toISOString(), transactions: transactions, categories: categories, userAccounts: userAccounts, idealBudget: idealBudget, idealCategoryBudgets: idealCategoryBudgets, pinHash: getStoredPinHash() || null };
             const link = document.createElement('a'); link.setAttribute("href", "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2))); link.setAttribute("download", `FinancePro_Backup_${getCurrentMonthStr()}.json`); document.body.appendChild(link); link.click(); link.remove();
             showToast("Đã tải xuống file sao lưu!", "fa-check", "text-emerald-400");
         }
@@ -3884,7 +3888,11 @@
                         // Import là restore hoàn chỉnh tại máy này: tombstone cũ không được phép
                         // tiếp tục xóa các bản ghi vừa phục hồi từ backup.
                         _origLocalStorageSetItem('personal_deleted_tx_v4', '{}');
-                        localStorage.setItem('personal_transactions_v4', JSON.stringify(importedTx));
+                        transactions = importedTx;
+                        DIRTY_TX_IDS.clear(); DIRTY_TOMBSTONE_IDS.clear();
+                        DIRTY_TX_VERSIONS.clear(); DIRTY_TOMBSTONE_VERSIONS.clear();
+                        importedTx.forEach(tx => markTransactionDirty(tx.id));
+                        if (txStorageUid) { queueTxStorageWrite(async () => { if (txIdbAvailable) await idbReplaceTransactions(txStorageUid, importedTx); else _origLocalStorageSetItem('personal_transactions_v4', JSON.stringify(importedTx)); }); }
                         localStorage.setItem('personal_categories_v4', JSON.stringify(data.categories));
                         if (data.userAccounts) localStorage.setItem('personal_accounts_v4', JSON.stringify(data.userAccounts)); else if (data.initialBalances) localStorage.setItem('personal_accounts_v4', JSON.stringify(data.initialBalances));
                         else _origLocalStorageSetItem('personal_accounts_v4', 'null');
@@ -3892,7 +3900,7 @@
                         else _origLocalStorageSetItem('personal_ideal_budget_v4', '0');
                         if (data.idealCategoryBudgets) localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(data.idealCategoryBudgets));
                         else _origLocalStorageSetItem('personal_ideal_cat_budgets_v4', 'null');
-                        if (data.pinHash) localStorage.setItem('personal_pin_hash_v1', String(data.pinHash)); else _origLocalStorageSetItem('personal_pin_hash_v1', 'null');
+                        if (data.pinHash) localStorage.setItem('personal_pin_hash_v1', String(data.pinHash)); else _origLocalStorageRemoveItem('personal_pin_hash_v1');
                         // Backup là một hành động restore mới: các nhóm settings vừa import phải có cùng mốc
                         // thời gian mới để đồng bộ nhất quán sang thiết bị khác.
                         const settingsTs = {
@@ -3947,6 +3955,21 @@
         let pendingSyncAfterReady = false;
         let syncPushInFlight = false;
         let syncPushRequested = false;
+        const DIRTY_TX_IDS = new Set();
+        const DIRTY_TOMBSTONE_IDS = new Set();
+        const DIRTY_TX_VERSIONS = new Map();
+        const DIRTY_TOMBSTONE_VERSIONS = new Map();
+        const TX_IDB_DB = 'financepro_local_v2';
+        const TX_IDB_VERSION = 1;
+        const TX_IDB_STORE = 'transactions';
+        const TX_IDB_META = 'meta';
+        const TX_SYNC_CURSOR_PREFIX = 'financepro_tx_sync_cursor_v2_';
+        const TX_SYNC_SCHEMA_PREFIX = 'financepro_tx_sync_schema_v2_';
+        let txDbPromise = null;
+        let txStorageUid = null;
+        let txIdbAvailable = true;
+        let txStorageWriteQueue = Promise.resolve();
+        let legacyLocalTransactions = [];
 
         function isDriveSignedIn() { return !!fbCurrentUid; }
 
@@ -3966,7 +3989,7 @@
         }
 
         function clearLocalSyncedDataForAccountSwitch() {
-            _origLocalStorageSetItem('personal_transactions_v4', '[]');
+            localStorage.removeItem('personal_transactions_v4');
             _origLocalStorageSetItem('personal_deleted_tx_v4', '{}');
             _origLocalStorageSetItem('personal_categories_v4', 'null');
             _origLocalStorageSetItem('personal_accounts_v4', 'null');
@@ -3993,7 +4016,20 @@
         function firestoreSettingsRef(uid = fbCurrentUid) { return fbDb.collection(FIRESTORE_COLLECTION).doc(uid); }
         function firestoreTransactionsRef(uid = fbCurrentUid) { return firestoreSettingsRef(uid).collection(FIRESTORE_TX_SUBCOLLECTION); }
         function firestoreTombstonesRef(uid = fbCurrentUid) { return firestoreSettingsRef(uid).collection(FIRESTORE_TOMBSTONE_SUBCOLLECTION); }
-        function firestoreTime(value) { const t = value ? new Date(value).getTime() : 0; return Number.isFinite(t) ? t : 0; }
+        function firestoreTime(value) {
+            if (!value) return 0;
+            try {
+                if (typeof value.toMillis === 'function') return value.toMillis();
+                if (typeof value.toDate === 'function') return value.toDate().getTime();
+                if (value instanceof Date) return value.getTime();
+                const t = new Date(value).getTime();
+                return Number.isFinite(t) ? t : 0;
+            } catch (_) { return 0; }
+        }
+        function firestoreTimestampFromMs(ms) {
+            return firebase.firestore.Timestamp.fromMillis(Math.max(0, Number(ms) || 0));
+        }
+        function syncVersionTime(tx) { return Number(tx?.serverUpdatedAtMs) || firestoreTime(tx?.serverUpdatedAt) || firestoreTime(tx?.updatedAt); }
 
         function normalizeRemoteTransaction(tx, fallbackId) {
             if (!tx || typeof tx !== 'object') return null;
@@ -4001,8 +4037,186 @@
             out.id = String(tx.id || fallbackId || '');
             if (!out.id) return null;
             if (out.amount !== undefined) out.amount = Number(out.amount) || 0;
+            out.syncVersion = Math.max(1, Number(out.syncVersion) || 1);
+            if (out.serverUpdatedAt) {
+                const ms = firestoreTime(out.serverUpdatedAt);
+                if (ms) { out.serverUpdatedAtMs = ms; out.updatedAt = new Date(ms).toISOString(); }
+                delete out.serverUpdatedAt;
+            }
             if (out.updatedAt === undefined || !out.updatedAt) out.updatedAt = new Date(0).toISOString();
             return out;
+        }
+
+        function normalizeLocalTransaction(tx) {
+            if (!tx || typeof tx !== 'object') return null;
+            const out = { ...tx };
+            out.id = String(tx.id || '');
+            if (!out.id) return null;
+            out.syncVersion = Math.max(1, Number(tx.syncVersion) || 1);
+            if (!out.updatedAt) out.updatedAt = new Date(0).toISOString();
+            return out;
+        }
+
+        function tombstoneAt(value) {
+            if (!value) return null;
+            if (typeof value === 'object') return value.deletedAt || null;
+            return String(value);
+        }
+        function tombstoneVersion(value) {
+            if (!value || typeof value !== 'object') return 1;
+            return Math.max(1, Number(value.syncVersion) || 1);
+        }
+        function normalizeTombstone(value, fallbackVersion = 1) {
+            const deletedAt = tombstoneAt(value);
+            if (!deletedAt) return null;
+            return { deletedAt: String(deletedAt), syncVersion: Math.max(1, Number(value?.syncVersion) || Number(fallbackVersion) || 1) };
+        }
+        function makeFreshUpdatedAtAfter(remoteAt) {
+            const remoteMs = firestoreTime(remoteAt);
+            return new Date(Math.max(Date.now(), remoteMs + 1)).toISOString();
+        }
+
+        function openTransactionDB() {
+            if (!txIdbAvailable) return Promise.resolve(null);
+            if (txDbPromise) return txDbPromise;
+            txDbPromise = new Promise((resolve, reject) => {
+                if (!window.indexedDB) { txIdbAvailable = false; resolve(null); return; }
+                const req = indexedDB.open(TX_IDB_DB, TX_IDB_VERSION);
+                req.onupgradeneeded = () => {
+                    const db = req.result;
+                    const store = db.objectStoreNames.contains(TX_IDB_STORE) ? req.transaction.objectStore(TX_IDB_STORE) : db.createObjectStore(TX_IDB_STORE, { keyPath: 'key' });
+                    if (!store.indexNames.contains('uid')) store.createIndex('uid', 'uid', { unique: false });
+                    if (!db.objectStoreNames.contains(TX_IDB_META)) db.createObjectStore(TX_IDB_META, { keyPath: 'key' });
+                };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => { txIdbAvailable = false; resolve(null); };
+            });
+            return txDbPromise;
+        }
+        function txDbKey(uid, id) { return `${uid}\u0000${String(id)}`; }
+        async function idbGetTransactions(uid) {
+            const db = await openTransactionDB();
+            if (!db) return null;
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(TX_IDB_STORE, 'readonly');
+                const req = tx.objectStore(TX_IDB_STORE).index('uid').getAll(uid);
+                req.onsuccess = () => resolve((req.result || []).map(r => r.tx).filter(Boolean));
+                req.onerror = () => reject(req.error);
+            });
+        }
+        async function idbReplaceTransactions(uid, txs) {
+            const db = await openTransactionDB();
+            if (!db) return false;
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(TX_IDB_STORE, 'readwrite');
+                const store = tx.objectStore(TX_IDB_STORE);
+                const idxReq = store.index('uid').getAllKeys(uid);
+                idxReq.onsuccess = () => {
+                    (idxReq.result || []).forEach(key => store.delete(key));
+                    (txs || []).forEach(item => store.put({ key: txDbKey(uid, item.id), uid, tx: item }));
+                };
+                tx.oncomplete = () => resolve(true);
+                tx.onerror = () => reject(tx.error);
+                tx.onabort = () => reject(tx.error);
+            });
+        }
+        async function idbPutTransaction(uid, txItem) {
+            const db = await openTransactionDB();
+            if (!db) return false;
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(TX_IDB_STORE, 'readwrite');
+                tx.objectStore(TX_IDB_STORE).put({ key: txDbKey(uid, txItem.id), uid, tx: txItem });
+                tx.oncomplete = () => resolve(true);
+                tx.onerror = () => reject(tx.error);
+                tx.onabort = () => reject(tx.error);
+            });
+        }
+        async function idbDeleteTransaction(uid, id) {
+            const db = await openTransactionDB();
+            if (!db) return false;
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(TX_IDB_STORE, 'readwrite');
+                tx.objectStore(TX_IDB_STORE).delete(txDbKey(uid, id));
+                tx.oncomplete = () => resolve(true);
+                tx.onerror = () => reject(tx.error);
+                tx.onabort = () => reject(tx.error);
+            });
+        }
+        function queueTxStorageWrite(fn) {
+            txStorageWriteQueue = txStorageWriteQueue.then(() => fn()).catch(err => console.warn('Local transaction storage error:', err));
+            return txStorageWriteQueue;
+        }
+        function getTxSyncCursor(uid) { return localStorage.getItem(TX_SYNC_CURSOR_PREFIX + uid) || null; }
+        function setTxSyncCursor(uid, ms) { if (Number.isFinite(ms) && ms > 0) _origLocalStorageSetItem(TX_SYNC_CURSOR_PREFIX + uid, new Date(ms).toISOString()); }
+        function hasTxSyncSchema(uid) { return localStorage.getItem(TX_SYNC_SCHEMA_PREFIX + uid) === '1'; }
+        function setTxSyncSchema(uid) { _origLocalStorageSetItem(TX_SYNC_SCHEMA_PREFIX + uid, '1'); }
+
+        async function prepareLocalTransactionsForUid(uid, allowLegacyMigration) {
+            const stored = await idbGetTransactions(uid);
+            const legacy = allowLegacyMigration ? (legacyLocalTransactions || []) : [];
+            const byId = new Map();
+            (stored || []).forEach(tx => { const normalized = normalizeLocalTransaction(tx); if (normalized) byId.set(String(normalized.id), normalized); });
+            legacy.forEach(tx => {
+                const normalized = normalizeLocalTransaction(tx);
+                if (!normalized) return;
+                const id = String(normalized.id);
+                const old = byId.get(id);
+                if (!old || firestoreTime(normalized.updatedAt) > firestoreTime(old.updatedAt)) byId.set(id, normalized);
+            });
+            transactions = Array.from(byId.values());
+            txStorageUid = uid;
+            if (!txIdbAvailable) {
+                if (allowLegacyMigration && legacy.length) transactions = legacy;
+                txStorageUid = uid;
+                return;
+            }
+            if (!stored || legacy.length) await idbReplaceTransactions(uid, transactions);
+            if (allowLegacyMigration && legacy.length) {
+                localStorage.removeItem('personal_transactions_v4');
+                legacyLocalTransactions = [];
+            }
+        }
+        function bumpDirtyVersion(map, id) {
+            const key = String(id);
+            const next = (map.get(key) || 0) + 1;
+            map.set(key, next);
+            localSyncGeneration++;
+            return next;
+        }
+        function markTransactionDirty(id) {
+            if (id == null) return;
+            const key = String(id);
+            DIRTY_TX_IDS.add(key);
+            bumpDirtyVersion(DIRTY_TX_VERSIONS, key);
+        }
+        function markTombstoneDirty(id) {
+            if (id == null) return;
+            const key = String(id);
+            DIRTY_TOMBSTONE_IDS.add(key);
+            bumpDirtyVersion(DIRTY_TOMBSTONE_VERSIONS, key);
+        }
+        function captureDirtyVersions(ids) {
+            const txVersions = new Map();
+            const tombVersions = new Map();
+            ids.forEach(id => {
+                const key = String(id);
+                if (DIRTY_TX_IDS.has(key)) txVersions.set(key, DIRTY_TX_VERSIONS.get(key) || 0);
+                if (DIRTY_TOMBSTONE_IDS.has(key)) tombVersions.set(key, DIRTY_TOMBSTONE_VERSIONS.get(key) || 0);
+            });
+            return { txVersions, tombVersions };
+        }
+        function clearDirtyIfVersionUnchanged(id, captured) {
+            const key = String(id);
+            const txVersion = captured.txVersions.get(key);
+            if (txVersion !== undefined && DIRTY_TX_VERSIONS.get(key) === txVersion) {
+                DIRTY_TX_IDS.delete(key);
+                DIRTY_TX_VERSIONS.delete(key);
+            }
+            const tombVersion = captured.tombVersions.get(key);
+            if (tombVersion !== undefined && DIRTY_TOMBSTONE_VERSIONS.get(key) === tombVersion) {
+                DIRTY_TOMBSTONE_IDS.delete(key);
+                DIRTY_TOMBSTONE_VERSIONS.delete(key);
+            }
         }
 
         // Giữ tombstone vô thời hạn ở local để thiết bị offline không làm sống lại giao dịch đã xóa.
@@ -4014,7 +4228,7 @@
         function localSyncSnapshot() {
             ensureSettingsTimestamps();
             return {
-                transactions: getStoredJSON('personal_transactions_v4', transactions || []),
+                transactions: transactions || [],
                 deletedTx: pruneOldTombstones(getStoredJSON('personal_deleted_tx_v4', {})),
                 categories: getStoredJSON('personal_categories_v4', categories || null),
                 userAccounts: getStoredJSON('personal_accounts_v4', userAccounts || null),
@@ -4034,54 +4248,67 @@
         // không làm thay đổi nghiệp vụ giao dịch.
         function mergeTransactions(localTx, remoteTx, localTomb, remoteTomb) {
             const mergedTomb = Object.assign({}, localTomb || {});
+            Object.keys(mergedTomb).forEach(id => { const normalized = normalizeTombstone(mergedTomb[id]); if (normalized) mergedTomb[id] = normalized; });
             Object.keys(remoteTomb || {}).forEach(id => {
-                if (!mergedTomb[id] || firestoreTime(remoteTomb[id]) > firestoreTime(mergedTomb[id])) {
-                    mergedTomb[id] = remoteTomb[id];
-                }
+                if (DIRTY_TOMBSTONE_IDS.has(String(id))) return;
+                const incoming = normalizeTombstone(remoteTomb[id]);
+                if (!incoming) return;
+                if (!mergedTomb[id] || firestoreTime(incoming.deletedAt) > firestoreTime(tombstoneAt(mergedTomb[id]))) mergedTomb[id] = incoming;
             });
-
             const byId = new Map();
-            (localTx || []).forEach(tx => {
-                if (tx && tx.id != null) byId.set(String(tx.id), tx);
-            });
+            (localTx || []).forEach(tx => { if (tx && tx.id != null) byId.set(String(tx.id), tx); });
             (remoteTx || []).forEach(remote => {
                 if (!remote || remote.id == null) return;
                 const id = String(remote.id);
+                if (DIRTY_TX_IDS.has(id) || DIRTY_TOMBSTONE_IDS.has(id)) return;
                 const local = byId.get(id);
-                if (!local) {
-                    byId.set(id, remote);
-                    return;
-                }
-                const localAt = firestoreTime(local.updatedAt);
-                const remoteAt = firestoreTime(remote.updatedAt);
-                if (remoteAt > localAt) byId.set(id, remote);
+                if (!local || syncVersionTime(remote) >= syncVersionTime(local)) byId.set(id, remote);
             });
-
             const merged = [];
             byId.forEach((tx, id) => {
-                const deletedAt = mergedTomb[id];
-                if (!deletedAt) {
-                    merged.push(tx);
-                    return;
-                }
-                const txUpdatedAt = firestoreTime(tx.updatedAt);
-                // Giao dịch được tạo/sửa sau tombstone được coi là giao dịch mới và giữ lại.
+                const deletedAt = tombstoneAt(mergedTomb[id]);
+                if (!deletedAt) { merged.push(tx); return; }
+                const txUpdatedAt = syncVersionTime(tx);
                 if (txUpdatedAt > firestoreTime(deletedAt)) merged.push(tx);
             });
-
             return { transactions: merged, deletedTx: mergedTomb };
         }
 
+        function persistMergedTransactions(oldTx, mergedTx, mergedTomb) {
+            if (!txStorageUid) return;
+            const oldMap = new Map((oldTx || []).map(tx => [String(tx.id), tx]));
+            const newMap = new Map((mergedTx || []).map(tx => [String(tx.id), tx]));
+            queueTxStorageWrite(async () => {
+                if (!txIdbAvailable) {
+                    _origLocalStorageSetItem('personal_transactions_v4', JSON.stringify(mergedTx || []));
+                    return;
+                }
+                const db = await openTransactionDB();
+                if (!db) { _origLocalStorageSetItem('personal_transactions_v4', JSON.stringify(mergedTx || [])); return; }
+                await new Promise((resolve, reject) => {
+                    const tx = db.transaction(TX_IDB_STORE, 'readwrite');
+                    const store = tx.objectStore(TX_IDB_STORE);
+                    for (const [id, item] of newMap) {
+                        const prev = oldMap.get(id);
+                        if (!prev || syncVersionTime(prev) !== syncVersionTime(item)) store.put({ key: txDbKey(txStorageUid, id), uid: txStorageUid, tx: item });
+                    }
+                    for (const id of oldMap.keys()) if (!newMap.has(id)) store.delete(txDbKey(txStorageUid, id));
+                    tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
+                });
+            });
+        }
+
         function applyMergedTransactions(mergedTx, mergedTomb) {
-            const oldTx = getStoredJSON('personal_transactions_v4', transactions || []);
+            const oldTx = transactions || [];
             const oldTomb = getStoredJSON('personal_deleted_tx_v4', {});
-            const oldById = new Map((oldTx || []).map(t => [t.id, t.updatedAt || '']));
-            const changed = mergedTx.length !== oldTx.length || mergedTx.some(t => oldById.get(t.id) !== (t.updatedAt || '')) ||
-                Object.keys(mergedTomb).length !== Object.keys(oldTomb).length ||
-                Object.keys(mergedTomb).some(id => mergedTomb[id] !== oldTomb[id]);
+            const oldById = new Map(oldTx.map(t => [String(t.id), t]));
+            const changed = mergedTx.length !== oldTx.length || mergedTx.some(t => {
+                const old = oldById.get(String(t.id));
+                return !old || syncVersionTime(old) !== syncVersionTime(t);
+            }) || Object.keys(mergedTomb).length !== Object.keys(oldTomb).length || Object.keys(mergedTomb).some(id => mergedTomb[id] !== oldTomb[id]);
             if (!changed) return false;
             transactions = mergedTx;
-            _origLocalStorageSetItem('personal_transactions_v4', JSON.stringify(mergedTx));
+            persistMergedTransactions(oldTx, mergedTx, mergedTomb);
             _origLocalStorageSetItem('personal_deleted_tx_v4', JSON.stringify(mergedTomb || {}));
             populateAccountSelects(); updateDashboard(); applyFilters(); renderCategoryBudgets();
             if (typeof renderCategoryManager === 'function') renderCategoryManager();
@@ -4089,7 +4316,7 @@
         }
 
         function mergeRemoteV2Data(remoteTx, remoteTomb, remoteSettings = null) {
-            const localTx = getStoredJSON('personal_transactions_v4', transactions || []);
+            const localTx = transactions || [];
             const localTomb = getStoredJSON('personal_deleted_tx_v4', {});
             const merged = mergeTransactions(localTx, remoteTx || [], localTomb, remoteTomb || {});
             let changed = applyMergedTransactions(merged.transactions, merged.deletedTx);
@@ -4155,15 +4382,18 @@
                 for (let i = 0; i < legacyTx.length; i += FIRESTORE_BATCH_LIMIT) {
                     const batch = fbDb.batch();
                     legacyTx.slice(i, i + FIRESTORE_BATCH_LIMIT).forEach(tx => {
-                        batch.set(firestoreTransactionsRef(uid).doc(String(tx.id)), tx, { merge: true });
+                        batch.set(firestoreTransactionsRef(uid).doc(String(tx.id)), { ...tx, syncVersion: Math.max(1, Number(tx.syncVersion) || 1) }, { merge: true });
                     });
                     if (legacyTx.length) await batch.commit();
                 }
+                const legacyTxById = new Map(legacyTx.map(tx => [String(tx.id), tx]));
                 const tombEntries = Object.entries(legacyTomb);
                 for (let i = 0; i < tombEntries.length; i += FIRESTORE_BATCH_LIMIT) {
                     const batch = fbDb.batch();
-                    tombEntries.slice(i, i + FIRESTORE_BATCH_LIMIT).forEach(([id, deletedAt]) => {
-                        batch.set(firestoreTombstonesRef(uid).doc(String(id)), { deletedAt: String(deletedAt) }, { merge: true });
+                    tombEntries.slice(i, i + FIRESTORE_BATCH_LIMIT).forEach(([id, rawTomb]) => {
+                        const deletedAt = tombstoneAt(rawTomb) || String(rawTomb);
+                        const syncVersion = Math.max(1, Number(rawTomb?.syncVersion) || (Number(legacyTxById.get(String(id))?.syncVersion) || 1) + 1);
+                        batch.set(firestoreTombstonesRef(uid).doc(String(id)), { deletedAt, syncVersion, serverDeletedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
                     });
                     if (tombEntries.length) await batch.commit();
                 }
@@ -4224,8 +4454,49 @@
             }, { merge: true });
         }
 
+        async function ensureServerSyncFields(uid) {
+            if (hasTxSyncSchema(uid)) return;
+            const [txSnap, tombSnap] = await Promise.all([
+                firestoreTransactionsRef(uid).get({ source: 'server' }),
+                firestoreTombstonesRef(uid).get({ source: 'server' })
+            ]);
+            const txDocs = txSnap.docs.filter(d => !d.data()?.serverUpdatedAt || !d.data()?.syncVersion);
+            for (let i = 0; i < txDocs.length; i += FIRESTORE_BATCH_LIMIT) {
+                const batch = fbDb.batch();
+                txDocs.slice(i, i + FIRESTORE_BATCH_LIMIT).forEach(doc => {
+                    const data = doc.data() || {};
+                    const ms = firestoreTime(data.updatedAt) || Date.now();
+                    batch.update(doc.ref, { serverUpdatedAt: firestoreTimestampFromMs(ms), syncVersion: Math.max(1, Number(data.syncVersion) || 1) });
+                });
+                if (txDocs.length) await batch.commit();
+            }
+            const txById = new Map(txSnap.docs.map(d => [String(d.id), d.data() || {}]));
+            const tombDocs = tombSnap.docs.filter(d => !d.data()?.serverDeletedAt || !d.data()?.syncVersion);
+            for (let i = 0; i < tombDocs.length; i += FIRESTORE_BATCH_LIMIT) {
+                const batch = fbDb.batch();
+                tombDocs.slice(i, i + FIRESTORE_BATCH_LIMIT).forEach(doc => {
+                    const data = doc.data() || {};
+                    const ms = firestoreTime(data.deletedAt) || Date.now();
+                    const txData = txById.get(String(doc.id)) || {};
+                    const syncVersion = Math.max(1, Number(data.syncVersion) || (Number(txData.syncVersion) || 1) + 1);
+                    batch.update(doc.ref, { serverDeletedAt: firestoreTimestampFromMs(ms), syncVersion });
+                });
+                if (tombDocs.length) await batch.commit();
+            }
+            setTxSyncSchema(uid);
+        }
+
+        function updateSyncCursorFromDocs(uid, txDocs, tombDocs) {
+            let maxMs = firestoreTime(getTxSyncCursor(uid));
+            (txDocs || []).forEach(tx => { maxMs = Math.max(maxMs, firestoreTime(tx.serverUpdatedAt)); });
+            (tombDocs || []).forEach(v => { maxMs = Math.max(maxMs, firestoreTime(v.serverDeletedAt)); });
+            if (maxMs > 0) setTxSyncCursor(uid, maxMs - 1000);
+            return maxMs;
+        }
+
         async function loadV2ServerState(uid) {
             await migrateLegacyFirestoreToV2(uid);
+            await ensureServerSyncFields(uid);
             const [settingsSnap, txSnap, tombSnap] = await Promise.all([
                 firestoreSettingsRef(uid).get({ source: 'server' }),
                 firestoreTransactionsRef(uid).get({ source: 'server' }),
@@ -4234,111 +4505,256 @@
             const settings = settingsSnap.exists ? settingsSnap.data() : null;
             const remoteTx = txSnap.docs.map(d => normalizeRemoteTransaction(d.data(), d.id)).filter(Boolean);
             const remoteTomb = {};
-            tombSnap.docs.forEach(d => { const v = d.data() || {}; if (v.deletedAt) remoteTomb[d.id] = v.deletedAt; });
+            tombSnap.docs.forEach(d => { const v = d.data() || {}; if (v.deletedAt) remoteTomb[d.id] = { deletedAt: String(v.deletedAt), syncVersion: Math.max(1, Number(v.syncVersion) || 1) }; });
             FIRESTORE_TX_CACHE.clear(); remoteTx.forEach(tx => FIRESTORE_TX_CACHE.set(tx.id, tx));
             FIRESTORE_TOMBSTONE_CACHE.clear(); Object.entries(remoteTomb).forEach(([id, at]) => FIRESTORE_TOMBSTONE_CACHE.set(id, at));
             mergeRemoteV2Data(remoteTx, remoteTomb, settings);
-            // Cleanup is intentionally last: v2 has been read successfully and local merge
-            // has completed. Failure here is non-destructive; legacy data simply remains.
-            try { await cleanupLegacyFirestoreAfterV2Verification(uid, settings, remoteTx, remoteTomb); }
-            catch (cleanupErr) { console.warn('Legacy Firestore cleanup deferred', cleanupErr); }
+            updateSyncCursorFromDocs(uid, txSnap.docs.map(d => d.data() || {}), tombSnap.docs.map(d => d.data() || {}));
+            try { await cleanupLegacyFirestoreAfterV2Verification(uid, settings, remoteTx, remoteTomb); } catch (cleanupErr) { console.warn('Legacy Firestore cleanup deferred', cleanupErr); }
+            return { settings, remoteTx, remoteTomb };
+        }
+
+        async function loadV2DeltaState(uid) {
+            await migrateLegacyFirestoreToV2(uid);
+            await ensureServerSyncFields(uid);
+            const cursor = getTxSyncCursor(uid);
+            if (!cursor) return loadV2ServerState(uid);
+            const cursorTs = firestoreTimestampFromMs(Math.max(0, firestoreTime(cursor)));
+            const [settingsSnap, txSnap, tombSnap] = await Promise.all([
+                firestoreSettingsRef(uid).get({ source: 'server' }),
+                firestoreTransactionsRef(uid).where('serverUpdatedAt', '>=', cursorTs).get({ source: 'server' }),
+                firestoreTombstonesRef(uid).where('serverDeletedAt', '>=', cursorTs).get({ source: 'server' })
+            ]);
+            const settings = settingsSnap.exists ? settingsSnap.data() : null;
+            const remoteTx = txSnap.docs.map(d => normalizeRemoteTransaction(d.data(), d.id)).filter(Boolean);
+            const remoteTomb = {};
+            tombSnap.docs.forEach(d => { const v = d.data() || {}; if (v.deletedAt) remoteTomb[d.id] = { deletedAt: String(v.deletedAt), syncVersion: Math.max(1, Number(v.syncVersion) || 1) }; });
+            remoteTx.forEach(tx => FIRESTORE_TX_CACHE.set(tx.id, tx));
+            Object.entries(remoteTomb).forEach(([id, at]) => FIRESTORE_TOMBSTONE_CACHE.set(id, at));
+            mergeRemoteV2Data(remoteTx, remoteTomb, settings);
+            updateSyncCursorFromDocs(uid, txSnap.docs.map(d => d.data() || {}), tombSnap.docs.map(d => d.data() || {}));
             return { settings, remoteTx, remoteTomb };
         }
 
         async function startV2Listeners(uid) {
             stopV2Listeners();
+            const cursor = getTxSyncCursor(uid);
+            const cursorTs = cursor ? firestoreTimestampFromMs(Math.max(0, firestoreTime(cursor))) : firestoreTimestampFromMs(0);
             const settingsUnsub = firestoreSettingsRef(uid).onSnapshot({ includeMetadataChanges: false }, snap => {
                 if (snap.metadata.hasPendingWrites) return;
-                const settings = snap.exists ? snap.data() : null;
-                if (settings && Number(settings.schemaVersion) >= FIRESTORE_SCHEMA_VERSION) {
-                    mergeRemoteV2Data(Array.from(FIRESTORE_TX_CACHE.values()), Object.fromEntries(FIRESTORE_TOMBSTONE_CACHE), settings);
-                }
+                mergeRemoteV2Data([], {}, snap.exists ? snap.data() : null);
             }, err => console.error('Firestore settings listener error', err));
 
-            const txUnsub = firestoreTransactionsRef(uid).onSnapshot({ includeMetadataChanges: false }, snap => {
+            const txQuery = firestoreTransactionsRef(uid).where('serverUpdatedAt', '>=', cursorTs);
+            const txUnsub = txQuery.onSnapshot({ includeMetadataChanges: false }, snap => {
                 if (snap.metadata.hasPendingWrites) return;
+                const changed = [];
                 snap.docChanges().forEach(change => {
-                    if (change.type === 'removed') FIRESTORE_TX_CACHE.delete(change.doc.id);
-                    else {
+                    if (change.type === 'removed') {
+                        FIRESTORE_TX_CACHE.delete(change.doc.id);
+                        if (!DIRTY_TX_IDS.has(change.doc.id) && !DIRTY_TOMBSTONE_IDS.has(change.doc.id)) {
+                            const idx = transactions.findIndex(t => String(t.id) === String(change.doc.id));
+                            if (idx >= 0) {
+                                transactions.splice(idx, 1);
+                                queueTxStorageWrite(() => txIdbAvailable && txStorageUid ? idbDeleteTransaction(txStorageUid, change.doc.id) : Promise.resolve());
+                            }
+                        }
+                    } else {
                         const tx = normalizeRemoteTransaction(change.doc.data(), change.doc.id);
-                        if (tx) FIRESTORE_TX_CACHE.set(tx.id, tx);
+                        if (tx) { FIRESTORE_TX_CACHE.set(tx.id, tx); changed.push(change.doc.data() || {}); }
                     }
                 });
-                mergeRemoteV2Data(Array.from(FIRESTORE_TX_CACHE.values()), Object.fromEntries(FIRESTORE_TOMBSTONE_CACHE), null);
+                if (changed.length) updateSyncCursorFromDocs(uid, changed, []);
+                if (changed.length) {
+                    const changedTx = changed.map(d => normalizeRemoteTransaction(d, d.id)).filter(Boolean);
+                    mergeRemoteV2Data(changedTx, {}, null);
+                }
             }, err => console.error('Firestore transactions listener error', err));
 
-            const tombUnsub = firestoreTombstonesRef(uid).onSnapshot({ includeMetadataChanges: false }, snap => {
+            const tombQuery = firestoreTombstonesRef(uid).where('serverDeletedAt', '>=', cursorTs);
+            const tombUnsub = tombQuery.onSnapshot({ includeMetadataChanges: false }, snap => {
                 if (snap.metadata.hasPendingWrites) return;
+                const changed = {};
+                const locallyChanged = getStoredJSON('personal_deleted_tx_v4', {});
+                let localTombChanged = false;
                 snap.docChanges().forEach(change => {
-                    if (change.type === 'removed') FIRESTORE_TOMBSTONE_CACHE.delete(change.doc.id);
-                    else {
-                        const v = change.doc.data() || {};
-                        if (v.deletedAt) FIRESTORE_TOMBSTONE_CACHE.set(change.doc.id, String(v.deletedAt));
-                    }
+                    if (change.type === 'removed') {
+                        FIRESTORE_TOMBSTONE_CACHE.delete(change.doc.id);
+                        if (!DIRTY_TOMBSTONE_IDS.has(change.doc.id) && locallyChanged[change.doc.id]) { delete locallyChanged[change.doc.id]; localTombChanged = true; }
+                    } else { const v = change.doc.data() || {}; if (v.deletedAt) { const tomb = { deletedAt: String(v.deletedAt), syncVersion: Math.max(1, Number(v.syncVersion) || 1) }; FIRESTORE_TOMBSTONE_CACHE.set(change.doc.id, tomb); changed[change.doc.id] = tomb; } }
                 });
-                mergeRemoteV2Data(Array.from(FIRESTORE_TX_CACHE.values()), Object.fromEntries(FIRESTORE_TOMBSTONE_CACHE), null);
+                if (localTombChanged) _origLocalStorageSetItem('personal_deleted_tx_v4', JSON.stringify(locallyChanged));
+                const changedValues = snap.docChanges().map(change => change.type === 'removed' ? null : change.doc.data() || {}).filter(Boolean);
+                if (changedValues.length) updateSyncCursorFromDocs(uid, [], changedValues);
+                if (Object.keys(changed).length) mergeRemoteV2Data([], changed, null);
+                if (localTombChanged) { populateAccountSelects(); updateDashboard(); applyFilters(); renderCategoryBudgets(); }
             }, err => console.error('Firestore tombstone listener error', err));
             fbUnsubscribe = [settingsUnsub, txUnsub, tombUnsub];
         }
+
         function stopV2Listeners() { fbUnsubscribe.forEach(fn => { try { fn(); } catch (_) {} }); fbUnsubscribe = []; FIRESTORE_TX_CACHE.clear(); FIRESTORE_TOMBSTONE_CACHE.clear(); }
 
-        function candidateLocalTransactionIds(snapshot) {
-            const ids = new Set();
-            (snapshot.transactions || []).forEach(tx => {
-                const remote = FIRESTORE_TX_CACHE.get(tx.id);
-                if (!remote || firestoreTime(tx.updatedAt) > firestoreTime(remote.updatedAt)) ids.add(tx.id);
-            });
-            Object.keys(snapshot.deletedTx || {}).forEach(id => {
-                const remoteTomb = FIRESTORE_TOMBSTONE_CACHE.get(id);
-                const localAt = snapshot.deletedTx[id];
-                if (!remoteTomb || firestoreTime(localAt) > firestoreTime(remoteTomb)) ids.add(id);
-            });
-            return Array.from(ids);
-        }
+        // Chỉ push những giao dịch thực sự thay đổi ở máy này. Không quét toàn bộ lịch sử để so với cache.
+        function candidateLocalTransactionIds() { return Array.from(new Set([...DIRTY_TX_IDS, ...DIRTY_TOMBSTONE_IDS])); }
 
-        // Gom các thay đổi local trong một khoảng ngắn thành một lần push.
-        // Nếu Firebase chưa sẵn sàng, chỉ đánh dấu pending; tuyệt đối không push dữ liệu cũ.
         function scheduleDriveSync() {
             if (!fbCurrentUid) return;
-            if (!syncReady) {
-                pendingSyncAfterReady = true;
-                return;
-            }
-            if (syncPushInFlight) {
-                syncPushRequested = true;
-                return;
-            }
+            if (!syncReady) { pendingSyncAfterReady = true; return; }
+            if (syncPushInFlight) { syncPushRequested = true; return; }
             clearTimeout(fbSaveTimer);
-            fbSaveTimer = setTimeout(() => {
-                pushLocalDataToFirestore();
-            }, 500);
+            fbSaveTimer = setTimeout(() => { void pushLocalDataToFirestore(); }, 500);
         }
 
-        async function pushTransactionChunk(uid, snapshot, ids) {
-            if (!ids.length) return;
-            // Batched writes are intentionally used here instead of Firestore transactions.
-            // Firestore transactions fail while the device is offline, whereas write batches
-            // can be persisted by the web SDK and uploaded automatically when connectivity returns.
-            // The client still uses updatedAt/tombstones for conflict resolution on the next merge.
-            const batch = fbDb.batch();
+        function chooseRemoteTransactionState(remoteTx, remoteTomb) {
+            if (!remoteTx && !remoteTomb) return null;
+            if (!remoteTx) return { kind: 'tomb', value: remoteTomb, version: tombstoneVersion(remoteTomb), at: tombstoneAt(remoteTomb) };
+            if (!remoteTomb) return { kind: 'tx', value: remoteTx, version: Math.max(1, Number(remoteTx.syncVersion) || 1), at: remoteTx.updatedAt };
+            const txVersion = Math.max(1, Number(remoteTx.syncVersion) || 1);
+            const tombVersionValue = tombstoneVersion(remoteTomb);
+            if (txVersion > tombVersionValue) return { kind: 'tx', value: remoteTx, version: txVersion, at: remoteTx.updatedAt };
+            if (tombVersionValue > txVersion) return { kind: 'tomb', value: remoteTomb, version: tombVersionValue, at: tombstoneAt(remoteTomb) };
+            return firestoreTime(remoteTx.updatedAt) >= firestoreTime(tombstoneAt(remoteTomb))
+                ? { kind: 'tx', value: remoteTx, version: txVersion, at: remoteTx.updatedAt }
+                : { kind: 'tomb', value: remoteTomb, version: tombVersionValue, at: tombstoneAt(remoteTomb) };
+        }
+
+        async function reconcileFirestoreConflicts(uid, ids, capturedDirtyVersions) {
+            const uniqueIds = Array.from(new Set((ids || []).map(id => String(id))));
+            if (!uniqueIds.length) return new Set();
+            const serverResults = await Promise.all(uniqueIds.map(async id => {
+                const [txSnap, tombSnap] = await Promise.all([
+                    firestoreTransactionsRef(uid).doc(id).get({ source: 'server' }),
+                    firestoreTombstonesRef(uid).doc(id).get({ source: 'server' })
+                ]);
+                return {
+                    id,
+                    tx: txSnap.exists ? normalizeRemoteTransaction(txSnap.data(), id) : null,
+                    tomb: tombSnap.exists ? normalizeTombstone(tombSnap.data()) : null
+                };
+            }));
+
+            const tomb = getStoredJSON('personal_deleted_tx_v4', {});
+            let localChanged = false;
+            const retryIds = new Set();
+
+            serverResults.forEach(({ id, tx: remoteTx, tomb: remoteTomb }) => {
+                const remoteState = chooseRemoteTransactionState(remoteTx, remoteTomb);
+                const currentIndex = transactions.findIndex(t => String(t.id) === id);
+                const localTx = currentIndex >= 0 ? normalizeLocalTransaction(transactions[currentIndex]) : null;
+                const localTomb = normalizeTombstone(tomb[id]);
+                const txWasDirty = capturedDirtyVersions?.txVersions?.has(id) || DIRTY_TX_IDS.has(id);
+                const tombWasDirty = capturedDirtyVersions?.tombVersions?.has(id) || DIRTY_TOMBSTONE_IDS.has(id);
+                if (!txWasDirty && !tombWasDirty) return;
+
+                const localState = localTx
+                    ? { kind: 'tx', value: localTx, version: Math.max(1, Number(localTx.syncVersion) || 1), at: localTx.updatedAt }
+                    : (localTomb ? { kind: 'tomb', value: localTomb, version: tombstoneVersion(localTomb), at: tombstoneAt(localTomb) } : null);
+
+                // Nothing exists remotely: keep the local operation queued.
+                if (!remoteState) {
+                    if (localTx) { localTx.syncVersion = Math.max(1, Number(localTx.syncVersion) || 1); transactions[currentIndex] = localTx; localChanged = true; }
+                    retryIds.add(id);
+                    return;
+                }
+
+                // Nothing exists locally (which should be rare for a dirty item): remote wins.
+                if (!localState) {
+                    if (remoteState.kind === 'tx') transactions.push(remoteState.value);
+                    else { tomb[id] = remoteState.value; }
+                    localChanged = true;
+                    DIRTY_TX_IDS.delete(id); DIRTY_TX_VERSIONS.delete(id);
+                    DIRTY_TOMBSTONE_IDS.delete(id); DIRTY_TOMBSTONE_VERSIONS.delete(id);
+                    return;
+                }
+
+                let localWins = false;
+                if (localState.version > remoteState.version) localWins = true;
+                else if (localState.version < remoteState.version) localWins = false;
+                else localWins = firestoreTime(localState.at) > firestoreTime(remoteState.at);
+
+                if (localWins) {
+                    if (localState.version <= remoteState.version) {
+                        localState.value.syncVersion = remoteState.version + 1;
+                    }
+                    if (firestoreTime(localState.at) <= firestoreTime(remoteState.at)) {
+                        if (localState.kind === 'tx') localState.value.updatedAt = makeFreshUpdatedAtAfter(remoteState.at);
+                        else localState.value.deletedAt = makeFreshUpdatedAtAfter(remoteState.at);
+                    }
+                    if (localState.kind === 'tx') {
+                        transactions[currentIndex] = localState.value;
+                        delete tomb[id];
+                        markTransactionDirty(id);
+                    } else {
+                        if (currentIndex >= 0) transactions.splice(currentIndex, 1);
+                        tomb[id] = localState.value;
+                        markTombstoneDirty(id);
+                    }
+                    localChanged = true;
+                    retryIds.add(id);
+                } else {
+                    // Remote is newer or tied with a newer timestamp: accept it and clear local dirty state.
+                    if (remoteState.kind === 'tx') {
+                        if (currentIndex >= 0) transactions[currentIndex] = remoteState.value;
+                        else transactions.push(remoteState.value);
+                        delete tomb[id];
+                    } else {
+                        if (currentIndex >= 0) transactions.splice(currentIndex, 1);
+                        tomb[id] = remoteState.value;
+                    }
+                    localChanged = true;
+                    DIRTY_TX_IDS.delete(id); DIRTY_TX_VERSIONS.delete(id);
+                    DIRTY_TOMBSTONE_IDS.delete(id); DIRTY_TOMBSTONE_VERSIONS.delete(id);
+                }
+            });
+
+            if (localChanged) {
+                _origLocalStorageSetItem('personal_deleted_tx_v4', JSON.stringify(tomb));
+                if (txStorageUid) queueTxStorageWrite(() => txIdbAvailable ? idbReplaceTransactions(txStorageUid, transactions) : (_origLocalStorageSetItem('personal_transactions_v4', JSON.stringify(transactions)), Promise.resolve()));
+                populateAccountSelects(); updateDashboard(); applyFilters(); renderCategoryBudgets();
+            }
+            return retryIds;
+        }
+
+        async function pushTransactionChunk(uid, snapshot, ids, capturedDirtyVersions) {
+            if (!ids.length) return { retryIds: new Set() };
+            const txBatch = fbDb.batch();
+            let hasTxWrites = false;
+            const tombEntries = [];
             const localById = new Map((snapshot.transactions || []).map(tx => [String(tx.id), tx]));
-            let writes = 0;
             ids.forEach(rawId => {
                 const id = String(rawId);
                 const txRef = firestoreTransactionsRef(uid).doc(id);
-                const tombRef = firestoreTombstonesRef(uid).doc(id);
-                const localTx = localById.get(id) || null;
-                const localDelAt = snapshot.deletedTx?.[id] || null;
-                if (localDelAt && (!localTx || firestoreTime(localDelAt) >= firestoreTime(localTx.updatedAt))) {
-                    batch.delete(txRef);
-                    batch.set(tombRef, { deletedAt: String(localDelAt) }, { merge: true });
-                } else if (localTx) {
-                    batch.set(txRef, localTx, { merge: true });
-                    if (localDelAt) batch.delete(tombRef);
+                const localTx = normalizeLocalTransaction(localById.get(id) || null);
+                const localTomb = normalizeTombstone(snapshot.deletedTx?.[id]);
+                if (localTx && (!localTomb || firestoreTime(localTx.updatedAt) > firestoreTime(localTomb.deletedAt))) {
+                    txBatch.set(txRef, { ...localTx, syncVersion: Math.max(1, Number(localTx.syncVersion) || 1), serverUpdatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+                    hasTxWrites = true;
+                    // Tombstones are intentionally retained server-side. A newer transaction supersedes an older tombstone.
+                } else if (localTomb) {
+                    tombEntries.push({ id, tomb: localTomb });
                 }
-                writes += 2;
             });
-            if (writes) await batch.commit();
+            try {
+                if (hasTxWrites) await txBatch.commit();
+                for (let i = 0; i < tombEntries.length; i += 10) {
+                    const tombBatch = fbDb.batch();
+                    tombEntries.slice(i, i + 10).forEach(({ id, tomb }) => {
+                        tombBatch.set(firestoreTombstonesRef(uid).doc(id), {
+                            deletedAt: String(tomb.deletedAt),
+                            syncVersion: Math.max(1, Number(tomb.syncVersion) || 1),
+                            serverDeletedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
+                    });
+                    await tombBatch.commit();
+                }
+                return { retryIds: new Set() };
+            } catch (err) {
+                if (err?.code === 'permission-denied') {
+                    const retryIds = await reconcileFirestoreConflicts(uid, ids, capturedDirtyVersions);
+                    return { retryIds };
+                }
+                throw err;
+            }
         }
 
         async function pushSettingsV2(uid, snapshot) {
@@ -4368,24 +4784,45 @@
         async function pushLocalDataToFirestore() {
             if (!fbCurrentUid || !fbDb || !firestoreV2Ready) return;
             if (syncPushInFlight) { syncPushRequested = true; return; }
-            syncPushInFlight = true;
-            syncPushRequested = false;
+            syncPushInFlight = true; syncPushRequested = false;
             const pushStartGeneration = localSyncGeneration;
-            gDriveState.isSyncing = true;
-            updateSyncStatusUI('syncing');
+            gDriveState.isSyncing = true; updateSyncStatusUI('syncing');
             try {
                 const snapshot = localSyncSnapshot();
-                const ids = candidateLocalTransactionIds(snapshot);
-                for (let i = 0; i < ids.length; i += 120) await pushTransactionChunk(fbCurrentUid, snapshot, ids.slice(i, i + 120));
-                await pushSettingsV2(fbCurrentUid, snapshot);
-                // Wait until all queued writes are acknowledged when possible.
-                // With Firestore persistence enabled, this also resumes writes queued by a prior session.
-                if (fbDb && typeof fbDb.waitForPendingWrites === 'function') {
-                    try { await fbDb.waitForPendingWrites(); } catch (_) {}
+                const ids = candidateLocalTransactionIds();
+                const capturedDirtyVersions = captureDirtyVersions(ids);
+                const retryIds = new Set();
+                for (let i = 0; i < ids.length; i += 120) {
+                    const chunkIds = ids.slice(i, i + 120);
+                    const result = await pushTransactionChunk(fbCurrentUid, snapshot, chunkIds, capturedDirtyVersions);
+                    result.retryIds.forEach(id => retryIds.add(String(id)));
                 }
-                // Refresh authoritative caches/settings after push without relying on local optimistic state.
-                await loadV2ServerState(fbCurrentUid);
-                updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
+                await pushSettingsV2(fbCurrentUid, snapshot);
+                if (fbDb && typeof fbDb.waitForPendingWrites === 'function') await fbDb.waitForPendingWrites();
+
+                // Chỉ clear dirty flag nếu phiên bản dirty chưa thay đổi kể từ lúc push bắt đầu.
+                // Nếu người dùng sửa/xóa cùng ID trong lúc push đang chạy, version đã tăng và
+                // dirty flag vẫn còn cho lượt push kế tiếp.
+                ids.forEach(id => { if (!retryIds.has(String(id))) clearDirtyIfVersionUnchanged(id, capturedDirtyVersions); });
+
+                const localById = new Map((transactions || []).map(t => [String(t.id), t]));
+                const tombSnapshot = getStoredJSON('personal_deleted_tx_v4', {});
+                ids.forEach(id => {
+                    const key = String(id);
+                    const stillDirty = DIRTY_TX_IDS.has(key) || DIRTY_TOMBSTONE_IDS.has(key);
+                    if (stillDirty) return;
+                    const tx = localById.get(key);
+                    if (tx) FIRESTORE_TX_CACHE.set(key, tx); else FIRESTORE_TX_CACHE.delete(key);
+                    if (tombSnapshot[key]) FIRESTORE_TOMBSTONE_CACHE.set(key, tombSnapshot[key]);
+                    else FIRESTORE_TOMBSTONE_CACHE.delete(key);
+                });
+                if (retryIds.size) {
+                    syncPushRequested = true;
+                    updateSyncStatusUI('syncing', `Đang xử lý ${retryIds.size} xung đột và đồng bộ lại...`);
+                } else {
+                    updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
+                }
+                if (txStorageUid && txIdbAvailable) queueTxStorageWrite(() => idbReplaceTransactions(txStorageUid, transactions));
             } catch (err) {
                 console.error('pushLocalDataToFirestore v2 error', err);
                 const errCode = err && err.code ? String(err.code) : 'unknown-error';
@@ -4394,8 +4831,7 @@
                 clearTimeout(fbSaveRetryTimer);
                 fbSaveRetryTimer = setTimeout(() => { if (syncReady && fbCurrentUid) pushLocalDataToFirestore(); }, 15000);
             } finally {
-                gDriveState.isSyncing = false;
-                syncPushInFlight = false;
+                gDriveState.isSyncing = false; syncPushInFlight = false;
                 if (syncPushRequested || localSyncGeneration !== pushStartGeneration) {
                     syncPushRequested = false;
                     if (syncReady && fbCurrentUid) { clearTimeout(fbSaveTimer); fbSaveTimer = setTimeout(() => pushLocalDataToFirestore(), 150); }
@@ -4406,13 +4842,14 @@
 
         async function manualSyncNow() {
             if (!fbCurrentUid) { showToast('Vui lòng đăng nhập Google trước.', 'fa-info-circle', 'text-amber-500'); return; }
-            updateSyncStatusUI('syncing', 'Đang tải dữ liệu mới nhất...');
-            clearTimeout(fbSaveTimer);
+            updateSyncStatusUI('syncing', 'Đang tải dữ liệu mới nhất...'); clearTimeout(fbSaveTimer);
             try {
-                await loadV2ServerState(fbCurrentUid);
+                await ensureServerSyncFields(fbCurrentUid);
+                await loadV2DeltaState(fbCurrentUid);
                 syncReady = true;
-                await pushLocalDataToFirestore();
-                showToast('Đã đồng bộ - dữ liệu mới nhất từ mọi thiết bị.', 'fa-check', 'text-emerald-400');
+                if (DIRTY_TX_IDS.size || DIRTY_TOMBSTONE_IDS.size || pendingSyncAfterReady) { pendingSyncAfterReady = false; await pushLocalDataToFirestore(); }
+                else updateSyncStatusUI('connected', 'Đã kiểm tra và đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
+                showToast('Đã kiểm tra - dữ liệu mới nhất đã được cập nhật.', 'fa-check', 'text-emerald-400');
             } catch (err) {
                 console.error('manualSyncNow v2 error', err);
                 const errCode = err && err.code ? String(err.code) : 'unknown-error';
@@ -4462,18 +4899,23 @@
                         clearLocalSyncedDataForAccountSwitch();
                         showToast('Đã chuyển sang tài khoản Google khác. Đang tải dữ liệu riêng...', 'fa-right-left', 'text-indigo-400');
                     }
+                    const sameAccount = !prevAccount || prevAccount === currentAccount;
                     _origLocalStorageSetItem(ACTIVE_ACCOUNT_KEY, currentAccount);
+                    _origLocalStorageSetItem('financepro_active_account_uid', user.uid);
                     gDriveState.email = currentAccount;
                     fbCurrentUid = user.uid;
                     hideLoginGate(); updateAccountEmailUI();
-                    updateSyncStatusUI('syncing', 'Đang tải dữ liệu từ server...');
+                    updateSyncStatusUI('syncing', 'Đang chuẩn bị dữ liệu cục bộ...');
                     stopV2Listeners();
-                    await loadV2ServerState(user.uid);
+                    await prepareLocalTransactionsForUid(user.uid, sameAccount);
+                    updateSyncStatusUI('syncing', 'Đang tải dữ liệu đồng bộ mới nhất...');
+                    if (getTxSyncCursor(user.uid)) await loadV2DeltaState(user.uid);
+                    else await loadV2ServerState(user.uid);
                     firestoreV2Ready = true;
                     syncReady = true;
                     await startV2Listeners(user.uid);
                     updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
-                    if (pendingSyncAfterReady || candidateLocalTransactionIds(localSyncSnapshot()).length) { pendingSyncAfterReady = false; scheduleDriveSync(); }
+                    if (pendingSyncAfterReady || DIRTY_TX_IDS.size || DIRTY_TOMBSTONE_IDS.size) { pendingSyncAfterReady = false; scheduleDriveSync(); }
                 } catch (err) {
                     firestoreV2Ready = false; syncReady = false;
                     console.error('Firestore v2 startup error', err);
@@ -4513,8 +4955,8 @@
             if (!fbCurrentUid || !fbDb || !firestoreV2Ready) return;
             updateSyncStatusUI('syncing', 'Đang đồng bộ...');
             try {
-                await loadV2ServerState(fbCurrentUid);
-                const localPending = candidateLocalTransactionIds(localSyncSnapshot()).length;
+                await loadV2DeltaState(fbCurrentUid);
+                const localPending = DIRTY_TX_IDS.size + DIRTY_TOMBSTONE_IDS.size;
                 if (localPending && syncReady) { clearTimeout(fbSaveTimer); void pushLocalDataToFirestore(); }
                 else updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
             } catch (err) { console.warn('visibility sync failed', err); updateSyncStatusUI('error', 'Mất kết nối đồng bộ, đang thử lại...'); }
