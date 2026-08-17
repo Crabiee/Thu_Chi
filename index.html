@@ -3929,9 +3929,13 @@
         let fbUnsubscribe = [];
         let firestoreV2Ready = false;
         let firestoreV2MigrationInFlight = false;
-        // Nếu local có thay đổi trong lúc Firebase đang tải dữ liệu ban đầu,
-        // ghi nhớ để đẩy lại sau khi syncReady = true.
+
+        // Trạng thái đồng bộ phải được khai báo trước mọi callback Firebase.
+        // syncReady chỉ bật sau khi đã tải dữ liệu thật từ server, tránh local cũ ghi đè server.
+        let syncReady = false;
         let pendingSyncAfterReady = false;
+        let syncPushInFlight = false;
+        let syncPushRequested = false;
 
         function isDriveSignedIn() { return !!fbCurrentUid; }
 
@@ -3988,6 +3992,12 @@
             if (out.amount !== undefined) out.amount = Number(out.amount) || 0;
             if (out.updatedAt === undefined || !out.updatedAt) out.updatedAt = new Date(0).toISOString();
             return out;
+        }
+
+        // Giữ tombstone vô thời hạn ở local để thiết bị offline không làm sống lại giao dịch đã xóa.
+        // Việc dọn tombstone chỉ nên thực hiện khi có chiến lược xác nhận mọi thiết bị đã đồng bộ.
+        function pruneOldTombstones(tomb) {
+            return Object.assign({}, tomb || {});
         }
 
         function localSyncSnapshot() {
@@ -4273,6 +4283,24 @@
                 if (!remoteTomb || firestoreTime(localAt) > firestoreTime(remoteTomb)) ids.add(id);
             });
             return Array.from(ids);
+        }
+
+        // Gom các thay đổi local trong một khoảng ngắn thành một lần push.
+        // Nếu Firebase chưa sẵn sàng, chỉ đánh dấu pending; tuyệt đối không push dữ liệu cũ.
+        function scheduleDriveSync() {
+            if (!fbCurrentUid) return;
+            if (!syncReady) {
+                pendingSyncAfterReady = true;
+                return;
+            }
+            if (syncPushInFlight) {
+                syncPushRequested = true;
+                return;
+            }
+            clearTimeout(fbSaveTimer);
+            fbSaveTimer = setTimeout(() => {
+                pushLocalDataToFirestore();
+            }, 500);
         }
 
         async function pushTransactionChunk(uid, snapshot, ids) {
