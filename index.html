@@ -963,7 +963,7 @@
 </div>
 <div class="ai-card">
 <p class="text-xs font-bold text-slate-500 uppercase mb-2">Việc cần làm ngay</p>
-<div class="space-y-2 text-sm text-slate-800" id="ai-action-text">Chưa có gợi ý.</div>
+<div class="space-y-2 text-sm font-semibold text-slate-800" id="ai-action-text">Chưa có gợi ý.</div>
 </div>
 <div class="ai-card">
 <p class="text-xs font-bold text-slate-500 uppercase mb-2">Tiền giữ lại</p>
@@ -3423,7 +3423,7 @@
 
         function buildActionPlan({ idealBudget, monthExpense, projectedExpense, remainingDays, attentionCategories = [], categoryExpenses, recurringProfiles = new Map(), monthExpenseTxs = [] }) {
             const safe = (value) => escapeHTML(String(value ?? ''));
-            const make = (title, detail, meta = '') => `<div class="rounded-xl border border-slate-200 bg-white/70 px-3 py-2"><div class="font-extrabold text-slate-800 leading-snug">${title}</div>${detail ? `<div class="text-xs text-slate-500 mt-1 leading-relaxed">${detail}</div>` : ''}${meta ? `<div class="text-xs font-semibold text-indigo-600 mt-1">${meta}</div>` : ''}</div>`;
+            const make = (title, detail, meta = '') => `<div class="space-y-1.5"><div class="font-extrabold text-slate-800 leading-snug">${title}</div>${detail ? `<div class="text-xs text-slate-500 leading-relaxed">${detail}</div>` : ''}${meta ? `<div class="text-xs font-semibold text-slate-500 leading-relaxed">${meta}</div>` : ''}</div>`;
             if (idealBudget <= 0) return make('Chưa có ngân sách tổng', 'Đặt ngân sách để trợ lý tính mức chi an toàn và xác định phần chi linh hoạt cần chú ý.');
             if (monthExpense <= 0) return make('Chưa có khoản chi trong tháng', 'Tiếp tục ghi giao dịch để trợ lý bắt đầu nhận diện thay đổi và đưa ra khuyến nghị.');
 
