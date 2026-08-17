@@ -2810,10 +2810,20 @@
             // để lần đồng bộ tới không bị máy khác xóa mất bản ghi vừa tạo.
             clearTombstone(newData.id);
             
-            localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions)); showToast("Lưu thành công", "fa-check", "text-emerald-400");
+            localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions));
+            showToast("Lưu thành công", "fa-check", "text-emerald-400");
             closeModal('transactionModal'); updateDashboard(); applyFilters(); renderCategoryBudgets();
+            // Giao dịch là dữ liệu quan trọng: đẩy ngay thay vì chỉ chờ debounce 500ms.
+            // Nếu thiết bị đóng/quay về nền ngay sau khi lưu, Firestore persistence + writeBatch
+            // vẫn có thể tiếp tục gửi thay đổi ở phiên sau.
+            if (fbCurrentUid && firestoreV2Ready && syncReady) {
+                clearTimeout(fbSaveTimer);
+                void pushLocalDataToFirestore();
+            } else if (fbCurrentUid) {
+                pendingSyncAfterReady = true;
+            }
         }
-        function handleDeleteTxClick(id) { openConfirm("Xóa", "Không khôi phục được", () => { transactions = transactions.filter(t=>t.id!==id); recordTombstone(id); localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions)); updateDashboard(); applyFilters(); renderCategoryBudgets(); showToast("Đã xóa", "fa-trash", "text-rose-400"); }); }
+        function handleDeleteTxClick(id) { openConfirm("Xóa", "Không khôi phục được", () => { transactions = transactions.filter(t=>t.id!==id); recordTombstone(id); localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions)); updateDashboard(); applyFilters(); renderCategoryBudgets(); showToast("Đã xóa", "fa-trash", "text-rose-400"); if (fbCurrentUid && firestoreV2Ready && syncReady) { clearTimeout(fbSaveTimer); void pushLocalDataToFirestore(); } else if (fbCurrentUid) pendingSyncAfterReady = true; }); }
 
         // ================== TOMBSTONE (đánh dấu đã xóa) CHO ĐỒNG BỘ NHIỀU THIẾT BỊ ==================
         // Vì mỗi thiết bị lưu localStorage riêng, khi hợp nhất (merge) dữ liệu giữa các thiết bị ta không
@@ -3929,6 +3939,7 @@
         let fbUnsubscribe = [];
         let firestoreV2Ready = false;
         let firestoreV2MigrationInFlight = false;
+        let firestorePersistenceEnabled = false;
 
         // Trạng thái đồng bộ phải được khai báo trước mọi callback Firebase.
         // syncReady chỉ bật sau khi đã tải dữ liệu thật từ server, tránh local cũ ghi đè server.
@@ -4305,32 +4316,29 @@
 
         async function pushTransactionChunk(uid, snapshot, ids) {
             if (!ids.length) return;
-            const refs = ids.map(id => ({ id, txRef: firestoreTransactionsRef(uid).doc(id), tombRef: firestoreTombstonesRef(uid).doc(id) }));
-            await fbDb.runTransaction(async transaction => {
-                const remoteDocs = [];
-                for (const r of refs) {
-                    remoteDocs.push({ tx: (await transaction.get(r.txRef)).data() || null, tomb: (await transaction.get(r.tombRef)).data() || null, ref: r });
+            // Batched writes are intentionally used here instead of Firestore transactions.
+            // Firestore transactions fail while the device is offline, whereas write batches
+            // can be persisted by the web SDK and uploaded automatically when connectivity returns.
+            // The client still uses updatedAt/tombstones for conflict resolution on the next merge.
+            const batch = fbDb.batch();
+            const localById = new Map((snapshot.transactions || []).map(tx => [String(tx.id), tx]));
+            let writes = 0;
+            ids.forEach(rawId => {
+                const id = String(rawId);
+                const txRef = firestoreTransactionsRef(uid).doc(id);
+                const tombRef = firestoreTombstonesRef(uid).doc(id);
+                const localTx = localById.get(id) || null;
+                const localDelAt = snapshot.deletedTx?.[id] || null;
+                if (localDelAt && (!localTx || firestoreTime(localDelAt) >= firestoreTime(localTx.updatedAt))) {
+                    batch.delete(txRef);
+                    batch.set(tombRef, { deletedAt: String(localDelAt) }, { merge: true });
+                } else if (localTx) {
+                    batch.set(txRef, localTx, { merge: true });
+                    if (localDelAt) batch.delete(tombRef);
                 }
-                // All reads complete before writes.
-                const localById = new Map((snapshot.transactions || []).map(tx => [tx.id, tx]));
-                for (const item of remoteDocs) {
-                    const { id, txRef, tombRef } = item.ref;
-                    const localTx = localById.get(id) || null;
-                    const localDelAt = snapshot.deletedTx?.[id] || null;
-                    const remoteTxAt = firestoreTime(item.tx?.updatedAt);
-                    const remoteDelAt = firestoreTime(item.tomb?.deletedAt);
-                    const localTxAt = firestoreTime(localTx?.updatedAt);
-                    const localDeleteAt = firestoreTime(localDelAt);
-
-                    if (localDeleteAt > Math.max(remoteTxAt, remoteDelAt)) {
-                        transaction.delete(txRef);
-                        transaction.set(tombRef, { deletedAt: localDelAt }, { merge: true });
-                    } else if (localTx && localTxAt > Math.max(remoteTxAt, remoteDelAt)) {
-                        transaction.set(txRef, localTx, { merge: true });
-                        if (localTxAt >= remoteDelAt && item.tomb) transaction.delete(tombRef);
-                    }
-                }
+                writes += 2;
             });
+            if (writes) await batch.commit();
         }
 
         async function pushSettingsV2(uid, snapshot) {
@@ -4370,6 +4378,11 @@
                 const ids = candidateLocalTransactionIds(snapshot);
                 for (let i = 0; i < ids.length; i += 120) await pushTransactionChunk(fbCurrentUid, snapshot, ids.slice(i, i + 120));
                 await pushSettingsV2(fbCurrentUid, snapshot);
+                // Wait until all queued writes are acknowledged when possible.
+                // With Firestore persistence enabled, this also resumes writes queued by a prior session.
+                if (fbDb && typeof fbDb.waitForPendingWrites === 'function') {
+                    try { await fbDb.waitForPendingWrites(); } catch (_) {}
+                }
                 // Refresh authoritative caches/settings after push without relying on local optimistic state.
                 await loadV2ServerState(fbCurrentUid);
                 updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
@@ -4420,6 +4433,16 @@
                 fbAuth = firebase.auth();
                 fbDb = firebase.firestore();
                 fbDb.settings({ ignoreUndefinedProperties: true });
+                // Web Firestore persistence keeps queued writes across page/app restarts.
+                // This is especially important for mobile: closing the tab immediately after
+                // saving a transaction must not silently lose the cloud write.
+                try {
+                    await fbDb.enablePersistence({ synchronizeTabs: true });
+                    firestorePersistenceEnabled = true;
+                } catch (pErr) {
+                    firestorePersistenceEnabled = false;
+                    console.warn('Firestore persistence unavailable; continuing without it:', pErr && pErr.code ? pErr.code : pErr);
+                }
             } catch (err) {
                 console.error('Firebase init error', err);
                 updateSyncStatusUI('error', 'Lỗi khởi tạo Firebase - kiểm tra lại firebaseConfig');
@@ -4489,8 +4512,12 @@
             if (document.visibilityState !== 'visible') return;
             if (!fbCurrentUid || !fbDb || !firestoreV2Ready) return;
             updateSyncStatusUI('syncing', 'Đang đồng bộ...');
-            try { await loadV2ServerState(fbCurrentUid); updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN')); }
-            catch (err) { console.warn('visibility sync failed', err); updateSyncStatusUI('error', 'Mất kết nối đồng bộ, đang thử lại...'); }
+            try {
+                await loadV2ServerState(fbCurrentUid);
+                const localPending = candidateLocalTransactionIds(localSyncSnapshot()).length;
+                if (localPending && syncReady) { clearTimeout(fbSaveTimer); void pushLocalDataToFirestore(); }
+                else updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
+            } catch (err) { console.warn('visibility sync failed', err); updateSyncStatusUI('error', 'Mất kết nối đồng bộ, đang thử lại...'); }
         });
 
         window.addEventListener('pagehide', () => {
