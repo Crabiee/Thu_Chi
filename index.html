@@ -3988,6 +3988,7 @@
                     ? `Dự báo cả tháng: ${formatCurrency(projectedExpense)} (${projectedPercent}% ngân sách).`
                     : `Tổng chi tháng: ${formatCurrency(monthExpense)} (${Math.round((monthExpense / idealBudget) * 100)}% ngân sách).`);
             setText('ai-projection-text', projection);
+            const comparisonDay = isCurrentMonth ? elapsedDays : daysInMonth;
             const retainedCurrent = isCurrentMonth ? getCashFlowThroughDay(selectedMonthStr, comparisonDay) : { income: monthIncome, expense: monthExpense, net: monthIncome - monthExpense };
             const retainedPrevious = isCurrentMonth ? getCashFlowThroughDay(prevMonthStr, comparisonDay) : { income: prevStats.income, expense: prevStats.expense, net: prevStats.income - prevStats.expense };
             const retainedRate = retainedCurrent.income > 0 ? (retainedCurrent.net / retainedCurrent.income) * 100 : null;
