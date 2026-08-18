@@ -4975,6 +4975,10 @@
             const settingsUnsub = firestoreSettingsRef(uid).onSnapshot({ includeMetadataChanges: false }, snap => {
                 if (snap.metadata.hasPendingWrites) return;
                 mergeRemoteV2Data([], {}, snap.exists ? snap.data() : null);
+                // Settings snapshots can arrive after the first dashboard paint.
+                if (!document.getElementById('tab-dashboard')?.classList.contains('hidden')) {
+                    updateDashboard();
+                }
             }, err => console.error('Firestore settings listener error', err));
 
             const txQuery = firestoreTransactionsRef(uid).where('serverUpdatedAt', '>=', cursorTs);
@@ -5411,6 +5415,18 @@
                     const hasLocalTransactionDataset = Array.isArray(transactions) && transactions.length > 0;
                     if (getTxSyncCursor(user.uid) && hasLocalTransactionDataset) await loadV2DeltaState(user.uid);
                     else await loadV2ServerState(user.uid);
+
+                    // IMPORTANT: hydration can change the in-memory transaction dataset without
+                    // causing mergeRemoteV2Data() to report a logical diff (for example, the
+                    // IndexedDB cache already matches Firestore). The dashboard was rendered
+                    // earlier, before Firebase hydration completed, so it must be rendered again
+                    // explicitly after the authoritative local/server state is ready.
+                    populateAccountSelects();
+                    updateDashboard();
+                    applyFilters();
+                    renderCategoryBudgets();
+                    if (typeof renderCategoryManager === 'function') renderCategoryManager();
+
                     firestoreV2Ready = true;
                     syncReady = true;
                     await startV2Listeners(user.uid);
