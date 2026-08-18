@@ -4731,7 +4731,18 @@
                 for (let i = 0; i < legacyTx.length; i += FIRESTORE_BATCH_LIMIT) {
                     const batch = fbDb.batch();
                     legacyTx.slice(i, i + FIRESTORE_BATCH_LIMIT).forEach(tx => {
-                        batch.set(firestoreTransactionsRef(uid).doc(String(tx.id)), { ...tx, syncVersion: Math.max(1, Number(tx.syncVersion) || 1) }, { merge: true });
+                        const updatedAt = String(tx.updatedAt || new Date().toISOString());
+                        const syncVersion = Math.max(1, Number(tx.syncVersion) || 1);
+                        batch.set(
+                            firestoreTransactionsRef(uid).doc(String(tx.id)),
+                            {
+                                ...tx,
+                                updatedAt,
+                                syncVersion,
+                                serverUpdatedAt: firestoreTimestampFromMs(firestoreTime(updatedAt) || Date.now())
+                            },
+                            { merge: true }
+                        );
                     });
                     if (legacyTx.length) await batch.commit();
                 }
@@ -4805,34 +4816,28 @@
 
         async function ensureServerSyncFields(uid) {
             if (hasTxSyncSchema(uid)) return;
-            const [txSnap, tombSnap] = await Promise.all([
-                firestoreTransactionsRef(uid).get({ source: 'server' }),
-                firestoreTombstonesRef(uid).get({ source: 'server' })
-            ]);
-            const txDocs = txSnap.docs.filter(d => !d.data()?.serverUpdatedAt || !d.data()?.syncVersion);
-            for (let i = 0; i < txDocs.length; i += FIRESTORE_BATCH_LIMIT) {
-                const batch = fbDb.batch();
-                txDocs.slice(i, i + FIRESTORE_BATCH_LIMIT).forEach(doc => {
-                    const data = doc.data() || {};
-                    const ms = firestoreTime(data.updatedAt) || Date.now();
-                    batch.update(doc.ref, { serverUpdatedAt: firestoreTimestampFromMs(ms), syncVersion: Math.max(1, Number(data.syncVersion) || 1) });
-                });
-                if (txDocs.length) await batch.commit();
+
+            // IMPORTANT:
+            // Firestore Rules deliberately require syncVersion to increase for a logical
+            // transaction update. Therefore this startup helper must NEVER mutate an
+            // existing transaction/tombstone merely to add serverUpdatedAt/serverDeletedAt.
+            // Doing so with the same syncVersion is rejected by Rules and used to abort
+            // login before the real server data is loaded.
+            //
+            // New v2 migrations and normal writes already stamp the server metadata.
+            // For old v2 documents that predate that metadata, the first full server load
+            // still reads them directly. Once such a document is edited/deleted later,
+            // the normal write path adds the server metadata.
+            try {
+                await Promise.all([
+                    firestoreTransactionsRef(uid).get({ source: 'server' }),
+                    firestoreTombstonesRef(uid).get({ source: 'server' })
+                ]);
+            } finally {
+                // Mark the local schema as usable even when some old documents do not have
+                // server metadata yet. Missing metadata is not a reason to block startup.
+                setTxSyncSchema(uid);
             }
-            const txById = new Map(txSnap.docs.map(d => [String(d.id), d.data() || {}]));
-            const tombDocs = tombSnap.docs.filter(d => !d.data()?.serverDeletedAt || !d.data()?.syncVersion);
-            for (let i = 0; i < tombDocs.length; i += FIRESTORE_BATCH_LIMIT) {
-                const batch = fbDb.batch();
-                tombDocs.slice(i, i + FIRESTORE_BATCH_LIMIT).forEach(doc => {
-                    const data = doc.data() || {};
-                    const ms = firestoreTime(data.deletedAt) || Date.now();
-                    const txData = txById.get(String(doc.id)) || {};
-                    const syncVersion = Math.max(1, Number(data.syncVersion) || (Number(txData.syncVersion) || 1) + 1);
-                    batch.update(doc.ref, { serverDeletedAt: firestoreTimestampFromMs(ms), syncVersion });
-                });
-                if (tombDocs.length) await batch.commit();
-            }
-            setTxSyncSchema(uid);
         }
 
         function updateSyncCursorFromDocs(uid, txDocs, tombDocs) {
@@ -4844,30 +4849,99 @@
         }
 
         async function loadV2ServerState(uid) {
-            await migrateLegacyFirestoreToV2(uid);
+            let migrationError = null;
+            try {
+                await migrateLegacyFirestoreToV2(uid);
+            } catch (err) {
+                migrationError = err;
+                console.warn('FinancePro: Firestore v2 migration deferred; loading existing data safely.', err);
+            }
+
             await ensureServerSyncFields(uid);
+
             const [settingsSnap, txSnap, tombSnap] = await Promise.all([
                 firestoreSettingsRef(uid).get({ source: 'server' }),
                 firestoreTransactionsRef(uid).get({ source: 'server' }),
                 firestoreTombstonesRef(uid).get({ source: 'server' })
             ]);
+
             const settings = settingsSnap.exists ? settingsSnap.data() : null;
-            const remoteTx = txSnap.docs.map(d => normalizeRemoteTransaction(d.data(), d.id)).filter(Boolean);
+
+            // Prefer v2 documents, but never show an empty app merely because a legacy
+            // migration failed or was only partially completed.
+            const v2Tx = txSnap.docs.map(d => normalizeRemoteTransaction(d.data(), d.id)).filter(Boolean);
+            const legacyTx = Array.isArray(settings?.transactions)
+                ? settings.transactions.map(t => normalizeRemoteTransaction(t, t?.id)).filter(Boolean)
+                : [];
+
+            const txById = new Map();
+            legacyTx.forEach(tx => txById.set(String(tx.id), tx));
+            v2Tx.forEach(tx => {
+                const id = String(tx.id);
+                const old = txById.get(id);
+                if (!old || compareTransactions(tx, old) >= 0) txById.set(id, tx);
+            });
+            const remoteTx = Array.from(txById.values());
+
             const remoteTomb = {};
-            tombSnap.docs.forEach(d => { const v = d.data() || {}; if (v.deletedAt) remoteTomb[d.id] = { deletedAt: String(v.deletedAt), syncVersion: Math.max(1, Number(v.syncVersion) || 1) }; });
-            FIRESTORE_TX_CACHE.clear(); remoteTx.forEach(tx => FIRESTORE_TX_CACHE.set(tx.id, tx));
-            FIRESTORE_TOMBSTONE_CACHE.clear(); Object.entries(remoteTomb).forEach(([id, at]) => FIRESTORE_TOMBSTONE_CACHE.set(id, at));
+            tombSnap.docs.forEach(d => {
+                const v = d.data() || {};
+                if (v.deletedAt) {
+                    remoteTomb[d.id] = {
+                        deletedAt: String(v.deletedAt),
+                        syncVersion: Math.max(1, Number(v.syncVersion) || 1)
+                    };
+                }
+            });
+
+            // Legacy tombstones are only a fallback; v2 tombstones take precedence
+            // when both exist for the same transaction id.
+            if (settings?.deletedTx && typeof settings.deletedTx === 'object') {
+                Object.entries(settings.deletedTx).forEach(([id, raw]) => {
+                    if (remoteTomb[id]) return;
+                    const normalized = normalizeTombstone(raw);
+                    if (normalized) remoteTomb[id] = normalized;
+                });
+            }
+
+            FIRESTORE_TX_CACHE.clear();
+            remoteTx.forEach(tx => FIRESTORE_TX_CACHE.set(tx.id, tx));
+
+            FIRESTORE_TOMBSTONE_CACHE.clear();
+            Object.entries(remoteTomb).forEach(([id, at]) => FIRESTORE_TOMBSTONE_CACHE.set(id, at));
+
             mergeRemoteV2Data(remoteTx, remoteTomb, settings);
             updateSyncCursorFromDocs(uid, txSnap.docs.map(d => d.data() || {}), tombSnap.docs.map(d => d.data() || {}));
-            try { await cleanupLegacyFirestoreAfterV2Verification(uid, settings, remoteTx, remoteTomb); } catch (cleanupErr) { console.warn('Legacy Firestore cleanup deferred', cleanupErr); }
-            return { settings, remoteTx, remoteTomb };
+
+            try {
+                await cleanupLegacyFirestoreAfterV2Verification(uid, settings, v2Tx, remoteTomb);
+            } catch (cleanupErr) {
+                console.warn('Legacy Firestore cleanup deferred', cleanupErr);
+            }
+
+            if (migrationError) {
+                scheduleDriveSync();
+            }
+
+            return { settings, remoteTx, remoteTomb, migrationError };
         }
 
         async function loadV2DeltaState(uid) {
-            await migrateLegacyFirestoreToV2(uid);
+            let migrationError = null;
+            try {
+                await migrateLegacyFirestoreToV2(uid);
+            } catch (err) {
+                migrationError = err;
+                console.warn('FinancePro: delta migration deferred; falling back to a full safe server load.', err);
+            }
+
             await ensureServerSyncFields(uid);
             const cursor = getTxSyncCursor(uid);
-            if (!cursor) return loadV2ServerState(uid);
+
+            // A migration error means the v2 collection may be incomplete. A full read
+            // is safer than trusting a cursor and silently omitting older transactions.
+            if (!cursor || migrationError) return loadV2ServerState(uid);
+
             const cursorTs = firestoreTimestampFromMs(Math.max(0, firestoreTime(cursor)));
             const [settingsSnap, txSnap, tombSnap] = await Promise.all([
                 firestoreSettingsRef(uid).get({ source: 'server' }),
