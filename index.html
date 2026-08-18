@@ -5321,7 +5321,12 @@
                     stopV2Listeners();
                     await prepareLocalTransactionsForUid(user.uid, sameAccount);
                     updateSyncStatusUI('syncing', 'Đang tải dữ liệu đồng bộ mới nhất...');
-                    if (getTxSyncCursor(user.uid)) await loadV2DeltaState(user.uid);
+                    // Chỉ dùng delta sync khi máy đã có một local dataset hợp lệ.
+                    // Nếu transaction cache local đang trống (ví dụ máy mới, IndexedDB bị xóa,
+                    // cache hỏng hoặc user vừa chuyển tài khoản), phải hydrate toàn bộ từ server;
+                    // nếu không, một cursor cũ có thể khiến app báo xanh nhưng giao diện rỗng.
+                    const hasLocalTransactionDataset = Array.isArray(transactions) && transactions.length > 0;
+                    if (getTxSyncCursor(user.uid) && hasLocalTransactionDataset) await loadV2DeltaState(user.uid);
                     else await loadV2ServerState(user.uid);
                     firestoreV2Ready = true;
                     syncReady = true;
