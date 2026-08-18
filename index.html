@@ -305,7 +305,7 @@
         body.dark-mode .month-picker-month.is-selected { background: #7c5cff; color: #fff; border-color: #9c87ff; }
         body.dark-mode .month-picker-action { color: #b4a3ff; }
         body.dark-mode .month-picker-action:hover { background: rgba(124,92,255,.22); }
-        body.dark-mode #dash-budget-advice, body.dark-mode .assistant-hero, body.dark-mode .ai-card { background-color: rgba(15,23,42,.78) !important; border-color: rgba(148,163,184,.18) !important; color: #e5e7eb !important; }
+        body.dark-mode .assistant-hero, body.dark-mode .ai-card { background-color: rgba(15,23,42,.78) !important; border-color: rgba(148,163,184,.18) !important; color: #e5e7eb !important; }
         body.dark-mode .ai-chip { background: rgba(67,56,202,.28); color: #ddd6fe; border-color: rgba(165,180,252,.24); }
         body.dark-mode .ai-list li { border-color: rgba(148,163,184,.16); }
 
@@ -468,7 +468,7 @@
         body.dark-mode .ai-chip { background: var(--fp-surface-2) !important; border-color: var(--fp-border-strong) !important; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; font-size: 11px; }
         /* .ai-dot: KHÔNG ép màu — các dot dùng bg-rose-500/bg-emerald-500/bg-amber-500/bg-indigo-500
            để biểu thị ý nghĩa (tăng/giảm/cảnh báo/thứ hạng), ép về 1 màu sẽ làm mất ý nghĩa đó. */
-        body.dark-mode #dash-budget-advice { background: var(--fp-surface) !important; border-color: var(--fp-border) !important; }
+        /* dash-budget-advice merged into the single budget status line. */
 
         /* --- Scrollbar to match flat dark surface --- */
         body.dark-mode .custom-scrollbar::-webkit-scrollbar-track { background: var(--fp-bg); }
@@ -499,6 +499,27 @@
         body.dark-mode #subguide-panel-book .bg-emerald-50 { background: rgba(53,214,142,.1) !important; }
         body.dark-mode #subguide-panel-book .bg-amber-50 { background: rgba(245,181,68,.1) !important; }
         body.dark-mode #subguide-panel-book .bg-rose-50 { background: rgba(251,113,133,.12) !important; }
+        /* =========================================================
+           UX UPGRADE — Dashboard + Transaction list only
+        ========================================================= */
+        .transaction-filter-chip { display:inline-flex; align-items:center; gap:7px; border:1px solid rgba(99,102,241,.20); background:rgba(238,242,255,.92); color:#4338ca; border-radius:999px; padding:5px 9px; font-size:11px; font-weight:800; }
+        .transaction-filter-chip button { width:18px; height:18px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; }
+        .transaction-filter-chip button:hover { background:rgba(99,102,241,.10); }
+        .transaction-day-group-row td { padding:10px 24px !important; background:rgba(248,250,252,.78); border-top:1px solid rgba(148,163,184,.18); border-bottom:1px solid rgba(148,163,184,.12); font-size:11px; font-weight:800; color:#475569; }
+        .transaction-day-group-row .day-total { font-weight:700; color:#64748b; }
+        .tx-filter-badge { cursor:pointer; }
+        .tx-transfer-flow { display:inline-flex; align-items:center; gap:7px; font-weight:700; }
+        .tx-transfer-flow .tx-flow-account { color:#334155; }
+        .tx-transfer-flow .tx-flow-arrow { color:#2563eb; font-size:12px; }
+        .tx-select-box { width:16px; height:16px; accent-color:#4f46e5; }
+        body.dark-mode .transaction-filter-chip { background:rgba(67,56,202,.22); border-color:rgba(165,180,252,.24); color:#ddd6fe; }
+        body.dark-mode .transaction-day-group-row td { background:rgba(25,25,29,.92); color:#a1a1aa; border-color:rgba(255,255,255,.08); }
+        body.dark-mode .transaction-day-group-row .day-total { color:#71717a; }
+        body.dark-mode .tx-transfer-flow .tx-flow-account { color:#e5e7eb; }
+        body.dark-mode .tx-transfer-flow .tx-flow-arrow { color:#93c5fd; }
+        body.dark-mode #transaction-bulk-toolbar { background:var(--fp-surface-2); border-color:var(--fp-border); }
+        body.dark-mode #transaction-bulk-toolbar button { background:var(--fp-surface) !important; border-color:var(--fp-border) !important; color:var(--fp-text-dim); }
+
         /* =========================================================
            iOS SAFARI ANTI-ZOOM FIX
            Safari tự zoom khi input/select có font-size < 16px.
@@ -857,19 +878,19 @@
 </div>
 <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
 <div class="flex justify-between items-start mb-2">
-<p class="text-xs md:text-sm text-slate-500 font-medium">Dư Nợ</p>
-<div class="bg-indigo-50 p-1.5 md:p-2 rounded-lg text-indigo-600"><i class="fa-solid fa-scale-balanced text-xs md:text-base"></i></div>
+<p class="text-xs md:text-sm text-slate-500 font-medium">Còn Lại</p>
+<div class="bg-emerald-50 p-1.5 md:p-2 rounded-lg text-emerald-600"><i class="fa-solid fa-wallet text-xs md:text-base"></i></div>
 </div>
-<h3 class="text-lg md:text-2xl font-bold text-indigo-600 truncate" id="stat-net">0 ₫</h3>
+<h3 class="text-lg md:text-2xl font-bold text-emerald-600 truncate" id="stat-net">0 ₫</h3>
 </div>
-<div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
+<button type="button" class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between text-left w-full hover:shadow-md transition cursor-pointer" onclick="openTopExpenseTransactions()" title="Xem các giao dịch của danh mục chi nhiều nhất">
 <div class="flex justify-between items-start mb-2">
 <p class="text-xs md:text-sm text-slate-500 font-medium">Chi nhiều nhất</p>
 <div class="bg-amber-50 p-1.5 md:p-2 rounded-lg text-amber-600"><i class="fa-solid fa-fire text-xs md:text-base"></i></div>
 </div>
 <h3 class="text-sm md:text-lg font-bold text-slate-800 truncate" id="stat-top-expense">Chưa có</h3>
 <p class="text-xs text-rose-500 font-semibold mt-1 truncate" id="stat-top-expense-amount">0 ₫</p>
-</div>
+</button>
 </div>
 <!-- VÍ TÀI KHOẢN & TIẾN ĐỘ NGÂN SÁCH -->
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -908,10 +929,9 @@
 <div class="w-full bg-slate-200 h-3 md:h-4 rounded-full overflow-hidden mb-2">
 <div class="bg-indigo-600 h-full transition-all duration-500" id="dash-budget-bar" style="width: 0%"></div>
 </div>
-<p class="text-xs font-semibold text-slate-500" id="dash-budget-alert"></p>
-<div class="mt-3 px-3 py-2 md:px-4 md:py-3 rounded-xl border border-slate-200 text-xs md:text-sm font-semibold text-slate-700 flex items-start gap-2 bg-white/70" id="dash-budget-advice">
-<i class="fa-solid fa-comment-dots text-indigo-500 mt-0.5" id="dash-budget-advice-icon"></i>
-<span id="dash-budget-advice-text"></span>
+<div class="mt-3 flex items-start gap-2">
+<i class="fa-solid fa-circle-info text-indigo-500 mt-0.5 shrink-0" id="dash-budget-alert-icon"></i>
+<p class="text-xs md:text-sm font-semibold text-slate-600" id="dash-budget-alert"></p>
 </div>
 </div>
 </div>
@@ -1030,16 +1050,34 @@
 </div>
 </div>
 <div class="bg-white md:rounded-2xl shadow-sm border border-slate-100 overflow-hidden rounded-xl">
-<div class="p-4 md:p-6 border-b border-slate-100 flex justify-between items-center">
+<div class="p-4 md:p-6 border-b border-slate-100">
+<div class="flex justify-between items-center gap-3">
 <h4 class="font-bold text-slate-900">Danh Sách Giao Dịch</h4>
+<div class="flex items-center gap-2">
+<button type="button" id="bulk-select-toggle" onclick="toggleBulkSelectMode()" class="text-xs font-semibold text-slate-500 hover:text-indigo-600 px-2.5 py-1.5 rounded-lg hover:bg-slate-50 transition">
+<i class="fa-solid fa-check-double mr-1"></i> Chọn nhiều
+</button>
 <span class="bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full" id="transaction-count">0</span>
+</div>
+</div>
+<div id="transaction-filter-summary" class="mt-3 text-xs text-slate-500"></div>
+<div id="transaction-bulk-toolbar" class="hidden mt-3 flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+<button type="button" onclick="selectAllFilteredTransactions()" class="text-xs font-semibold text-slate-700 bg-white border border-slate-200 px-3 py-1.5 rounded-lg hover:border-indigo-300 hover:text-indigo-600 transition">
+<i class="fa-solid fa-square-check mr-1"></i> Chọn tất cả
+</button>
+<button type="button" onclick="clearBulkSelection()" class="text-xs font-semibold text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-lg hover:border-slate-300 transition">Bỏ chọn</button>
+<span class="text-xs font-semibold text-slate-500" id="bulk-selection-count">0 đã chọn</span>
+<button type="button" onclick="deleteSelectedTransactions()" class="ml-auto text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-lg hover:bg-rose-100 transition">
+<i class="fa-solid fa-trash mr-1"></i> Xóa đã chọn
+</button>
+</div>
 </div>
 <!-- Chế độ Table cho Desktop -->
 <div class="hidden md:block overflow-x-auto custom-scrollbar">
 <table class="w-full text-left border-collapse min-w-[800px]">
 <thead>
 <tr class="border-b border-slate-100 bg-slate-50 text-slate-400 text-xs font-semibold uppercase">
-<th class="py-3 px-6">Ngày</th><th class="py-3 px-6">Loại</th><th class="py-3 px-6">Danh Mục/Đến</th><th class="py-3 px-6">TK Nguồn</th><th class="py-3 px-6 w-1/4">Ghi Chú</th><th class="py-3 px-6 text-right">Số Tiền</th><th class="py-3 px-6 text-center">Hành Động</th>
+<th class="py-3 px-3 w-10" id="bulk-select-head"></th><th class="py-3 px-6">Ngày</th><th class="py-3 px-6">Loại</th><th class="py-3 px-6">Danh Mục/Đến</th><th class="py-3 px-6">TK Nguồn</th><th class="py-3 px-6 w-1/4">Ghi Chú</th><th class="py-3 px-6 text-right">Số Tiền</th><th class="py-3 px-6 text-center">Hành Động</th>
 </tr>
 </thead>
 <tbody class="divide-y divide-slate-100 text-sm" id="all-transactions-tbody"></tbody>
@@ -2975,63 +3013,268 @@
         }
 
         // ================== GIAO DIỆN SỔ SÁCH (TABLE + CARDS) ==================
-        function applyFilters() {
-            const m = document.getElementById('filter-month').value, t = document.getElementById('filter-type').value, a = document.getElementById('filter-account').value, s = document.getElementById('filter-sort').value;
-            let f = transactions.filter(x => (!m||x.date.startsWith(m)) && (t==='all'||x.type===t) && (a==='all'||x.account===a||(x.type==='transfer'&&x.toAccount===a)));
-            f.sort((x,y) => { const dateDiff = s==='desc' ? new Date(y.date)-new Date(x.date) : new Date(x.date)-new Date(y.date); if (dateDiff) return dateDiff; return s==='desc' ? String(y.id).localeCompare(String(x.id)) : String(x.id).localeCompare(String(y.id)); });
-            document.getElementById('transaction-count').innerText = f.length;
-            
-            const tbody = document.getElementById('all-transactions-tbody'); tbody.innerHTML='';
-            const cards = document.getElementById('all-transactions-cards'); cards.innerHTML='';
-            
-            if(!f.length) { tbody.innerHTML='<tr><td colspan="7" class="text-center py-6 text-slate-400">Trống</td></tr>'; cards.innerHTML='<div class="p-6 text-center text-slate-400 text-sm">Không có dữ liệu</div>'; return; }
-            
-            f.forEach(tx => {
-                let badge, cColor, prefix, icon;
-                if(tx.type==='income') { badge='<span class="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[10px]">Thu</span>'; cColor='text-emerald-600'; prefix='+'; icon=CATEGORY_ICONS[tx.category]||'fa-tag'; }
-                else if(tx.type==='expense') { badge='<span class="bg-rose-50 text-rose-700 px-2 py-0.5 rounded text-[10px]">Chi</span>'; cColor='text-rose-600'; prefix='-'; icon=CATEGORY_ICONS[tx.category]||'fa-tag'; }
-                else if(tx.type==='proxy') { const isIn=tx.proxyDir==='in'; badge=`<span class="bg-amber-50 text-amber-700 px-2 py-0.5 rounded text-[10px]">TG ${isIn?'↓':'↑'}</span>`; cColor='text-amber-600'; prefix=isIn?'+':'-'; icon='fa-handshake'; }
-                else { badge='<span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px]">Chuyển</span>'; cColor='text-blue-600'; prefix=''; icon='fa-arrow-right-arrow-left'; }
+        // ================== GIAO DIỆN SỔ SÁCH (TABLE + CARDS) ==================
+        let transactionQuickFilter = null; // { kind: 'category'|'target', value, label }
+        let bulkSelectMode = false;
+        const selectedTransactionIds = new Set();
 
-                const proxyNote = tx.type==='proxy' ? `<span class="text-[9px] text-amber-500 font-semibold ml-1">(ủy thác — không tính vào thu/chi)</span>` : '';
-
-                const txId = encodeURIComponent(String(tx.id));
-                const txCategory = escapeHTML(tx.category);
-                const txAccount = escapeHTML(tx.account);
-                const txToAccount = escapeHTML(tx.toAccount || '');
-                const txNotes = escapeHTML(tx.notes || '');
-                const displayMain = tx.type==='transfer' ? `Đến: ${txToAccount}` : txCategory;
-
-                // Desktop Table Row
-                tbody.insertAdjacentHTML('beforeend', `<tr class="border-b hover:bg-slate-50${tx.type==='proxy'?' bg-amber-50/30':''}"><td class="py-3 px-6 whitespace-nowrap">${escapeHTML(formatDate(tx.date))}</td><td class="py-3 px-6">${badge}</td><td class="py-3 px-6 whitespace-nowrap"><i class="fa-solid ${icon} text-slate-400 w-5"></i> ${displayMain}${proxyNote}</td><td class="py-3 px-6">${txAccount}</td><td class="py-3 px-6 truncate max-w-[150px]">${txNotes}</td><td class="py-3 px-6 text-right font-bold ${cColor}">${prefix}${maskCurrency(tx.amount)}</td><td class="py-3 px-6 text-center"><button type="button" onclick="handleEditTxClick(decodeURIComponent('${txId}'))" class="text-indigo-400 mx-1"><i class="fa-solid fa-pen"></i></button><button type="button" onclick="handleDeleteTxClick(decodeURIComponent('${txId}'))" class="text-rose-400 mx-1"><i class="fa-solid fa-trash"></i></button></td></tr>`);
-
-                // Mobile Card View
-                const mobileTitle = tx.type==='transfer' ? `Chuyển: ${txAccount} &rarr; ${txToAccount}` : tx.type==='proxy' ? `Trung gian: ${txCategory}` : txCategory;
-                cards.insertAdjacentHTML('beforeend', `
-                    <div class="p-4 hover:bg-slate-50 transition active:bg-slate-100 flex items-center justify-between${tx.type==='proxy'?' bg-amber-50/40':''}">
-                        <div class="flex items-center gap-3 overflow-hidden">
-                            <div class="w-10 h-10 rounded-full flex shrink-0 items-center justify-center ${tx.type==='income'?'bg-emerald-100 text-emerald-600':tx.type==='expense'?'bg-rose-100 text-rose-600':tx.type==='proxy'?'bg-amber-100 text-amber-600':'bg-blue-100 text-blue-600'}"><i class="fa-solid ${icon}"></i></div>
-                            <div class="min-w-0">
-                                <p class="font-bold text-slate-800 text-sm truncate">${mobileTitle}</p>
-                                <p class="text-[11px] text-slate-500 flex gap-2"><span>${escapeHTML(formatDate(tx.date))}</span><span>&bull;</span><span class="truncate">${txAccount}</span></p>
-                                ${txNotes ? `<p class="text-[11px] text-slate-400 truncate mt-0.5">${txNotes}</p>`:''}
-                            </div>
-                        </div>
-                        <div class="flex flex-col items-end shrink-0 pl-2">
-                            <p class="font-bold text-sm ${cColor}">${prefix}${maskCurrency(tx.amount)}</p>
-                            <div class="flex gap-3 mt-1.5">
-                                <button type="button" onclick="handleEditTxClick(decodeURIComponent('${txId}'))" class="text-indigo-400 text-xs"><i class="fa-solid fa-pen"></i></button>
-                                <button type="button" onclick="handleDeleteTxClick(decodeURIComponent('${txId}'))" class="text-rose-400 text-xs"><i class="fa-solid fa-trash"></i></button>
-                            </div>
-                        </div>
-                    </div>
-                `);
+        function transactionDayLabel(dateStr) {
+            const m = String(dateStr || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!m) return escapeHTML(formatDate(dateStr));
+            const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+            const weekdays = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+            return `${weekdays[d.getDay()]} · ${m[3]}/${m[2]}/${m[1]}`;
+        }
+        function summarizeTransactions(list) {
+            let income = 0, expense = 0, transfer = 0, proxy = 0;
+            list.forEach(tx => {
+                const amount = Number(tx.amount) || 0;
+                if (tx.type === 'income') income += amount;
+                else if (tx.type === 'expense') expense += amount;
+                else if (tx.type === 'transfer') transfer += amount;
+                else if (tx.type === 'proxy') proxy += amount;
             });
+            const bits = [`${list.length} giao dịch`];
+            if (expense) bits.push(`Chi ${formatCurrency(expense)}`);
+            if (income) bits.push(`Thu ${formatCurrency(income)}`);
+            if (transfer) bits.push(`Chuyển ${formatCurrency(transfer)}`);
+            if (proxy) bits.push(`Trung gian ${formatCurrency(proxy)}`);
+            return bits.join(' · ');
+        }
+        function renderTransactionSummary(list) {
+            const box = document.getElementById('transaction-filter-summary');
+            if (!box) return;
+            const active = transactionQuickFilter;
+            const summary = escapeHTML(summarizeTransactions(list));
+            if (!active) {
+                box.className = 'mt-3 text-xs text-slate-500';
+                box.innerText = summary;
+                return;
+            }
+            box.className = 'mt-3 flex flex-wrap items-center gap-2';
+            box.innerHTML = `<span class="text-xs font-semibold text-slate-500">Đang lọc</span>
+                <span class="transaction-filter-chip">${escapeHTML(active.label)}
+                    <button type="button" aria-label="Bỏ lọc" onclick="clearTransactionQuickFilter()"><i class="fa-solid fa-xmark text-[9px]"></i></button>
+                </span>
+                <span class="text-xs font-semibold text-slate-500">${summary}</span>`;
+        }
+        function setTransactionQuickFilter(kind, value, label) {
+            transactionQuickFilter = { kind, value: String(value), label: String(label) };
+            applyFilters();
+        }
+        function clearTransactionQuickFilter() {
+            transactionQuickFilter = null;
+            applyFilters();
+        }
+        function toggleBulkSelectMode(forceValue = null) {
+            bulkSelectMode = forceValue === null ? !bulkSelectMode : !!forceValue;
+            if (!bulkSelectMode) selectedTransactionIds.clear();
+            const toggle = document.getElementById('bulk-select-toggle');
+            const toolbar = document.getElementById('transaction-bulk-toolbar');
+            if (toggle) {
+                toggle.classList.toggle('bg-indigo-50', bulkSelectMode);
+                toggle.classList.toggle('text-indigo-600', bulkSelectMode);
+                toggle.innerHTML = bulkSelectMode ? '<i class="fa-solid fa-xmark mr-1"></i> Hủy chọn' : '<i class="fa-solid fa-check-double mr-1"></i> Chọn nhiều';
+            }
+            if (toolbar) toolbar.classList.toggle('hidden', !bulkSelectMode);
+            applyFilters();
+        }
+        function updateBulkSelectionUI() {
+            const count = document.getElementById('bulk-selection-count');
+            if (count) count.innerText = `${selectedTransactionIds.size} đã chọn`;
+            const deleteBtn = document.querySelector('#transaction-bulk-toolbar button[onclick="deleteSelectedTransactions()"]');
+            if (deleteBtn) deleteBtn.disabled = selectedTransactionIds.size === 0;
+        }
+        function toggleTransactionSelection(id, checked) {
+            const key = String(id);
+            if (checked) selectedTransactionIds.add(key);
+            else selectedTransactionIds.delete(key);
+            updateBulkSelectionUI();
+        }
+        function selectAllFilteredTransactions() {
+            document.querySelectorAll('[data-tx-select]').forEach(el => selectedTransactionIds.add(String(el.getAttribute('data-tx-select'))));
+            applyFilters();
+        }
+        function clearBulkSelection() {
+            selectedTransactionIds.clear();
+            applyFilters();
+        }
+        function deleteSelectedTransactions() {
+            const ids = Array.from(selectedTransactionIds);
+            if (!ids.length) return;
+            openConfirm("Xóa nhiều giao dịch", `Bạn sắp xóa ${ids.length} giao dịch. Không thể khôi phục bằng thao tác hoàn tác thông thường.`, () => {
+                const byId = new Map(transactions.map(tx => [String(tx.id), tx]));
+                ids.forEach(id => {
+                    const tx = byId.get(id);
+                    if (!tx) return;
+                    const deleteVersion = Math.max(1, Number(tx.syncVersion) || 0) + 1;
+                    recordTombstone(id, deleteVersion);
+                    markTombstoneDirty(id);
+                });
+                transactions = transactions.filter(tx => !selectedTransactionIds.has(String(tx.id)));
+                selectedTransactionIds.clear();
+                queueTxStorageWrite(async () => {
+                    if (txStorageUid && txIdbAvailable) await idbReplaceTransactions(txStorageUid, transactions);
+                    else localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions));
+                });
+                updateDashboard();
+                applyFilters();
+                renderCategoryBudgets();
+                showToast(`Đã xóa ${ids.length} giao dịch`, "fa-trash", "text-rose-400");
+                if (fbCurrentUid && firestoreV2Ready && syncReady) { clearTimeout(fbSaveTimer); void pushLocalDataToFirestore(); }
+                else if (fbCurrentUid) pendingSyncAfterReady = true;
+            });
+        }
+        function openTopExpenseTransactions() {
+            const month = document.getElementById('dashboard-month-filter')?.value || '';
+            const category = document.getElementById('stat-top-expense')?.innerText?.trim() || '';
+            if (!category || category === 'Chưa có' || category === '-') return;
+            setMonthPickerValue('filter-month', month, false);
+            document.getElementById('filter-type').value = 'expense';
+            document.getElementById('filter-account').value = 'all';
+            document.getElementById('filter-sort').value = 'desc';
+            transactionQuickFilter = { kind: 'category', value: category, label: `Danh mục: ${category}` };
+            switchTab('transactions');
+        }
+
+        function applyFilters() {
+            const m = document.getElementById('filter-month').value,
+                t = document.getElementById('filter-type').value,
+                a = document.getElementById('filter-account').value,
+                s = document.getElementById('filter-sort').value;
+
+            let f = transactions.filter(x =>
+                (!m || x.date.startsWith(m)) &&
+                (t === 'all' || x.type === t) &&
+                (a === 'all' || x.account === a || (x.type === 'transfer' && x.toAccount === a))
+            );
+
+            if (transactionQuickFilter) {
+                if (transactionQuickFilter.kind === 'category') f = f.filter(x => x.category === transactionQuickFilter.value);
+                else if (transactionQuickFilter.kind === 'target') f = f.filter(x => x.type === 'transfer' && x.toAccount === transactionQuickFilter.value);
+            }
+
+            f.sort((x, y) => {
+                const dateDiff = s === 'desc' ? new Date(y.date) - new Date(x.date) : new Date(x.date) - new Date(y.date);
+                if (dateDiff) return dateDiff;
+                return s === 'desc' ? String(y.id).localeCompare(String(x.id)) : String(x.id).localeCompare(String(y.id));
+            });
+
+            const visibleIds = new Set(f.map(tx => String(tx.id)));
+            Array.from(selectedTransactionIds).forEach(id => { if (!visibleIds.has(id)) selectedTransactionIds.delete(id); });
+
+            document.getElementById('transaction-count').innerText = f.length;
+            renderTransactionSummary(f);
+
+            const tbody = document.getElementById('all-transactions-tbody');
+            const cards = document.getElementById('all-transactions-cards');
+            tbody.innerHTML = '';
+            cards.innerHTML = '';
+
+            const colspan = 8;
+            if (!f.length) {
+                tbody.innerHTML = `<tr><td colspan="${bulkSelectMode ? colspan : colspan - 1}" class="text-center py-6 text-slate-400">Không có giao dịch phù hợp</td></tr>`;
+                cards.innerHTML = '<div class="p-6 text-center text-slate-400 text-sm">Không có dữ liệu phù hợp</div>';
+                updateBulkSelectionUI();
+                return;
+            }
+
+            const groups = new Map();
+            f.forEach(tx => {
+                const key = String(tx.date);
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key).push(tx);
+            });
+
+            groups.forEach((dayTxs, dayKey) => {
+                const dayIncome = dayTxs.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+                const dayExpense = dayTxs.filter(tx => tx.type === 'expense').reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+                const dayMeta = `${dayTxs.length} giao dịch${dayExpense ? ` · Chi ${formatCurrency(dayExpense)}` : ''}${dayIncome ? ` · Thu ${formatCurrency(dayIncome)}` : ''}`;
+
+                tbody.insertAdjacentHTML('beforeend', `<tr class="transaction-day-group-row"><td colspan="${bulkSelectMode ? colspan : colspan - 1}">
+                    <div class="flex items-center justify-between gap-3"><span>${transactionDayLabel(dayKey)}</span><span class="day-total">${escapeHTML(dayMeta)}</span></div>
+                </td></tr>`);
+                cards.insertAdjacentHTML('beforeend', `<div class="px-4 py-2.5 bg-slate-50/80 text-[11px] font-extrabold text-slate-500 border-b border-slate-100">${transactionDayLabel(dayKey)} <span class="font-semibold text-slate-400 ml-2">${escapeHTML(dayMeta)}</span></div>`);
+
+                dayTxs.forEach(tx => {
+                    let badge, cColor, prefix, icon;
+                    if (tx.type === 'income') {
+                        badge = '<span class="bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded text-[10px]">Thu</span>';
+                        cColor = 'text-emerald-600'; prefix = '+'; icon = CATEGORY_ICONS[tx.category] || 'fa-tag';
+                    } else if (tx.type === 'expense') {
+                        badge = '<span class="bg-rose-50 text-rose-700 border border-rose-100 px-2 py-0.5 rounded text-[10px]">Chi</span>';
+                        cColor = 'text-rose-600'; prefix = '-'; icon = CATEGORY_ICONS[tx.category] || 'fa-tag';
+                    } else if (tx.type === 'proxy') {
+                        const isIn = tx.proxyDir === 'in';
+                        badge = `<span class="bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded text-[10px]">TG ${isIn ? '↓' : '↑'}</span>`;
+                        cColor = 'text-amber-600'; prefix = isIn ? '+' : '-'; icon = 'fa-handshake';
+                    } else {
+                        badge = '<span class="bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded text-[10px]">Chuyển</span>';
+                        cColor = 'text-blue-600'; prefix = ''; icon = 'fa-arrow-right-arrow-left';
+                    }
+
+                    const proxyNote = tx.type === 'proxy' ? '<span class="text-[9px] text-amber-500 font-semibold ml-1">(trung gian — không tính vào thu/chi)</span>' : '';
+                    const txId = encodeURIComponent(String(tx.id));
+                    const txCategory = escapeHTML(tx.category || 'Khác');
+                    const txAccount = escapeHTML(tx.account || '');
+                    const txToAccount = escapeHTML(tx.toAccount || '');
+                    const txNotes = escapeHTML(tx.notes || '');
+                    const selected = selectedTransactionIds.has(String(tx.id));
+                    const selectCell = bulkSelectMode
+                        ? `<td class="py-3 px-3 text-center"><input class="tx-select-box" type="checkbox" data-tx-select="${escapeHTML(String(tx.id))}" ${selected ? 'checked' : ''} onchange="toggleTransactionSelection(decodeURIComponent('${txId}'), this.checked)"></td>`
+                        : '';
+
+                    let displayMain;
+                    if (tx.type === 'transfer') {
+                        displayMain = `<button type="button" class="tx-filter-badge tx-transfer-flow" onclick="setTransactionQuickFilter('target', decodeURIComponent('${encodeURIComponent(String(tx.toAccount || ''))}'), 'Đến: ${txToAccount}')">
+                            <span class="tx-flow-account">${txAccount}</span><i class="fa-solid fa-arrow-right tx-flow-arrow"></i><span class="tx-flow-account">${txToAccount}</span>
+                        </button>`;
+                    } else {
+                        displayMain = `<button type="button" class="tx-filter-badge inline-flex items-center gap-1 bg-slate-50 text-slate-700 border border-slate-200 px-2 py-0.5 rounded text-[10px] font-semibold" onclick="setTransactionQuickFilter('category', decodeURIComponent('${encodeURIComponent(String(tx.category || ''))}'), 'Danh mục: ${txCategory}')"><i class="fa-solid ${icon} text-slate-400"></i>${txCategory}</button>${proxyNote}`;
+                    }
+
+                    tbody.insertAdjacentHTML('beforeend', `<tr class="border-b hover:bg-slate-50${tx.type === 'proxy' ? ' bg-amber-50/30' : ''}">
+                        ${selectCell}
+                        <td class="py-3 px-6 whitespace-nowrap text-slate-600 text-xs">${escapeHTML(transactionDayLabel(dayKey).split(' · ')[1])}</td>
+                        <td class="py-3 px-6">${badge}</td>
+                        <td class="py-3 px-6 whitespace-nowrap">${displayMain}</td>
+                        <td class="py-3 px-6">${txAccount}</td>
+                        <td class="py-3 px-6 truncate max-w-[150px]">${txNotes}</td>
+                        <td class="py-3 px-6 text-right font-bold ${cColor}">${prefix}${maskCurrency(tx.amount)}</td>
+                        <td class="py-3 px-6 text-center"><button type="button" onclick="handleEditTxClick(decodeURIComponent('${txId}'))" class="text-indigo-400 mx-1"><i class="fa-solid fa-pen"></i></button><button type="button" onclick="handleDeleteTxClick(decodeURIComponent('${txId}'))" class="text-rose-400 mx-1"><i class="fa-solid fa-trash"></i></button></td>
+                    </tr>`);
+
+                    const mobileTitle = tx.type === 'transfer'
+                        ? `<button type="button" class="font-bold text-slate-800 text-sm text-left" onclick="setTransactionQuickFilter('target', decodeURIComponent('${encodeURIComponent(String(tx.toAccount || ''))}'), 'Đến: ${txToAccount}')">${txAccount}<span class="text-blue-500 mx-1">→</span>${txToAccount}</button>`
+                        : `<button type="button" class="font-bold text-slate-800 text-sm text-left" onclick="setTransactionQuickFilter('category', decodeURIComponent('${encodeURIComponent(String(tx.category || ''))}'), 'Danh mục: ${txCategory}')">${txCategory}</button>`;
+
+                    cards.insertAdjacentHTML('beforeend', `<div class="p-4 hover:bg-slate-50 transition active:bg-slate-100 flex items-center justify-between${tx.type === 'proxy' ? ' bg-amber-50/40' : ''}">
+                        <div class="flex items-center gap-3 overflow-hidden min-w-0">
+                            ${bulkSelectMode ? `<input class="tx-select-box shrink-0" type="checkbox" data-tx-select="${escapeHTML(String(tx.id))}" ${selected ? 'checked' : ''} onchange="toggleTransactionSelection(decodeURIComponent('${txId}'), this.checked)">` : ''}
+                            <div class="w-10 h-10 rounded-full flex shrink-0 items-center justify-center ${tx.type === 'income' ? 'bg-emerald-100 text-emerald-600' : tx.type === 'expense' ? 'bg-rose-100 text-rose-600' : tx.type === 'proxy' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}"><i class="fa-solid ${icon}"></i></div>
+                            <div class="min-w-0">
+                                <p class="truncate">${mobileTitle}</p>
+                                <p class="text-[11px] text-slate-500 flex gap-2"><span>${escapeHTML(transactionDayLabel(dayKey))}</span><span>•</span><span class="truncate">${txAccount}</span></p>
+                                ${tx.type === 'proxy' ? '<p class="text-[10px] text-amber-500 font-semibold">Trung gian — không tính vào Thu/Chi</p>' : ''}
+                                ${txNotes ? `<p class="text-[11px] text-slate-400 truncate mt-0.5">${txNotes}</p>` : ''}
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-end shrink-0 pl-2"><p class="font-bold text-sm ${cColor}">${prefix}${maskCurrency(tx.amount)}</p>
+                            <div class="flex gap-3 mt-1.5"><button type="button" onclick="handleEditTxClick(decodeURIComponent('${txId}'))" class="text-indigo-400 text-xs"><i class="fa-solid fa-pen"></i></button><button type="button" onclick="handleDeleteTxClick(decodeURIComponent('${txId}'))" class="text-rose-400 text-xs"><i class="fa-solid fa-trash"></i></button></div>
+                        </div>
+                    </div>`);
+                });
+            });
+            updateBulkSelectionUI();
         }
 
         function clearFilters() {
             setMonthPickerValue('filter-month', '', false);
-            document.getElementById('filter-type').value = 'all'; document.getElementById('filter-account').value = 'all'; document.getElementById('filter-sort').value = 'desc';
+            document.getElementById('filter-type').value = 'all';
+            document.getElementById('filter-account').value = 'all';
+            document.getElementById('filter-sort').value = 'desc';
+            transactionQuickFilter = null;
+            selectedTransactionIds.clear();
             applyFilters();
         }
 
@@ -3077,28 +3320,18 @@
             
             const dashAlert = document.getElementById('dash-budget-alert');
             let barColor = 'indigo';
-            if(mEx>idealBudget&&idealBudget>0) {
-                barColor='rose';
-                dashAlert.innerText = `Cảnh báo: Bạn đã chi vượt ${formatCurrency(mEx - idealBudget)} so với mức lý tưởng!`;
-                dashAlert.className = "text-xs font-semibold text-rose-600 mt-2";
-            } else if(p>80) {
-                barColor='amber';
-                dashAlert.innerText = "Sắp chạm ngưỡng ngân sách lý tưởng.";
-                dashAlert.className = "text-xs font-semibold text-amber-500 mt-2";
-            } else {
-                dashAlert.innerText = "Chi tiêu vẫn trong vùng an toàn.";
-                dashAlert.className = "text-xs font-semibold text-emerald-600 mt-2";
+            if (mEx > idealBudget && idealBudget > 0) barColor = 'rose';
+            else if (idealBudget > 0 && p > 75) barColor = 'amber';
+            else barColor = 'emerald';
+            const budgetAdvice = getBudgetAdvice(idealBudget > 0 ? Math.round((mEx / idealBudget) * 100) : 0, mEx, idealBudget);
+            if (dashAlert) {
+                dashAlert.innerText = budgetAdvice.text;
+                dashAlert.className = `text-xs md:text-sm font-semibold ${budgetAdvice.color}`;
             }
+            const adviceIcon = document.getElementById('dash-budget-alert-icon');
+            if (adviceIcon) adviceIcon.className = `fa-solid ${budgetAdvice.icon} ${budgetAdvice.color} mt-0.5 shrink-0`;
             document.getElementById('dash-budget-bar').className = `bg-${barColor}-500 h-full transition-all`;
 
-            const budgetAdvice = getBudgetAdvice(idealBudget > 0 ? Math.round((mEx / idealBudget) * 100) : 0, mEx, idealBudget);
-            const adviceIcon = document.getElementById('dash-budget-advice-icon');
-            const adviceText = document.getElementById('dash-budget-advice-text');
-            if (adviceIcon && adviceText) {
-                adviceIcon.className = `fa-solid ${budgetAdvice.icon} ${budgetAdvice.color} mt-0.5`;
-                adviceText.innerText = budgetAdvice.text;
-            }
-            
             document.getElementById('dash-chart-year-lbl').innerText = m.split('-')[0];
             renderCharts(cExp, yIn, yEx);
             if (typeof renderSmartFinancialAssistant === 'function' && !document.getElementById('tab-assistant')?.classList.contains('hidden')) renderSmartFinancialAssistant();
@@ -3156,14 +3389,12 @@
         // ================== TRỢ LÝ AI (SMART ASSISTANT) ==================
         function escapeHTML(value) { return String(value ?? '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char])); }
         function getBudgetAdvice(percent, monthExpense, idealBudget) {
-            if (idealBudget <= 0) return { icon: 'fa-wand-magic-sparkles', color: 'text-indigo-500', text: 'Hãy đặt mục tiêu ngân sách để mình đưa ra lời khuyên.' };
-            if (monthExpense <= 0) return { icon: 'fa-seedling', color: 'text-emerald-500', text: 'Chưa tiêu đồng nào, ví đang rất an nhiên.' };
-            if (percent <= 25) return { icon: 'fa-face-laugh-beam', color: 'text-emerald-500', text: 'Thoải mái đê, còn nhiều tiền mà!' };
-            if (percent <= 50) return { icon: 'fa-thumbs-up', color: 'text-emerald-500', text: 'Rất tốt! Tiêu có kiểm soát.' };
-            if (percent <= 75) return { icon: 'fa-mug-hot', color: 'text-amber-500', text: 'Vẫn ổn, nhưng hãy bắt đầu chú ý hơn.' };
-            if (percent <= 90) return { icon: 'fa-person-walking-arrow-loop-left', color: 'text-amber-500', text: 'Chậm lại chút, sắp tới giới hạn rồi!' };
-            if (percent <= 100) return { icon: 'fa-triangle-exclamation', color: 'text-rose-500', text: 'Sát vạch rồi! Cẩn thận kẻo tiêu lố.' };
-            return { icon: 'fa-fire-extinguisher', color: 'text-rose-500', text: 'Toang nhẹ rồi! Tháng này đã tiêu lố ngân sách.' };
+            if (idealBudget <= 0) return { icon: 'fa-bullseye', color: 'text-indigo-500', text: 'Hãy đặt ngân sách để theo dõi mức chi tiêu tháng này.' };
+            if (monthExpense <= 0) return { icon: 'fa-seedling', color: 'text-emerald-500', text: 'Chưa phát sinh chi tiêu trong tháng này.' };
+            if (percent <= 75) return { icon: 'fa-circle-check', color: 'text-emerald-500', text: 'Chi tiêu vẫn trong vùng an toàn.' };
+            if (percent <= 90) return { icon: 'fa-triangle-exclamation', color: 'text-amber-500', text: 'Đang tiến gần giới hạn ngân sách.' };
+            if (percent <= 100) return { icon: 'fa-triangle-exclamation', color: 'text-amber-500', text: 'Sắp chạm giới hạn ngân sách.' };
+            return { icon: 'fa-circle-exclamation', color: 'text-rose-500', text: 'Đã vượt ngân sách tháng này.' };
         }
         function getDaysInMonthFromStr(monthStr) { const [year, month] = monthStr.split('-').map(Number); return new Date(year, month, 0).getDate(); }
         function offsetMonthStr(monthStr, offset) { const [year, month] = monthStr.split('-').map(Number); const d = new Date(year, month - 1 + offset, 1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
