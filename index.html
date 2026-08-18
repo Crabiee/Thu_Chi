@@ -520,7 +520,30 @@
         body.dark-mode #transaction-bulk-toolbar { background:var(--fp-surface-2); border-color:var(--fp-border); }
         body.dark-mode #transaction-bulk-toolbar button { background:var(--fp-surface) !important; border-color:var(--fp-border) !important; color:var(--fp-text-dim); }
 
-        /* =========================================================
+        /* Transaction scan/hover polish */
+        .transaction-data-row { transition: background-color .16s ease, box-shadow .16s ease; }
+        .transaction-data-row:hover {
+            background: rgba(99,102,241,.075) !important;
+            box-shadow: inset 3px 0 0 rgba(99,102,241,.82);
+        }
+        .transaction-data-row:hover td { color: inherit; }
+        .transaction-data-row:hover .tx-flow-account { color: #c7d2fe; }
+        .transaction-data-card { transition: background-color .16s ease, box-shadow .16s ease; }
+        .transaction-data-card:hover {
+            background: rgba(99,102,241,.075) !important;
+            box-shadow: inset 3px 0 0 rgba(99,102,241,.82);
+        }
+        .transaction-day-group-mobile {
+            padding: 10px 16px;
+            background: rgba(24,24,28,.92);
+            color: #a1a1aa;
+            border-bottom: 1px solid rgba(255,255,255,.08);
+            font-size: 11px;
+            font-weight: 800;
+        }
+        body.dark-mode .transaction-data-row:hover { background: rgba(124,92,255,.095) !important; box-shadow: inset 3px 0 0 rgba(139,124,255,.95); }
+        body.dark-mode .transaction-day-group-mobile { background: rgba(24,24,28,.95); color: #a1a1aa; }
+                /* =========================================================
            iOS SAFARI ANTI-ZOOM FIX
            Safari tự zoom khi input/select có font-size < 16px.
            Áp dụng font-size: 16px cho TẤT CẢ input, select, textarea trên mobile.
@@ -1077,7 +1100,7 @@
 <table class="w-full text-left border-collapse min-w-[800px]">
 <thead>
 <tr class="border-b border-slate-100 bg-slate-50 text-slate-400 text-xs font-semibold uppercase">
-<th class="py-3 px-3 w-10" id="bulk-select-head"></th><th class="py-3 px-6">Ngày</th><th class="py-3 px-6">Loại</th><th class="py-3 px-6">Danh Mục/Đến</th><th class="py-3 px-6">TK Nguồn</th><th class="py-3 px-6 w-1/4">Ghi Chú</th><th class="py-3 px-6 text-right">Số Tiền</th><th class="py-3 px-6 text-center">Hành Động</th>
+<th class="py-3 px-6">Ngày</th><th class="py-3 px-6">Loại</th><th class="py-3 px-6">Danh Mục/Đến</th><th class="py-3 px-6">TK Nguồn</th><th class="py-3 px-6 w-1/4">Ghi Chú</th><th class="py-3 px-6 text-right">Số Tiền</th><th class="py-3 px-6 text-center">Hành Động</th>
 </tr>
 </thead>
 <tbody class="divide-y divide-slate-100 text-sm" id="all-transactions-tbody"></tbody>
@@ -3025,38 +3048,23 @@
             const weekdays = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
             return `${weekdays[d.getDay()]} · ${m[3]}/${m[2]}/${m[1]}`;
         }
-        function summarizeTransactions(list) {
-            let income = 0, expense = 0, transfer = 0, proxy = 0;
-            list.forEach(tx => {
-                const amount = Number(tx.amount) || 0;
-                if (tx.type === 'income') income += amount;
-                else if (tx.type === 'expense') expense += amount;
-                else if (tx.type === 'transfer') transfer += amount;
-                else if (tx.type === 'proxy') proxy += amount;
-            });
-            const bits = [`${list.length} giao dịch`];
-            if (expense) bits.push(`Chi ${formatCurrency(expense)}`);
-            if (income) bits.push(`Thu ${formatCurrency(income)}`);
-            if (transfer) bits.push(`Chuyển ${formatCurrency(transfer)}`);
-            if (proxy) bits.push(`Trung gian ${formatCurrency(proxy)}`);
-            return bits.join(' · ');
-        }
         function renderTransactionSummary(list) {
             const box = document.getElementById('transaction-filter-summary');
             if (!box) return;
+
             const active = transactionQuickFilter;
-            const summary = escapeHTML(summarizeTransactions(list));
             if (!active) {
-                box.className = 'mt-3 text-xs text-slate-500';
-                box.innerText = summary;
+                box.className = 'hidden';
+                box.innerHTML = '';
                 return;
             }
+
             box.className = 'mt-3 flex flex-wrap items-center gap-2';
             box.innerHTML = `<span class="text-xs font-semibold text-slate-500">Đang lọc</span>
                 <span class="transaction-filter-chip">${escapeHTML(active.label)}
                     <button type="button" aria-label="Bỏ lọc" onclick="clearTransactionQuickFilter()"><i class="fa-solid fa-xmark text-[9px]"></i></button>
                 </span>
-                <span class="text-xs font-semibold text-slate-500">${summary}</span>`;
+                <span class="text-xs font-semibold text-slate-500">${list.length} giao dịch</span>`;
         }
         function setTransactionQuickFilter(kind, value, label) {
             transactionQuickFilter = { kind, value: String(value), label: String(label) };
@@ -3150,18 +3158,25 @@
             );
 
             if (transactionQuickFilter) {
-                if (transactionQuickFilter.kind === 'category') f = f.filter(x => x.category === transactionQuickFilter.value);
-                else if (transactionQuickFilter.kind === 'target') f = f.filter(x => x.type === 'transfer' && x.toAccount === transactionQuickFilter.value);
+                if (transactionQuickFilter.kind === 'category') {
+                    f = f.filter(x => x.category === transactionQuickFilter.value);
+                } else if (transactionQuickFilter.kind === 'target') {
+                    f = f.filter(x => x.type === 'transfer' && x.toAccount === transactionQuickFilter.value);
+                }
             }
 
             f.sort((x, y) => {
                 const dateDiff = s === 'desc' ? new Date(y.date) - new Date(x.date) : new Date(x.date) - new Date(y.date);
                 if (dateDiff) return dateDiff;
-                return s === 'desc' ? String(y.id).localeCompare(String(x.id)) : String(x.id).localeCompare(String(y.id));
+                return s === 'desc'
+                    ? String(y.id).localeCompare(String(x.id))
+                    : String(x.id).localeCompare(String(y.id));
             });
 
             const visibleIds = new Set(f.map(tx => String(tx.id)));
-            Array.from(selectedTransactionIds).forEach(id => { if (!visibleIds.has(id)) selectedTransactionIds.delete(id); });
+            Array.from(selectedTransactionIds).forEach(id => {
+                if (!visibleIds.has(id)) selectedTransactionIds.delete(id);
+            });
 
             document.getElementById('transaction-count').innerText = f.length;
             renderTransactionSummary(f);
@@ -3171,9 +3186,8 @@
             tbody.innerHTML = '';
             cards.innerHTML = '';
 
-            const colspan = 8;
             if (!f.length) {
-                tbody.innerHTML = `<tr><td colspan="${bulkSelectMode ? colspan : colspan - 1}" class="text-center py-6 text-slate-400">Không có giao dịch phù hợp</td></tr>`;
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-slate-400">Không có giao dịch phù hợp</td></tr>';
                 cards.innerHTML = '<div class="p-6 text-center text-slate-400 text-sm">Không có dữ liệu phù hợp</div>';
                 updateBulkSelectionUI();
                 return;
@@ -3187,84 +3201,114 @@
             });
 
             groups.forEach((dayTxs, dayKey) => {
-                const dayIncome = dayTxs.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
-                const dayExpense = dayTxs.filter(tx => tx.type === 'expense').reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
-                const dayMeta = `${dayTxs.length} giao dịch${dayExpense ? ` · Chi ${formatCurrency(dayExpense)}` : ''}${dayIncome ? ` · Thu ${formatCurrency(dayIncome)}` : ''}`;
+                // Date is shown ONCE here. No per-row date repetition, no daily totals/counts.
+                tbody.insertAdjacentHTML('beforeend', `<tr class="transaction-day-group-row">
+                    <td colspan="7">
+                        <div class="flex items-center justify-between">
+                            <span>${transactionDayLabel(dayKey)}</span>
+                        </div>
+                    </td>
+                </tr>`);
 
-                tbody.insertAdjacentHTML('beforeend', `<tr class="transaction-day-group-row"><td colspan="${bulkSelectMode ? colspan : colspan - 1}">
-                    <div class="flex items-center justify-between gap-3"><span>${transactionDayLabel(dayKey)}</span><span class="day-total">${escapeHTML(dayMeta)}</span></div>
-                </td></tr>`);
-                cards.insertAdjacentHTML('beforeend', `<div class="px-4 py-2.5 bg-slate-50/80 text-[11px] font-extrabold text-slate-500 border-b border-slate-100">${transactionDayLabel(dayKey)} <span class="font-semibold text-slate-400 ml-2">${escapeHTML(dayMeta)}</span></div>`);
+                cards.insertAdjacentHTML(
+                    'beforeend',
+                    `<div class="transaction-day-group-mobile">${transactionDayLabel(dayKey)}</div>`
+                );
 
                 dayTxs.forEach(tx => {
                     let badge, cColor, prefix, icon;
+
                     if (tx.type === 'income') {
                         badge = '<span class="bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded text-[10px]">Thu</span>';
-                        cColor = 'text-emerald-600'; prefix = '+'; icon = CATEGORY_ICONS[tx.category] || 'fa-tag';
+                        cColor = 'text-emerald-600';
+                        prefix = '+';
+                        icon = CATEGORY_ICONS[tx.category] || 'fa-tag';
                     } else if (tx.type === 'expense') {
                         badge = '<span class="bg-rose-50 text-rose-700 border border-rose-100 px-2 py-0.5 rounded text-[10px]">Chi</span>';
-                        cColor = 'text-rose-600'; prefix = '-'; icon = CATEGORY_ICONS[tx.category] || 'fa-tag';
+                        cColor = 'text-rose-600';
+                        prefix = '-';
+                        icon = CATEGORY_ICONS[tx.category] || 'fa-tag';
                     } else if (tx.type === 'proxy') {
                         const isIn = tx.proxyDir === 'in';
-                        badge = `<span class="bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded text-[10px]">TG ${isIn ? '↓' : '↑'}</span>`;
-                        cColor = 'text-amber-600'; prefix = isIn ? '+' : '-'; icon = 'fa-handshake';
+                        badge = `<span class="bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded text-[10px]">Trung gian ${isIn ? '↓' : '↑'}</span>`;
+                        cColor = 'text-amber-600';
+                        prefix = isIn ? '+' : '-';
+                        icon = 'fa-handshake';
                     } else {
                         badge = '<span class="bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded text-[10px]">Chuyển</span>';
-                        cColor = 'text-blue-600'; prefix = ''; icon = 'fa-arrow-right-arrow-left';
+                        cColor = 'text-blue-600';
+                        prefix = '';
+                        icon = 'fa-arrow-right-arrow-left';
                     }
 
-                    const proxyNote = tx.type === 'proxy' ? '<span class="text-[9px] text-amber-500 font-semibold ml-1">(trung gian — không tính vào thu/chi)</span>' : '';
+                    const proxyNote = tx.type === 'proxy'
+                        ? '<span class="text-[9px] text-amber-500 font-semibold ml-1">(trung gian — không tính vào thu/chi)</span>'
+                        : '';
+
                     const txId = encodeURIComponent(String(tx.id));
                     const txCategory = escapeHTML(tx.category || 'Khác');
                     const txAccount = escapeHTML(tx.account || '');
                     const txToAccount = escapeHTML(tx.toAccount || '');
                     const txNotes = escapeHTML(tx.notes || '');
                     const selected = selectedTransactionIds.has(String(tx.id));
-                    const selectCell = bulkSelectMode
-                        ? `<td class="py-3 px-3 text-center"><input class="tx-select-box" type="checkbox" data-tx-select="${escapeHTML(String(tx.id))}" ${selected ? 'checked' : ''} onchange="toggleTransactionSelection(decodeURIComponent('${txId}'), this.checked)"></td>`
+
+                    const dateCellContent = bulkSelectMode
+                        ? `<div class="flex items-center gap-2"><input class="tx-select-box" type="checkbox" data-tx-select="${escapeHTML(String(tx.id))}" ${selected ? 'checked' : ''} onchange="toggleTransactionSelection(decodeURIComponent('${txId}'), this.checked)"><span class="text-slate-500">•</span></div>`
                         : '';
 
                     let displayMain;
                     if (tx.type === 'transfer') {
                         displayMain = `<button type="button" class="tx-filter-badge tx-transfer-flow" onclick="setTransactionQuickFilter('target', decodeURIComponent('${encodeURIComponent(String(tx.toAccount || ''))}'), 'Đến: ${txToAccount}')">
-                            <span class="tx-flow-account">${txAccount}</span><i class="fa-solid fa-arrow-right tx-flow-arrow"></i><span class="tx-flow-account">${txToAccount}</span>
+                            <span class="tx-flow-account">${txAccount}</span>
+                            <i class="fa-solid fa-arrow-right tx-flow-arrow"></i>
+                            <span class="tx-flow-account">${txToAccount}</span>
                         </button>`;
                     } else {
-                        displayMain = `<button type="button" class="tx-filter-badge inline-flex items-center gap-1 bg-slate-50 text-slate-700 border border-slate-200 px-2 py-0.5 rounded text-[10px] font-semibold" onclick="setTransactionQuickFilter('category', decodeURIComponent('${encodeURIComponent(String(tx.category || ''))}'), 'Danh mục: ${txCategory}')"><i class="fa-solid ${icon} text-slate-400"></i>${txCategory}</button>${proxyNote}`;
+                        displayMain = `<button type="button" class="tx-filter-badge inline-flex items-center gap-1 bg-slate-50 text-slate-700 border border-slate-200 px-2 py-0.5 rounded text-[10px] font-semibold"
+                            onclick="setTransactionQuickFilter('category', decodeURIComponent('${encodeURIComponent(String(tx.category || ''))}'), 'Danh mục: ${txCategory}')">
+                            <i class="fa-solid ${icon} text-slate-400"></i>${txCategory}
+                        </button>${proxyNote}`;
                     }
 
-                    tbody.insertAdjacentHTML('beforeend', `<tr class="border-b hover:bg-slate-50${tx.type === 'proxy' ? ' bg-amber-50/30' : ''}">
-                        ${selectCell}
-                        <td class="py-3 px-6 whitespace-nowrap text-slate-600 text-xs">${escapeHTML(transactionDayLabel(dayKey).split(' · ')[1])}</td>
+                    tbody.insertAdjacentHTML('beforeend', `<tr class="transaction-data-row border-b hover:bg-slate-50${tx.type === 'proxy' ? ' bg-amber-50/30' : ''}">
+                        <td class="py-3 px-6 whitespace-nowrap text-slate-600 text-xs">${dateCellContent}</td>
                         <td class="py-3 px-6">${badge}</td>
                         <td class="py-3 px-6 whitespace-nowrap">${displayMain}</td>
                         <td class="py-3 px-6">${txAccount}</td>
                         <td class="py-3 px-6 truncate max-w-[150px]">${txNotes}</td>
                         <td class="py-3 px-6 text-right font-bold ${cColor}">${prefix}${maskCurrency(tx.amount)}</td>
-                        <td class="py-3 px-6 text-center"><button type="button" onclick="handleEditTxClick(decodeURIComponent('${txId}'))" class="text-indigo-400 mx-1"><i class="fa-solid fa-pen"></i></button><button type="button" onclick="handleDeleteTxClick(decodeURIComponent('${txId}'))" class="text-rose-400 mx-1"><i class="fa-solid fa-trash"></i></button></td>
+                        <td class="py-3 px-6 text-center">
+                            <button type="button" onclick="handleEditTxClick(decodeURIComponent('${txId}'))" class="text-indigo-400 mx-1"><i class="fa-solid fa-pen"></i></button>
+                            <button type="button" onclick="handleDeleteTxClick(decodeURIComponent('${txId}'))" class="text-rose-400 mx-1"><i class="fa-solid fa-trash"></i></button>
+                        </td>
                     </tr>`);
 
                     const mobileTitle = tx.type === 'transfer'
                         ? `<button type="button" class="font-bold text-slate-800 text-sm text-left" onclick="setTransactionQuickFilter('target', decodeURIComponent('${encodeURIComponent(String(tx.toAccount || ''))}'), 'Đến: ${txToAccount}')">${txAccount}<span class="text-blue-500 mx-1">→</span>${txToAccount}</button>`
                         : `<button type="button" class="font-bold text-slate-800 text-sm text-left" onclick="setTransactionQuickFilter('category', decodeURIComponent('${encodeURIComponent(String(tx.category || ''))}'), 'Danh mục: ${txCategory}')">${txCategory}</button>`;
 
-                    cards.insertAdjacentHTML('beforeend', `<div class="p-4 hover:bg-slate-50 transition active:bg-slate-100 flex items-center justify-between${tx.type === 'proxy' ? ' bg-amber-50/40' : ''}">
+                    cards.insertAdjacentHTML('beforeend', `<div class="transaction-data-card p-4 hover:bg-slate-50 transition active:bg-slate-100 flex items-center justify-between${tx.type === 'proxy' ? ' bg-amber-50/40' : ''}">
                         <div class="flex items-center gap-3 overflow-hidden min-w-0">
                             ${bulkSelectMode ? `<input class="tx-select-box shrink-0" type="checkbox" data-tx-select="${escapeHTML(String(tx.id))}" ${selected ? 'checked' : ''} onchange="toggleTransactionSelection(decodeURIComponent('${txId}'), this.checked)">` : ''}
                             <div class="w-10 h-10 rounded-full flex shrink-0 items-center justify-center ${tx.type === 'income' ? 'bg-emerald-100 text-emerald-600' : tx.type === 'expense' ? 'bg-rose-100 text-rose-600' : tx.type === 'proxy' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}"><i class="fa-solid ${icon}"></i></div>
                             <div class="min-w-0">
                                 <p class="truncate">${mobileTitle}</p>
-                                <p class="text-[11px] text-slate-500 flex gap-2"><span>${escapeHTML(transactionDayLabel(dayKey))}</span><span>•</span><span class="truncate">${txAccount}</span></p>
+                                <p class="text-[11px] text-slate-500 flex gap-2"><span class="truncate">${txAccount}</span></p>
                                 ${tx.type === 'proxy' ? '<p class="text-[10px] text-amber-500 font-semibold">Trung gian — không tính vào Thu/Chi</p>' : ''}
                                 ${txNotes ? `<p class="text-[11px] text-slate-400 truncate mt-0.5">${txNotes}</p>` : ''}
                             </div>
                         </div>
-                        <div class="flex flex-col items-end shrink-0 pl-2"><p class="font-bold text-sm ${cColor}">${prefix}${maskCurrency(tx.amount)}</p>
-                            <div class="flex gap-3 mt-1.5"><button type="button" onclick="handleEditTxClick(decodeURIComponent('${txId}'))" class="text-indigo-400 text-xs"><i class="fa-solid fa-pen"></i></button><button type="button" onclick="handleDeleteTxClick(decodeURIComponent('${txId}'))" class="text-rose-400 text-xs"><i class="fa-solid fa-trash"></i></button></div>
+                        <div class="flex flex-col items-end shrink-0 pl-2">
+                            <p class="font-bold text-sm ${cColor}">${prefix}${maskCurrency(tx.amount)}</p>
+                            <div class="flex gap-3 mt-1.5">
+                                <button type="button" onclick="handleEditTxClick(decodeURIComponent('${txId}'))" class="text-indigo-400 text-xs"><i class="fa-solid fa-pen"></i></button>
+                                <button type="button" onclick="handleDeleteTxClick(decodeURIComponent('${txId}'))" class="text-rose-400 text-xs"><i class="fa-solid fa-trash"></i></button>
+                            </div>
                         </div>
                     </div>`);
                 });
             });
+
             updateBulkSelectionUI();
         }
 
