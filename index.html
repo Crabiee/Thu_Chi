@@ -879,8 +879,8 @@
 <div class="flex items-center space-x-3 mb-8">
 <div class="bg-indigo-600 p-2 rounded-lg"><i class="fa-solid fa-wallet text-xl text-white"></i></div>
 <div>
-<h1 class="font-bold text-lg tracking-wide">FINANCE PRO</h1>
-<p class="text-xs text-slate-400">Quản Lý Chi Tiêu</p>
+<h1 class="font-bold text-lg tracking-wide">TÀI CHÍNH CÁ NHÂN</h1>
+<p class="text-xs text-slate-400">Quản Lý Chi Tiêu Hạp Lý =)))</p>
 </div>
 </div>
 <nav class="space-y-2">
@@ -1072,11 +1072,26 @@
 <span>Trợ Lý Tài Chính Thông Minh</span>
 </h3>
 <p class="text-sm text-slate-500 mt-1" id="ai-summary-text">Hiểu hiện tại → dự đoán cuối tháng → xác định nguyên nhân → đưa ra việc có thể làm ngay.</p>
-</div>
 <div class="flex items-center gap-2 flex-wrap">
-<span class="ai-chip" id="ai-health-chip" title="Mức kiểm soát 0–100. Công thức hiện tại: bắt đầu 100; chưa đặt ngân sách trừ 12; dùng trên 75% ngân sách trừ 8, trên 90% trừ 16; vượt 100% trừ từ 22 điểm và tăng thêm theo mức vượt (tối đa 45 điểm cho phần này); chi vượt thu nhập trừ 18; mỗi danh mục vượt hạn mức trừ 7 (tối đa 20); dự báo cuối tháng vượt 105% ngân sách trừ 10. Điểm cuối được giữ trong 0–100. Điểm cao nghĩa là dòng tiền hiện tại dễ kiểm soát hơn. Dùng điểm để biết nên duy trì hay ưu tiên kiểm soát ngân sách, chi linh hoạt và danh mục vượt hạn mức.">
-<i class="fa-solid fa-heart-pulse"></i><span class="hidden sm:inline">Kiểm soát</span> <span id="ai-health-score">--/100</span>
-</span>
+  <span 
+    class="ai-chip" 
+    id="ai-health-chip" 
+    title="Mức kiểm soát (0–100):
+• Điểm khởi đầu: 100
+• Chưa có mục tiêu ngân sách: -12
+• Dùng > 75% ngân sách: -8 | > 90%: -16
+• Vượt 100% ngân sách: -22 (tối đa -45)
+• Chi vượt thu nhập: -18
+• Mỗi danh mục vượt hạn mức: -7 (tối đa -20)
+• Dự báo cuối tháng vượt 105%: -10
+
+Điểm càng cao thể hiện dòng tiền càng an toàn và dễ kiểm soát."
+  >
+    <i class="fa-solid fa-heart-pulse"></i>
+    <span class="hidden sm:inline">Kiểm soát</span>
+    <span id="ai-health-score">--/100</span>
+  </span>
+</div>
 <button class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg text-sm transition" onclick="updateDashboard(); renderSmartFinancialAssistant();">
 <i class="fa-solid fa-rotate mr-1"></i> Phân tích lại
                                 </button>
@@ -1126,7 +1141,9 @@
 <h4 class="font-bold text-slate-900 flex items-center gap-2"><i class="fa-solid fa-chart-line text-indigo-500"></i>Nhịp độ chi tiêu trong tháng</h4>
 <p class="text-xs font-semibold text-slate-500" id="ai-pace-text"></p>
 </div>
-<p class="text-xs text-slate-400 mb-2">So sánh chi tiêu lũy kế thực tế (từng ngày) với tốc độ lý tưởng để không vượt ngân sách tháng — khác với biểu đồ Tổng Quan vốn chỉ so sánh theo từng tháng.</p>
+<p class="text-xs text-slate-400 mb-2">
+  So sánh tổng tiền đã tiêu tích lũy từng ngày với tốc độ lý tưởng của ngân sách — khác với biểu đồ Tổng Quan chỉ so sánh theo tháng.
+</p>
 <div class="relative w-full" style="height:220px;"><canvas id="paceChart"></canvas></div>
 </div>
 <div class="grid grid-cols-1 gap-6">
@@ -4010,8 +4027,8 @@
             const topCatName = topCat?.cat || null;
 
             const priorityText = topCatName
-                ? `Ưu tiên: <strong>${safe(topCatName)}</strong> và các khoản chi linh hoạt.`
-                : 'Ưu tiên: các khoản chi linh hoạt; giữ các khoản thiết yếu và định kỳ như bình thường.';
+                ? `Để ý: <strong>${safe(topCatName)}</strong> và các khoản chi linh hoạt.`
+                : 'Để ý: các khoản chi linh hoạt; giữ các khoản thiết yếu và định kỳ như bình thường.';
 
             const exceptionalNote = exceptional.total > 0
                 ? (exceptional.items.length === 1
@@ -4179,19 +4196,18 @@
             } else if (!isCurrentMonth && regularPrevExpense > 0) {
                 forecastAmountLine = `${formatCurrency(regularMonthExpense)} so với ${formatCurrency(regularPrevExpense)} tháng trước.`;
             }
-
-            let compareHtml = `
-                <div><span class="ai-compare-label">${isCurrentMonth ? 'Đến cùng ngày' : 'Cả tháng'}</span><strong>${escapeHTML(sameDayAmountLine)}</strong></div>
-                <div><span class="ai-compare-label">${isCurrentMonth ? 'Nếu giữ nhịp hiện tại' : 'Kết quả cả tháng'}</span><strong>${escapeHTML(forecastAmountLine)}</strong></div>
-                <details class="ai-action-details">
-                    <summary>Chi tiết cách so sánh</summary>
-                    <div class="text-xs text-slate-500 mt-2">
-                        ${sameDayPercent !== null ? `Đến cùng ngày: chênh lệch ${sameDayPercent}%.` : ''}
-                        ${forecastPercent !== null ? `<br>Dự báo cả tháng: chênh lệch ${forecastPercent}%.` : ''}
-                        <br>Hai con số trên trả lời hai câu hỏi khác nhau: <strong>nhịp chi hiện tại</strong> và <strong>kết quả nếu giữ nhịp đó đến cuối tháng</strong>.
-                    </div>
-                </details>
-            `;
+let compareHtml = `
+    <div><span class="ai-compare-label">${isCurrentMonth ? 'Tính đến hôm nay' : 'Tổng cả tháng'}</span><strong>${escapeHTML(sameDayAmountLine)}</strong></div>
+    <div><span class="ai-compare-label">${isCurrentMonth ? 'Dự báo cả tháng' : 'Thực tế cả tháng'}</span><strong>${escapeHTML(forecastAmountLine)}</strong></div>
+    <details class="ai-action-details">
+        <summary>Giải thích số liệu</summary>
+        <div class="text-xs text-slate-500 mt-2">
+            ${sameDayPercent !== null ? `Tính đến hôm nay: Chênh lệch ${sameDayPercent}% so với cùng kỳ.` : ''}
+            ${forecastPercent !== null ? `<br>Dự báo cả tháng: Chênh lệch ${forecastPercent}% so với tháng trước.` : ''}
+            <br>Số liệu giúp bạn theo dõi <strong>tốc độ chi tiêu hiện tại</strong> và <strong>ước tính tổng chi</strong> nếu giữ nguyên mức chi này đến cuối tháng.
+        </div>
+    </details>
+`;
             if (currentExceptional.total > 0) {
                 const exceptionalText = currentExceptional.items.length === 1
                     ? formatExceptionalExpenseNote(currentExceptional.items[0])
