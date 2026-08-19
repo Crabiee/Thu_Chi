@@ -544,6 +544,83 @@
         body.dark-mode .transaction-data-row:hover { background: rgba(124,92,255,.095) !important; box-shadow: inset 3px 0 0 rgba(139,124,255,.95); }
         body.dark-mode .transaction-day-group-mobile { background: rgba(24,24,28,.95); color: #a1a1aa; }
                 /* Assistant UX: labels, interpretation and health badge */
+        /* Assistant clarity: one actionable anchor number, secondary details collapsible */
+        .ai-action-anchor {
+            display:flex;
+            align-items:baseline;
+            gap:6px;
+            flex-wrap:wrap;
+        }
+        .ai-action-anchor .ai-action-number {
+            font-size:clamp(22px, 3vw, 30px);
+            line-height:1.05;
+            font-weight:900;
+            color:#4f46e5;
+            letter-spacing:-.025em;
+        }
+        .ai-action-anchor .ai-action-unit {
+            font-size:11px;
+            font-weight:800;
+            color:#64748b;
+            text-transform:uppercase;
+        }
+        .ai-action-primary {
+            font-size:13px;
+            font-weight:800;
+            color:#334155;
+        }
+        .ai-action-details {
+            margin-top:8px;
+            border-top:1px solid rgba(148,163,184,.18);
+            padding-top:8px;
+        }
+        .ai-action-details summary {
+            cursor:pointer;
+            list-style:none;
+            font-size:11px;
+            font-weight:800;
+            color:#64748b;
+            user-select:none;
+        }
+        .ai-action-details summary::-webkit-details-marker { display:none; }
+        .ai-action-details strong { color:#334155; }
+        body.dark-mode .ai-action-details strong { color:#e5e7eb; }
+
+        .ai-action-details summary::before { content:'＋'; margin-right:5px; }
+        .ai-action-details[open] summary::before { content:'−'; }
+        .ai-forecast-delta {
+            margin-top:10px;
+            padding:9px 10px;
+            border-radius:10px;
+            border:1px solid rgba(99,102,241,.18);
+            background:rgba(238,242,255,.62);
+        }
+        .ai-forecast-delta strong { color:#4338ca; }
+        .ai-baseline-highlight {
+            padding:10px 12px;
+            border-radius:12px;
+            border:1px solid rgba(99,102,241,.20);
+            background:rgba(238,242,255,.68);
+        }
+        .ai-baseline-highlight .label {
+            display:block;
+            font-size:10px;
+            font-weight:900;
+            text-transform:uppercase;
+            letter-spacing:.04em;
+            color:#6366f1;
+            margin-bottom:3px;
+        }
+        body.dark-mode .ai-action-anchor .ai-action-number { color:#a78bfa; }
+        body.dark-mode .ai-action-anchor .ai-action-unit,
+        body.dark-mode .ai-action-primary,
+        body.dark-mode .ai-action-details summary { color:#a1a1aa; }
+        body.dark-mode .ai-action-details { border-color:rgba(255,255,255,.08); }
+        body.dark-mode .ai-forecast-delta,
+        body.dark-mode .ai-baseline-highlight { background:rgba(67,56,202,.16); border-color:rgba(165,180,252,.20); }
+        body.dark-mode .ai-baseline-highlight .label { color:#a78bfa; }
+
+
         #ai-health-chip { cursor: help; }
         #ai-compare-text .ai-compare-label { display:inline-flex; align-items:center; margin-right:4px; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:#64748b; }
         #ai-compare-text .ai-compare-note { font-size:11px; color:#94a3b8; }
@@ -997,8 +1074,8 @@
 <p class="text-sm text-slate-500 mt-1" id="ai-summary-text">Hiểu hiện tại → dự đoán cuối tháng → xác định nguyên nhân → đưa ra việc có thể làm ngay.</p>
 </div>
 <div class="flex items-center gap-2 flex-wrap">
-<span class="ai-chip" id="ai-health-chip" title="Điểm sức khỏe tài chính 0–100: chỉ báo tổng hợp từ mức chi, ngân sách, thu nhập và danh mục vượt hạn mức; không phải điểm tín dụng.">
-<i class="fa-solid fa-heart-pulse"></i><span class="hidden sm:inline">Sức khỏe</span> <span id="ai-health-score">--/100</span>
+<span class="ai-chip" id="ai-health-chip" title="Mức kiểm soát 0–100. Công thức hiện tại: bắt đầu 100; chưa đặt ngân sách trừ 12; dùng trên 75% ngân sách trừ 8, trên 90% trừ 16; vượt 100% trừ từ 22 điểm và tăng thêm theo mức vượt (tối đa 45 điểm cho phần này); chi vượt thu nhập trừ 18; mỗi danh mục vượt hạn mức trừ 7 (tối đa 20); dự báo cuối tháng vượt 105% ngân sách trừ 10. Điểm cuối được giữ trong 0–100. Điểm cao nghĩa là dòng tiền hiện tại dễ kiểm soát hơn. Dùng điểm để biết nên duy trì hay ưu tiên kiểm soát ngân sách, chi linh hoạt và danh mục vượt hạn mức.">
+<i class="fa-solid fa-heart-pulse"></i><span class="hidden sm:inline">Kiểm soát</span> <span id="ai-health-score">--/100</span>
 </span>
 <button class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg text-sm transition" onclick="updateDashboard(); renderSmartFinancialAssistant();">
 <i class="fa-solid fa-rotate mr-1"></i> Phân tích lại
@@ -1011,6 +1088,10 @@
 <p class="text-[11px] text-slate-400 mb-2">Nếu giữ nhịp chi hiện tại</p>
 <p class="text-sm font-semibold text-slate-800" id="ai-projection-text">Chưa có dữ liệu.</p>
 <div class="ai-meter mt-3"><div class="bg-indigo-600" id="ai-projection-meter" style="width:0%"></div></div>
+<details class="ai-action-details mt-2">
+    <summary>Chi tiết dự báo</summary>
+    <div class="text-xs text-slate-500 mt-2" id="ai-projection-detail-text">Chưa có dữ liệu.</div>
+</details>
 </div>
 <div class="ai-card">
 <p class="text-xs font-bold text-slate-500 uppercase mb-1">Nhịp chi</p>
@@ -3889,31 +3970,32 @@
             monthExpenseTxs = []
         }) {
             const safe = v => escapeHTML(String(v ?? ''));
-            const make = (title, detail, meta='') =>
-                `<div class="space-y-1.5">
-                    <div class="font-extrabold text-slate-800 leading-snug">${title}</div>
-                    ${detail ? `<div class="text-xs text-slate-500 leading-relaxed">${detail}</div>` : ''}
-                    ${meta ? `<div class="text-xs font-semibold text-slate-500 leading-relaxed">${meta}</div>` : ''}
-                </div>`;
+            const make = (html) => `<div>${html}</div>`;
 
             if (idealBudget <= 0) {
-                return make(
-                    'Chưa có ngân sách tổng',
-                    'Đặt ngân sách để Trợ lý tính chính xác số tiền bạn còn có thể chi trong phần còn lại của tháng.',
-                    'Sau đó Trợ lý sẽ đưa ra một mức chi/ngày dễ áp dụng.'
-                );
+                return make(`
+                    <div class="ai-action-primary">Đặt ngân sách tổng để Trợ lý có thể tính mức chi còn lại.</div>
+                    <details class="ai-action-details">
+                        <summary>Trợ lý sẽ làm gì sau khi có ngân sách?</summary>
+                        <div class="text-xs text-slate-500 mt-2">Tính số tiền còn lại, quy đổi thành mức chi/ngày và chỉ ra danh mục nên ưu tiên điều chỉnh.</div>
+                    </details>
+                `);
             }
 
             if (monthExpense <= 0) {
-                return make(
-                    'Chưa phát sinh chi tiêu',
-                    'Chưa cần cắt giảm. Hãy tiếp tục ghi giao dịch để Trợ lý theo dõi nhịp chi và dự báo cuối tháng.'
-                );
+                return make(`
+                    <div class="ai-action-primary">Chưa phát sinh chi tiêu trong tháng.</div>
+                    <details class="ai-action-details">
+                        <summary>Việc nên làm</summary>
+                        <div class="text-xs text-slate-500 mt-2">Tiếp tục ghi giao dịch. Khi có đủ dữ liệu, Trợ lý sẽ bắt đầu dự báo và đưa ra kế hoạch cụ thể.</div>
+                    </details>
+                `);
             }
 
             const exceptional = getExceptionalAssistantExpenses(monthExpenseTxs, recurringProfiles);
             const remainingBudget = idealBudget - monthExpense;
             const dailyAllowance = remainingDays > 0 ? Math.max(0, Math.floor(remainingBudget / remainingDays)) : 0;
+            const projectedOver = Math.max(0, projectedExpense - idealBudget);
 
             const actionable = attentionCategories.filter(x => !x.stableRecurringOnly);
             const strongSignal = actionable.slice().sort((a,b) => {
@@ -3921,11 +4003,9 @@
                 const bp = (b.budgetOver > 0 ? 3 : 0) + (b.recurringChangeNotable ? 2 : 0) + (b.diff > 0 ? 1 : 0);
                 return bp - ap || b.attentionScore - a.attentionScore;
             })[0] || null;
-
             const flexibleCandidate = actionable
                 .filter(x => x.nonRecurringAmount > 0)
                 .sort((a,b) => b.attentionScore - a.attentionScore)[0] || null;
-
             const topCat = strongSignal || flexibleCandidate;
             const topCatName = topCat?.cat || null;
 
@@ -3940,38 +4020,50 @@
                 : '';
 
             if (remainingDays <= 0) {
-                if (remainingBudget >= 0) {
-                    return make(
-                        `Tháng này còn dư ${formatCurrency(remainingBudget)}`,
-                        'Đây là số tiền còn lại so với ngân sách đã đặt. Dùng kết quả tháng này làm mốc cho ngân sách tháng sau.',
-                        priorityText
-                    );
-                }
-                return make(
-                    `Tháng này vượt ngân sách ${formatCurrency(Math.abs(remainingBudget))}`,
-                    'Đừng cố quy đổi khoản vượt thành “cắt bao nhiêu mỗi ngày”. Hãy xác định khoản nào là bất thường và khoản nào là chi có thể điều chỉnh cho tháng sau.',
-                    priorityText
-                );
+                return make(`
+                    <div class="ai-action-primary">${remainingBudget >= 0
+                        ? `Bạn còn ${formatCurrency(remainingBudget)} so với ngân sách tháng.`
+                        : `Bạn đã vượt ngân sách ${formatCurrency(Math.abs(remainingBudget))}.`}</div>
+                    <details class="ai-action-details">
+                        <summary>Việc nên làm cho tháng sau</summary>
+                        <div class="text-xs text-slate-500 mt-2">${priorityText}<br>${remainingBudget >= 0 ? 'Dùng kết quả tháng này làm mốc cho ngân sách tháng sau.' : 'Rà nhóm chi linh hoạt và khoản bất thường trước khi đặt ngân sách tháng sau.'}</div>
+                    </details>
+                `);
             }
 
             if (remainingBudget > 0) {
-                const projectedOver = Math.max(0, projectedExpense - idealBudget);
-                const detail = projectedOver > 0
-                    ? `Bạn còn ${formatCurrency(remainingBudget)} trong ngân sách cho ${remainingDays} ngày còn lại → khoảng ${formatCurrency(dailyAllowance)}/ngày. Nếu giữ nhịp hiện tại, dự báo đang vượt ngân sách khoảng ${formatCurrency(projectedOver)}.`
-                    : `Bạn còn ${formatCurrency(remainingBudget)} trong ngân sách cho ${remainingDays} ngày còn lại → khoảng ${formatCurrency(dailyAllowance)}/ngày.`;
-
-                return make(
-                    `Bạn còn ${formatCurrency(remainingBudget)} ngân sách`,
-                    detail,
-                    `${priorityText}${exceptionalNote ? `<br>${exceptionalNote}` : ''}`
-                );
+                return make(`
+                    <div class="ai-action-anchor">
+                        <span class="ai-action-number">${formatCurrency(dailyAllowance)}</span>
+                        <span class="ai-action-unit">/ ngày còn lại</span>
+                    </div>
+                    <div class="ai-action-primary">Đây là mức chi trung bình nên giữ để ở trong ngân sách.</div>
+                    <details class="ai-action-details">
+                        <summary>Xem kế hoạch chi tiết</summary>
+                        <div class="text-xs text-slate-500 mt-2">
+                            Còn <strong>${formatCurrency(remainingBudget)}</strong> cho ${remainingDays} ngày.
+                            ${projectedOver > 0 ? `<div class="ai-forecast-delta"><strong>Dự báo:</strong> nếu giữ nhịp hiện tại, cuối tháng có thể vượt khoảng ${formatCurrency(projectedOver)}.</div>` : ''}
+                            <div class="mt-2">${priorityText}</div>
+                            ${exceptionalNote ? `<div class="mt-2">${exceptionalNote}</div>` : ''}
+                        </div>
+                    </details>
+                `);
             }
 
-            return make(
-                `Đã vượt ngân sách ${formatCurrency(Math.abs(remainingBudget))}`,
-                `Còn ${remainingDays} ngày. Từ giờ, nên ưu tiên các khoản thiết yếu và hạn chế chi linh hoạt cho đến cuối tháng.`,
-                `${priorityText}${exceptionalNote ? `<br>${exceptionalNote}` : ''}`
-            );
+            return make(`
+                <div class="ai-action-anchor">
+                    <span class="ai-action-number">${formatCurrency(Math.abs(remainingBudget))}</span>
+                    <span class="ai-action-unit">đã vượt ngân sách</span>
+                </div>
+                <div class="ai-action-primary">Từ giờ, ưu tiên khoản thiết yếu và hạn chế chi linh hoạt.</div>
+                <details class="ai-action-details">
+                    <summary>Xem kế hoạch chi tiết</summary>
+                    <div class="text-xs text-slate-500 mt-2">
+                        Còn ${remainingDays} ngày. ${priorityText}
+                        ${exceptionalNote ? `<div class="mt-2">${exceptionalNote}</div>` : ''}
+                    </div>
+                </details>
+            `);
         }
 
         function getCashFlowThroughDay(monthStr, day) {
@@ -4025,10 +4117,18 @@
             setText('ai-summary-text', monthExpense > 0 ? `Đã phân tích ${formatCurrency(monthExpense)} chi tiêu trong tháng ${selectedMonthStr.split('-')[1]}.` : 'Tháng này chưa có chi tiêu để phân tích sâu.');
             
             const projection = idealBudget <= 0
-                ? 'Chưa có mục tiêu tổng, nên chưa dự báo được.'
+                ? 'Chưa có mục tiêu tổng.'
                 : (isCurrentMonth
-                    ? `Dự báo cả tháng: ${formatCurrency(projectedExpense)} (${projectedPercent}% ngân sách).`
-                    : `Tổng chi tháng: ${formatCurrency(monthExpense)} (${Math.round((monthExpense / idealBudget) * 100)}% ngân sách).`);
+                    ? `${formatCurrency(projectedExpense)}`
+                    : `${formatCurrency(monthExpense)}`);
+            const projectionDetailEl = document.getElementById('ai-projection-detail-text');
+            if (projectionDetailEl) {
+                projectionDetailEl.innerHTML = idealBudget <= 0
+                    ? 'Đặt ngân sách tổng để biết dự báo đang nằm ở đâu so với mục tiêu.'
+                    : (isCurrentMonth
+                        ? `Dự báo tương đương <strong>${projectedPercent}%</strong> ngân sách. ${projectedExpense > idealBudget ? `Nguy cơ vượt khoảng <strong>${formatCurrency(projectedExpense - idealBudget)}</strong>.` : `Còn khoảng <strong>${formatCurrency(idealBudget - projectedExpense)}</strong> so với ngân sách.`}`
+                        : `Tháng đã kết thúc ở <strong>${Math.round((monthExpense / idealBudget) * 100)}%</strong> ngân sách.`);
+            }
             setText('ai-projection-text', projection);
             const comparisonDay = isCurrentMonth ? elapsedDays : daysInMonth;
             const retainedCurrent = isCurrentMonth ? getCashFlowThroughDay(selectedMonthStr, comparisonDay) : { income: monthIncome, expense: monthExpense, net: monthIncome - monthExpense };
@@ -4060,29 +4160,37 @@
             if (meter) { meter.style.width = Math.min(100, projectedPercent || 0) + '%'; meter.className = projectedPercent > 100 ? 'bg-rose-600' : projectedPercent > 80 ? 'bg-amber-500' : 'bg-indigo-600'; }
             
             const compareBase = prevThroughDayExpense;
-            let sameDayLine = 'Chưa có đủ dữ liệu tháng trước để so sánh.';
-            if (compareBase <= 0 && regularMonthExpense > 0) {
-                sameDayLine = isCurrentMonth
-                    ? 'Tháng trước chưa có mức chi tương ứng để đối chiếu.'
-                    : 'Tháng trước chưa có mức chi tương ứng để đối chiếu.';
-            } else if (compareBase > 0) {
+            let sameDayAmountLine = 'Chưa có đủ dữ liệu tháng trước để so sánh.';
+            let sameDayPercent = null;
+            if (compareBase > 0) {
                 const diff = regularMonthExpense - compareBase;
-                const diffPercent = Math.round((diff / compareBase) * 100);
-                sameDayLine = `${diff >= 0 ? 'cao hơn' : 'thấp hơn'} ${formatCurrency(Math.abs(diff))} (${Math.abs(diffPercent)}%) so với tháng trước.`;
+                sameDayPercent = Math.round((Math.abs(diff) / compareBase) * 100);
+                sameDayAmountLine = `${diff >= 0 ? 'cao hơn' : 'thấp hơn'} ${formatCurrency(Math.abs(diff))} so với tháng trước.`;
+            } else if (regularMonthExpense > 0) {
+                sameDayAmountLine = 'Tháng trước chưa có mức chi tương ứng để đối chiếu.';
             }
 
-            let forecastLine = 'Chưa đủ dữ liệu để so sánh dự báo.';
+            let forecastAmountLine = 'Chưa đủ dữ liệu để so sánh dự báo.';
+            let forecastPercent = null;
             if (isCurrentMonth && regularPrevExpense > 0) {
                 const forecastDiff = regularProjectedExpense - regularPrevExpense;
-                const forecastPct = Math.round((Math.abs(forecastDiff) / regularPrevExpense) * 100);
-                forecastLine = `${forecastDiff >= 0 ? 'cao hơn' : 'thấp hơn'} ${formatCurrency(Math.abs(forecastDiff))} (${forecastPct}%) so với tổng chi tháng trước.`;
+                forecastPercent = Math.round((Math.abs(forecastDiff) / regularPrevExpense) * 100);
+                forecastAmountLine = `${forecastDiff >= 0 ? 'cao hơn' : 'thấp hơn'} ${formatCurrency(Math.abs(forecastDiff))} so với tổng chi tháng trước.`;
             } else if (!isCurrentMonth && regularPrevExpense > 0) {
-                forecastLine = `${formatCurrency(regularMonthExpense)} so với ${formatCurrency(regularPrevExpense)} tháng trước.`;
+                forecastAmountLine = `${formatCurrency(regularMonthExpense)} so với ${formatCurrency(regularPrevExpense)} tháng trước.`;
             }
 
             let compareHtml = `
-                <div><span class="ai-compare-label">${isCurrentMonth ? 'Đến cùng ngày' : 'Cả tháng'}</span>${escapeHTML(sameDayLine)}</div>
-                <div><span class="ai-compare-label">${isCurrentMonth ? 'Nếu giữ nhịp hiện tại' : 'Kết quả cả tháng'}</span>${escapeHTML(forecastLine)}</div>
+                <div><span class="ai-compare-label">${isCurrentMonth ? 'Đến cùng ngày' : 'Cả tháng'}</span><strong>${escapeHTML(sameDayAmountLine)}</strong></div>
+                <div><span class="ai-compare-label">${isCurrentMonth ? 'Nếu giữ nhịp hiện tại' : 'Kết quả cả tháng'}</span><strong>${escapeHTML(forecastAmountLine)}</strong></div>
+                <details class="ai-action-details">
+                    <summary>Chi tiết cách so sánh</summary>
+                    <div class="text-xs text-slate-500 mt-2">
+                        ${sameDayPercent !== null ? `Đến cùng ngày: chênh lệch ${sameDayPercent}%.` : ''}
+                        ${forecastPercent !== null ? `<br>Dự báo cả tháng: chênh lệch ${forecastPercent}%.` : ''}
+                        <br>Hai con số trên trả lời hai câu hỏi khác nhau: <strong>nhịp chi hiện tại</strong> và <strong>kết quả nếu giữ nhịp đó đến cuối tháng</strong>.
+                    </div>
+                </details>
             `;
             if (currentExceptional.total > 0) {
                 const exceptionalText = currentExceptional.items.length === 1
@@ -4150,14 +4258,6 @@
             const proxyTotal = (monthStats.proxyIn || 0) + (monthStats.proxyOut || 0);
             const proxyNote = proxyTotal > 0 ? ` Ngoài ra có <strong>${formatCurrency(proxyTotal)}</strong> giao dịch trung gian (ủy thác) qua ví — không tính vào thu/chi.` : '';
             const baseline = getOrCreateAiBaseline(selectedMonthStr, projectedExpense, idealBudget);
-            const resultInsight = buildResultInsight(
-                isCurrentMonth ? projectedExpense : monthExpense,
-                prevStats.expense,
-                idealBudget,
-                projectedExpense,
-                isCurrentMonth,
-                baseline
-            );
 
             const remainingBudget = idealBudget - monthExpense;
             const dailyAllowance = remainingDays > 0 ? Math.max(0, Math.floor(remainingBudget / remainingDays)) : 0;
@@ -4190,12 +4290,29 @@
             const summaryLines = [];
             summaryLines.push(`<p class="ai-story-lead"><strong>1. Hiện tại:</strong> ${actualStatus} ${exceptionalNote}</p>`);
             summaryLines.push(`<p><strong>2. Tương lai:</strong> ${forecastStatus}</p>`);
+
+            if (baseline && isCurrentMonth && Number(baseline.projectedExpense) > 0) {
+                const baselineProjection = Number(baseline.projectedExpense);
+                const baselineDelta = projectedExpense - baselineProjection;
+                const baselinePct = baselineProjection > 0 ? Math.round(Math.abs(baselineDelta) / baselineProjection * 100) : 0;
+                if (Math.abs(baselineDelta) >= 50000) {
+                    summaryLines.push(`
+                        <div class="ai-baseline-highlight">
+                            <span class="label">So với lần phân tích đầu kỳ</span>
+                            <strong>${baselineDelta < 0 ? 'Dự báo đã giảm' : 'Dự báo đã tăng'} ${formatCurrency(Math.abs(baselineDelta))} (${baselinePct}%).</strong>
+                            <div class="text-xs text-slate-500 mt-1">${baselineDelta < 0 ? 'Nhịp chi đang cải thiện.' : 'Các khoản phát sinh gần đây đang làm triển vọng cuối tháng xấu đi.'}</div>
+                        </div>
+                    `);
+                }
+            }
+
             if (attentionCategory) {
                 summaryLines.push(`<p><strong>3. Nguyên nhân đáng chú ý:</strong> <strong>${escapeHTML(attentionCategory.cat)}</strong> là điểm cần theo dõi nhất. ${insightEvidence || 'Hãy xem lại các giao dịch lớn và chi linh hoạt trong danh mục này để xác định nguyên nhân.'}</p>`);
             } else {
                 summaryLines.push(`<p><strong>3. Nguyên nhân đáng chú ý:</strong> Chưa có danh mục nào đủ mạnh để cần can thiệp riêng; ưu tiên theo dõi thay vì cắt giảm đồng loạt.</p>`);
             }
-            summaryLines.push(`<p><strong>4. Việc nên làm:</strong> ${nextStep} ${resultInsight ? resultInsight.replace(/^Điểm mấu chốt:\s*/i, '') : ''}</p>`);
+
+            summaryLines.push(`<p><strong>4. Việc nên làm:</strong> ${nextStep}</p>`);
 
             setHTML('ai-executive-summary', summaryLines.join(''));
         }
