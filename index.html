@@ -880,7 +880,7 @@
 <div class="bg-indigo-600 p-2 rounded-lg"><i class="fa-solid fa-wallet text-xl text-white"></i></div>
 <div>
 <h1 class="font-bold text-lg tracking-wide">TÀI CHÍNH CÁ NHÂN</h1>
-<p class="text-xs text-slate-400">Quản Lý Chi Tiêu Hạp Lý =)))</p>
+<p class="text-xs text-slate-400">THÂN TRỌNG THỨC</p>
 </div>
 </div>
 <nav class="space-y-2">
@@ -1064,19 +1064,20 @@
 </section>
 <!-- TAB 2: SMART FINANCIAL ASSISTANT -->
 <section class="hidden space-y-6" id="tab-assistant">
-<div class="assistant-hero p-6 rounded-2xl shadow-sm border border-slate-100 space-y-5">
-<div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-<div>
-<h3 class="text-xl font-bold text-slate-900 flex items-center gap-2">
-<i class="fa-solid fa-robot text-indigo-500"></i>
-<span>Trợ Lý Tài Chính Thông Minh</span>
+  <div class="assistant-hero p-6 rounded-2xl shadow-sm border border-slate-800 space-y-5">
+    
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <h3 class="text-xl font-bold text-slate-100 flex items-center gap-2">
+          <i class="fa-solid fa-robot text-indigo-400"></i>
+          <span>Trợ Lý Tài Chính Thông Minh</span>
 </h3>
 <p class="text-sm text-slate-500 mt-1" id="ai-summary-text">Hiểu hiện tại → dự đoán cuối tháng → xác định nguyên nhân → đưa ra việc có thể làm ngay.</p>
 <div class="flex items-center gap-2 flex-wrap">
-  <span 
-    class="ai-chip" 
-    id="ai-health-chip" 
-    title="Mức kiểm soát (0–100):
+        <span 
+          class="ai-chip inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide border border-amber-500/40 bg-amber-500/10 text-amber-300 cursor-help" 
+          id="ai-health-chip" 
+          title="Điểm sức khoẻ tài chính (0–100):
 • Điểm khởi đầu: 100
 • Chưa có mục tiêu ngân sách: -12
 • Dùng > 75% ngân sách: -8 | > 90%: -16
@@ -1084,18 +1085,20 @@
 • Chi vượt thu nhập: -18
 • Mỗi danh mục vượt hạn mức: -7 (tối đa -20)
 • Dự báo cuối tháng vượt 105%: -10
-
 Điểm càng cao thể hiện dòng tiền càng an toàn và dễ kiểm soát."
-  >
-    <i class="fa-solid fa-heart-pulse"></i>
-    <span class="hidden sm:inline">Kiểm soát</span>
-    <span id="ai-health-score">--/100</span>
-  </span>
-</div>
-<button class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg text-sm transition" onclick="updateDashboard(); renderSmartFinancialAssistant();">
-<i class="fa-solid fa-rotate mr-1"></i> Phân tích lại
-                                </button>
-</div>
+        >
+          <i class="fa-solid fa-heart-pulse text-amber-400"></i>
+          <span class="hidden sm:inline">SỨC KHỎE</span>
+          <span id="ai-health-score">--/100</span>
+        </span>
+        <button 
+          class="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-1.5 px-3.5 rounded-full text-xs transition" 
+          onclick="updateDashboard(); renderSmartFinancialAssistant();"
+        >
+          <i class="fa-solid fa-rotate"></i>
+          <span>Phân tích lại</span>
+        </button>
+      </div>
 </div>
 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
 <div class="ai-card">
@@ -4027,8 +4030,8 @@
             const topCatName = topCat?.cat || null;
 
             const priorityText = topCatName
-                ? `Để ý: <strong>${safe(topCatName)}</strong> và các khoản chi linh hoạt.`
-                : 'Để ý: các khoản chi linh hoạt; giữ các khoản thiết yếu và định kỳ như bình thường.';
+                ? `Chú ý mục: <strong>${safe(topCatName)}</strong> và các khoản chi linh hoạt.`
+                : 'Chú ý: các khoản chi linh hoạt; giữ các khoản thiết yếu và định kỳ như bình thường.';
 
             const exceptionalNote = exceptional.total > 0
                 ? (exceptional.items.length === 1
