@@ -2339,11 +2339,11 @@
 <div class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[80]" id="confirmModal"><div class="bg-white rounded-2xl p-6 text-center w-full max-w-sm"><div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-triangle-exclamation text-xl"></i></div><h3 class="font-bold text-lg mb-2" id="confirm-title"></h3><p class="text-sm text-slate-500 mb-6" id="confirm-msg"></p><div class="flex justify-center space-x-3"><button class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium" onclick="closeConfirm()">Hủy</button><button class="px-4 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium" id="confirm-btn">Đồng ý</button></div></div></div>
 <div class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[80]" id="promptModal"><div class="bg-white rounded-2xl p-6 w-full max-w-sm"><h3 class="font-bold text-lg mb-2" id="prompt-title"></h3><input class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm mb-4" id="prompt-input" style="font-size:16px" type="text"/><div class="flex justify-end space-x-3"><button class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium" onclick="closePrompt()">Hủy</button><button class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium" id="prompt-btn">Lưu</button></div></div></div>
 <!-- Quản lý tài khoản (Initial Balance) -->
-<div class="hidden fixed inset-0 bg-slate-900/60 flex items-end md:items-center justify-center md:p-4 z-[70]" id="initialBalanceModal"><div class="bg-white rounded-t-3xl md:rounded-2xl w-full max-w-md flex flex-col" style="max-height:92dvh"><div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center rounded-t-3xl md:rounded-t-2xl"><h3 class="font-bold text-lg">Ví / Tài Khoản</h3><button onclick="closeModal('initialBalanceModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="px-5 pt-4 pb-2"><p class="text-xs text-slate-500 bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2.5 leading-relaxed" id="balance-checkpoint-note"></p></div><div class="px-5 pb-2 overflow-y-auto space-y-3" id="account-setup-list"></div><div class="p-4 border-t bg-slate-50 rounded-b-2xl"><div class="flex space-x-2 mb-4"><input class="flex-1 bg-white border rounded-lg p-2 text-sm" id="new-account-input" placeholder="Tên ví mới..." style="font-size:16px" type="text"/><button class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium" onclick="handleAddAccount()">Thêm</button></div><div class="flex justify-end space-x-2"><button class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium w-full" onclick="saveAllAccounts()">Lưu Thay Đổi</button></div></div></div></div>
+<div class="hidden fixed inset-0 bg-slate-900/60 flex items-end md:items-center justify-center md:p-4 z-[70]" id="initialBalanceModal"><div class="bg-white rounded-t-3xl md:rounded-2xl w-full max-w-md flex flex-col" style="max-height:92dvh"><div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center rounded-t-3xl md:rounded-t-2xl"><h3 class="font-bold text-lg">Số Dư Ban Đầu / Ví</h3><button onclick="closeModal('initialBalanceModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="px-5 pt-4 pb-2"><p class="text-xs text-slate-500 bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2.5 leading-relaxed" id="balance-checkpoint-note"></p></div><div class="px-5 pb-2 overflow-y-auto space-y-3" id="account-setup-list"></div><div class="p-4 border-t bg-slate-50 rounded-b-2xl"><div class="flex space-x-2 mb-4"><input class="flex-1 bg-white border rounded-lg p-2 text-sm" id="new-account-input" placeholder="Tên ví mới..." style="font-size:16px" type="text"/><button class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium" onclick="handleAddAccount()">Thêm</button></div><div class="flex justify-end space-x-2"><button class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium w-full" onclick="saveAllAccounts()">Lưu Thay Đổi</button></div></div></div></div>
 <!-- Drive Sync -->
 <div class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[80]" id="driveSyncModal"><div class="bg-white rounded-2xl w-full max-w-md flex flex-col"><div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center rounded-t-2xl"><h3 class="font-bold text-lg"><i class="fa-solid fa-cloud-arrow-up mr-2"></i>Đồng Bộ Dữ Liệu</h3><button onclick="closeModal('driveSyncModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-6 space-y-4"><div class="flex items-center space-x-2 bg-slate-50 border rounded-lg px-3 py-2.5"><span class="w-2.5 h-2.5 rounded-full bg-slate-500" id="drive-status-dot"></span><span class="text-slate-700 font-medium text-sm" id="drive-status-text">Chưa đăng nhập</span></div><div class="hidden flex items-center space-x-2 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2.5" id="drive-account-email-wrap"><i class="fa-solid fa-user-circle text-indigo-400"></i><span class="text-indigo-700 font-medium text-xs truncate" id="drive-account-email"></span></div><div class="flex space-x-2"><button class="flex-1 bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-medium" id="drive-signin-btn" onclick="signInGoogleClick()">Đăng nhập với Google</button><button class="hidden flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-lg text-sm font-medium" id="drive-signout-btn" onclick="signOutGoogle()">Đăng xuất</button></div><button class="w-full bg-emerald-50 text-emerald-700 border border-emerald-200 py-2 rounded-lg text-sm font-medium" onclick="manualSyncNow()"><i class="fa-solid fa-rotate mr-1.5"></i>Đồng bộ ngay</button></div></div></div>
 <!-- Transaction form -->
-<div class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-2 md:p-4 z-[70]" id="transactionModal"><div class="bg-white rounded-2xl w-full max-w-lg flex flex-col max-h-[95vh]"><div class="bg-slate-950 text-white px-4 py-4 md:px-6 flex justify-between items-center rounded-t-2xl"><h3 class="font-bold md:text-lg text-base" id="tx-modal-title">Ghi Chép</h3><button onclick="closeModal('transactionModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-4 md:p-6 overflow-y-auto"><form class="space-y-4" id="transaction-form" onsubmit="handleTransactionSubmit(event)"><div class="grid grid-cols-4 gap-2"><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-rose-500 [&amp;:has(:checked)]:bg-rose-50 [&amp;:has(:checked)]:text-rose-600 transition"><input checked="" class="hidden" name="txType" onchange="updateFormCategories()" type="radio" value="expense"/><i class="fa-solid fa-minus mb-1 text-sm"></i><span>Chi Tiêu</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-emerald-500 [&amp;:has(:checked)]:bg-emerald-50 [&amp;:has(:checked)]:text-emerald-600 transition"><input class="hidden" name="txType" onchange="updateFormCategories()" type="radio" value="income"/><i class="fa-solid fa-plus mb-1 text-sm"></i><span>Thu Nhập</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-blue-500 [&amp;:has(:checked)]:bg-blue-50 [&amp;:has(:checked)]:text-blue-600 transition"><input class="hidden" name="txType" onchange="updateFormCategories()" type="radio" value="transfer"/><i class="fa-solid fa-arrow-right-arrow-left mb-1 text-sm"></i><span>Chuyển</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-amber-500 [&amp;:has(:checked)]:bg-amber-50 [&amp;:has(:checked)]:text-amber-600 transition" title="Ủy thác/trung gian: nhận hoặc chi tiền thay mặt người khác — không tính vào thu nhập/chi tiêu của bạn"><input class="hidden" name="txType" onchange="updateFormCategories()" type="radio" value="proxy"/><i class="fa-solid fa-handshake mb-1 text-sm"></i><span>Trung gian</span></label></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-slate-500 mb-1">SỐ TIỀN</label><input class="w-full bg-slate-50 border rounded-lg p-2.5 text-base font-bold text-indigo-600 outline-none" id="txAmount" inputmode="numeric" oninput="formatNumberInput(this)" required="" type="text"/></div><div><label class="block text-xs font-bold text-slate-500 mb-1">NGÀY</label><input class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm outline-none" id="txDate" required="" type="date"/></div></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-slate-500 mb-1" id="lbl-tx-account">TỪ TÀI KHOẢN</label><select class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm" id="txAccount" required=""></select></div><div id="tx-category-wrapper"><label class="block text-xs font-bold text-slate-500 mb-1">DANH MỤC</label><select class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm" id="txCategory"></select></div><div class="hidden" id="tx-to-account-wrapper"><label class="block text-xs font-bold text-blue-600 mb-1">ĐẾN TÀI KHOẢN</label><select class="w-full bg-blue-50 border-blue-200 border rounded-lg p-2.5 text-sm" id="txToAccount"></select></div></div><div class="hidden" id="proxy-dir-wrapper"><label class="block text-xs font-bold text-amber-600 mb-2">CHIỀU TIỀN</label><div class="grid grid-cols-2 gap-2"><label class="cursor-pointer border border-slate-200 rounded-xl p-2.5 text-center flex items-center justify-center gap-2 text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-amber-500 [&amp;:has(:checked)]:bg-amber-50 [&amp;:has(:checked)]:text-amber-700 transition"><input class="hidden" name="proxyDir" type="radio" value="in"/><i class="fa-solid fa-arrow-down-to-bracket text-sm"></i><span>Nhận vào ví (thu hộ)</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2.5 text-center flex items-center justify-center gap-2 text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-amber-500 [&amp;:has(:checked)]:bg-amber-50 [&amp;:has(:checked)]:text-amber-700 transition"><input checked="" class="hidden" name="proxyDir" type="radio" value="out"/><i class="fa-solid fa-arrow-up-from-bracket text-sm"></i><span>Xuất khỏi ví (chi hộ)</span></label></div></div><div><label class="block text-xs font-bold text-slate-500 mb-1">GHI CHÚ</label><input class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm outline-none" id="txNotes" type="text"/></div><div class="pt-4"><button class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl text-sm shadow-md" id="tx-submit-btn" type="submit">Lưu Giao Dịch</button></div></form></div></div></div>
+<div class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-2 md:p-4 z-[70]" id="transactionModal"><div class="bg-white rounded-2xl w-full max-w-lg flex flex-col max-h-[95vh]"><div class="bg-slate-950 text-white px-4 py-4 md:px-6 flex justify-between items-center rounded-t-2xl"><h3 class="font-bold md:text-lg text-base" id="tx-modal-title">Ghi Chép</h3><button onclick="closeModal('transactionModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-4 md:p-6 overflow-y-auto"><form class="space-y-4" id="transaction-form" onsubmit="handleTransactionSubmit(event)"><div class="grid grid-cols-4 gap-2"><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-rose-500 [&amp;:has(:checked)]:bg-rose-50 [&amp;:has(:checked)]:text-rose-600 transition"><input checked="" class="hidden" name="txType" onchange="updateFormCategories()" type="radio" value="expense"/><i class="fa-solid fa-minus mb-1 text-sm"></i><span>Chi Tiêu</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-emerald-500 [&amp;:has(:checked)]:bg-emerald-50 [&amp;:has(:checked)]:text-emerald-600 transition"><input class="hidden" name="txType" onchange="updateFormCategories()" type="radio" value="income"/><i class="fa-solid fa-plus mb-1 text-sm"></i><span>Thu Nhập</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-blue-500 [&amp;:has(:checked)]:bg-blue-50 [&amp;:has(:checked)]:text-blue-600 transition"><input class="hidden" name="txType" onchange="updateFormCategories()" type="radio" value="transfer"/><i class="fa-solid fa-arrow-right-arrow-left mb-1 text-sm"></i><span>Chuyển</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-amber-500 [&amp;:has(:checked)]:bg-amber-50 [&amp;:has(:checked)]:text-amber-600 transition" title="Ủy thác/trung gian: nhận hoặc chi tiền thay mặt người khác — không tính vào thu nhập/chi tiêu của bạn"><input class="hidden" name="txType" onchange="updateFormCategories()" type="radio" value="proxy"/><i class="fa-solid fa-handshake mb-1 text-sm"></i><span>Trung gian</span></label></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-slate-500 mb-1">SỐ TIỀN</label><input class="w-full bg-slate-50 border rounded-lg p-2.5 text-base font-bold text-indigo-600 outline-none" id="txAmount" inputmode="numeric" oninput="formatNumberInput(this)" required="" type="text"/></div><div><label class="block text-xs font-bold text-slate-500 mb-1">NGÀY</label><input class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm outline-none" id="txDate" required="" type="date"/></div></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-slate-500 mb-1" id="lbl-tx-account">TỪ TÀI KHOẢN</label><select class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm" id="txAccount" required=""></select></div><div id="tx-category-wrapper"><label class="block text-xs font-bold text-slate-500 mb-1" id="tx-category-label">DANH MỤC</label><select class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm" id="txCategory"></select><input class="hidden w-full bg-slate-50 border rounded-lg p-2.5 text-sm outline-none" id="txProxyParty" maxlength="200" placeholder="Tên người / bên ủy thác..." type="text"/></div><div class="hidden" id="tx-to-account-wrapper"><label class="block text-xs font-bold text-blue-600 mb-1">ĐẾN TÀI KHOẢN</label><select class="w-full bg-blue-50 border-blue-200 border rounded-lg p-2.5 text-sm" id="txToAccount"></select></div></div><div class="hidden" id="proxy-dir-wrapper"><label class="block text-xs font-bold text-amber-600 mb-2">CHIỀU TIỀN</label><div class="grid grid-cols-2 gap-2"><label class="cursor-pointer border border-slate-200 rounded-xl p-2.5 text-center flex items-center justify-center gap-2 text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-amber-500 [&amp;:has(:checked)]:bg-amber-50 [&amp;:has(:checked)]:text-amber-700 transition"><input class="hidden" name="proxyDir" type="radio" value="in"/><i class="fa-solid fa-arrow-down-to-bracket text-sm"></i><span>Nhận vào ví (thu hộ)</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2.5 text-center flex items-center justify-center gap-2 text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-amber-500 [&amp;:has(:checked)]:bg-amber-50 [&amp;:has(:checked)]:text-amber-700 transition"><input checked="" class="hidden" name="proxyDir" type="radio" value="out"/><i class="fa-solid fa-arrow-up-from-bracket text-sm"></i><span>Xuất khỏi ví (chi hộ)</span></label></div></div><div><label class="block text-xs font-bold text-slate-500 mb-1">GHI CHÚ</label><input class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm outline-none" id="txNotes" type="text"/></div><div class="pt-4"><button class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl text-sm shadow-md" id="tx-submit-btn" type="submit">Lưu Giao Dịch</button></div></form></div></div></div>
 <script>
         const CATEGORY_ICONS = { "Lương": "fa-briefcase", "Thưởng": "fa-gift", "Đầu tư": "fa-chart-line", "Lãi Đầu tư/Tiết kiệm": "fa-sack-dollar", "Kinh doanh": "fa-store", "Khác": "fa-asterisk", "Ăn uống": "fa-utensils", "Di chuyển": "fa-car", "Nhà cửa": "fa-house", "Mua sắm": "fa-bag-shopping", "Giải trí": "fa-gamepad", "Sức khỏe": "fa-heart-pulse", "Giáo dục": "fa-graduation-cap", "Lỗ Đầu tư/Tất toán sớm": "fa-arrow-trend-down" };
 
@@ -3007,11 +3007,11 @@
         function renderAccountSetupList() {
             const list = document.getElementById('account-setup-list'); list.innerHTML = '';
             const cpNote = document.getElementById('balance-checkpoint-note');
-            if (cpNote) cpNote.innerHTML = `<i class="fa-solid fa-circle-info text-indigo-400 mr-1"></i>Số dư ban đầu khi tạo ví. App sẽ tự cộng/trừ tất cả giao dịch vào đây để ra số dư hiện tại.`;
+            if (cpNote) cpNote.innerHTML = `<i class="fa-solid fa-circle-info text-indigo-400 mr-1"></i>Đây là <strong>số dư ban đầu</strong> dùng làm mốc tính. App sẽ tự cộng/trừ tất cả giao dịch vào số dư này để ra số dư hiện tại.`;
             Object.keys(userAccounts).forEach(acc => {
                 const safeAcc = escapeHTML(acc);
                 const encodedAcc = encodeURIComponent(acc);
-                list.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-between p-3 bg-slate-50 border rounded-lg"><span class="font-semibold text-slate-700">${safeAcc}</span><div class="flex items-center"><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" data-account="${encodedAcc}" value="${userAccounts[acc].toLocaleString('vi-VN')}" class="w-24 text-right border rounded-md p-1.5 text-sm font-semibold" style="font-size:16px"><span class="ml-1 text-xs text-slate-500">₫</span><button type="button" onclick="handleRemoveAccount(decodeURIComponent('${encodedAcc}'))" class="ml-3 text-rose-400"><i class="fa-solid fa-trash"></i></button></div></div>`);
+                list.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-between p-3 bg-slate-50 border rounded-lg"><div class="min-w-0"><span class="font-semibold text-slate-700 block">${safeAcc}</span><span class="text-[10px] text-slate-400">Số dư ban đầu</span></div><div class="flex items-center"><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" data-account="${encodedAcc}" value="${userAccounts[acc].toLocaleString('vi-VN')}" class="w-24 text-right border rounded-md p-1.5 text-sm font-semibold" style="font-size:16px"><span class="ml-1 text-xs text-slate-500">₫</span><button type="button" onclick="handleRemoveAccount(decodeURIComponent('${encodedAcc}'))" class="ml-3 text-rose-400"><i class="fa-solid fa-trash"></i></button></div></div>`);
             });
         }
         function handleAddAccount() {
@@ -3042,35 +3042,39 @@
         function updateFormCategories() {
             const type = document.querySelector('input[name="txType"]:checked').value;
             document.getElementById('lbl-tx-account').innerText = type==='transfer'?"TỪ TÀI KHOẢN":"TÀI KHOẢN";
-            // proxy: hiện category wrapper (để ghi tên người), ẩn to-account
-            document.getElementById('tx-category-wrapper').classList.toggle('hidden', type==='transfer');
+            const categoryWrapper = document.getElementById('tx-category-wrapper');
+            const categorySelect = document.getElementById('txCategory');
+            const proxyParty = document.getElementById('txProxyParty');
+            const categoryLabel = document.getElementById('tx-category-label') || categoryWrapper?.querySelector('label');
+
+            categoryWrapper.classList.toggle('hidden', type==='transfer');
             document.getElementById('tx-to-account-wrapper').classList.toggle('hidden', type!=='transfer');
 
-            // Cập nhật label danh mục cho proxy
-            const catLabel = document.querySelector('#tx-category-wrapper label');
-            if(catLabel) catLabel.innerText = type==='proxy' ? 'BÊN ỦY THÁC (ghi chú)' : 'DANH MỤC';
+            if (categoryLabel) categoryLabel.innerText = type==='proxy' ? 'BÊN ỦY THÁC / NỘI DUNG TRUNG GIAN' : 'DANH MỤC';
 
-            // Cập nhật màu ô tiền để phân biệt giao dịch trung gian
             const amtInput = document.getElementById('txAmount');
             amtInput.style.color = type==='proxy' ? '#d97706' : '';
-            // Show/hide proxy direction selector
+
             const pdw = document.getElementById('proxy-dir-wrapper');
             if(pdw) pdw.classList.toggle('hidden', type!=='proxy');
 
-            const categorySelect = document.getElementById('txCategory');
             if(type==='transfer') {
-                document.getElementById('txCategory').removeAttribute('required');
+                categorySelect.removeAttribute('required');
+                if (proxyParty) { proxyParty.classList.add('hidden'); proxyParty.removeAttribute('required'); }
                 document.getElementById('txToAccount').setAttribute('required', 'true');
             } else if(type==='proxy') {
                 document.getElementById('txToAccount').removeAttribute('required');
-                document.getElementById('txCategory').removeAttribute('required');
-                // Proxy: để người dùng tự nhập tên — dùng select nhưng điền sẵn danh sách phổ biến
-                const proxyCats = categories['proxy'] || ['Thu hộ','Chi hộ','Mua hộ','Trả hộ','Thu nợ hộ','Khác'];
-                categorySelect.innerHTML=''; proxyCats.forEach(c=>categorySelect.appendChild(new Option(c,c)));
+                categorySelect.classList.add('hidden');
+                categorySelect.removeAttribute('required');
+                if (proxyParty) { proxyParty.classList.remove('hidden'); proxyParty.removeAttribute('required'); }
+                // Proxy uses free text so custom names/contents are preserved on create + edit.
             } else {
-                document.getElementById('txCategory').setAttribute('required', 'true');
                 document.getElementById('txToAccount').removeAttribute('required');
-                categorySelect.innerHTML=''; categories[type].forEach(c=>categorySelect.appendChild(new Option(c,c)));
+                categorySelect.classList.remove('hidden');
+                categorySelect.setAttribute('required', 'true');
+                if (proxyParty) { proxyParty.classList.add('hidden'); proxyParty.removeAttribute('required'); }
+                categorySelect.innerHTML='';
+                categories[type].forEach(c=>categorySelect.appendChild(new Option(c,c)));
             }
         }
         function openNewTransactionModal() {
@@ -3087,7 +3091,8 @@
             document.getElementById('txAmount').value = tx.amount.toLocaleString('vi-VN'); document.getElementById('txDate').value = tx.date; document.getElementById('txAccount').value = tx.account; document.getElementById('txNotes').value = tx.notes;
             if(tx.type==='transfer') document.getElementById('txToAccount').value = tx.toAccount;
             else if(tx.type==='proxy') {
-                document.getElementById('txCategory').value = tx.category;
+                const proxyParty = document.getElementById('txProxyParty');
+                if (proxyParty) proxyParty.value = tx.category || '';
                 const pdRadio = document.querySelector(`input[name="proxyDir"][value="${tx.proxyDir||'out'}"]`);
                 if(pdRadio) pdRadio.checked = true;
             }
@@ -3098,7 +3103,10 @@
             e.preventDefault();
             const type = document.querySelector('input[name="txType"]:checked').value, amt = getRawNumber(document.getElementById('txAmount').value);
             if(amt<=0) return showToast("> 0", "fa-xmark", "text-rose-500");
-            const acc = document.getElementById('txAccount').value, toAcc = document.getElementById('txToAccount').value, cat = document.getElementById('txCategory').value;
+            const acc = document.getElementById('txAccount').value, toAcc = document.getElementById('txToAccount').value;
+            const cat = type === 'proxy'
+                ? (document.getElementById('txProxyParty')?.value.trim() || 'Trung gian')
+                : document.getElementById('txCategory').value;
             if(type==='transfer' && acc===toAcc) return showToast("Khác tài khoản", "fa-xmark", "text-rose-500");
             
             const proxyDir = document.querySelector('input[name="proxyDir"]:checked')?.value || 'out';
@@ -3472,10 +3480,11 @@
             document.getElementById('stat-top-expense-amount').innerText = formatCurrency(topA);
             
             document.getElementById('dash-budget-month-lbl').innerText = m.split('-')[1];
-            const p = idealBudget>0 ? Math.min(Math.round((mEx/idealBudget)*100),100) : (mEx>0?100:0);
+            const budgetPercent = idealBudget > 0 ? Math.round((mEx / idealBudget) * 100) : (mEx > 0 ? 100 : 0);
+            const p = Math.min(budgetPercent, 100);
             document.getElementById('dash-budget-spent').innerText = formatCurrency(mEx);
             document.getElementById('dash-budget-total').innerText = formatCurrency(idealBudget);
-            document.getElementById('dash-budget-percent').innerText = idealBudget>0?p+'%':'--';
+            document.getElementById('dash-budget-percent').innerText = idealBudget > 0 ? budgetPercent + '%' : '--';
             document.getElementById('dash-budget-bar').style.width = p+'%';
             
             const dashAlert = document.getElementById('dash-budget-alert');
@@ -4576,22 +4585,42 @@ let compareHtml = `
                 return { ok: false, message: 'Danh mục thu/chi không hợp lệ.' };
             }
             const allowedTypes = new Set(['income', 'expense', 'transfer', 'proxy']);
+            const seenTransactionIds = new Set();
+            const accounts = data.userAccounts ?? data.initialBalances;
+            if (!accounts || typeof accounts !== 'object' || Array.isArray(accounts)) return { ok: false, message: 'Backup phải có danh sách tài khoản hợp lệ.' };
+            const accountNames = Object.keys(accounts);
+            if (!accountNames.length) return { ok: false, message: 'Backup phải có ít nhất 1 tài khoản.' };
+            for (const [accountName, balance] of Object.entries(accounts)) {
+                if (typeof accountName !== 'string' || !accountName.trim() || accountName.length > 200) return { ok: false, message: 'Tên tài khoản không hợp lệ.' };
+                if (!Number.isFinite(Number(balance)) || Number(balance) < 0) return { ok: false, message: `Số dư tài khoản "${accountName}" không hợp lệ.` };
+            }
+
             for (let i = 0; i < data.transactions.length; i++) {
                 const tx = data.transactions[i];
                 if (!tx || typeof tx !== 'object' || Array.isArray(tx)) return { ok: false, message: `Giao dịch #${i + 1} không hợp lệ.` };
                 if (!tx.id || typeof tx.id !== 'string' || tx.id.length > 200) return { ok: false, message: `Giao dịch #${i + 1} thiếu ID hợp lệ.` };
-                if (!/^\d{4}-\d{2}-\d{2}$/.test(String(tx.date || ''))) return { ok: false, message: `Giao dịch #${i + 1} có ngày không hợp lệ.` };
+                const txId = String(tx.id);
+                if (seenTransactionIds.has(txId)) return { ok: false, message: `Giao dịch #${i + 1} bị trùng ID với một giao dịch khác.` };
+                seenTransactionIds.add(txId);
+                const dateStr = String(tx.date || '');
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return { ok: false, message: `Giao dịch #${i + 1} có ngày không hợp lệ.` };
+                const [year, month, day] = dateStr.split('-').map(Number);
+                const parsedDate = new Date(year, month - 1, day);
+                if (parsedDate.getFullYear() !== year || parsedDate.getMonth() !== month - 1 || parsedDate.getDate() !== day) return { ok: false, message: `Giao dịch #${i + 1} có ngày không tồn tại.` };
                 const amount = Number(tx.amount);
                 if (!Number.isFinite(amount) || amount <= 0) return { ok: false, message: `Giao dịch #${i + 1} có số tiền không hợp lệ.` };
                 if (!allowedTypes.has(tx.type)) return { ok: false, message: `Giao dịch #${i + 1} có loại không hợp lệ.` };
-                if (typeof tx.account !== 'string' || tx.account.length > 200) return { ok: false, message: `Giao dịch #${i + 1} có tài khoản không hợp lệ.` };
+                if (typeof tx.account !== 'string' || tx.account.length > 200 || !Object.prototype.hasOwnProperty.call(accounts, tx.account)) return { ok: false, message: `Giao dịch #${i + 1} tham chiếu tài khoản nguồn không tồn tại.` };
                 if (tx.category != null && (typeof tx.category !== 'string' || tx.category.length > 200)) return { ok: false, message: `Giao dịch #${i + 1} có danh mục không hợp lệ.` };
+                if ((tx.type === 'income' || tx.type === 'expense') && (!tx.category || !data.categories[tx.type].includes(tx.category))) return { ok: false, message: `Giao dịch #${i + 1} có danh mục không tồn tại trong danh mục ${tx.type === 'income' ? 'thu' : 'chi'} của backup.` };
+                if (tx.type === 'proxy' && tx.category != null && !String(tx.category).trim()) return { ok: false, message: `Giao dịch #${i + 1} có thông tin trung gian trống không hợp lệ.` };
                 if (tx.notes != null && (typeof tx.notes !== 'string' || tx.notes.length > 5000)) return { ok: false, message: `Giao dịch #${i + 1} có ghi chú quá dài hoặc không hợp lệ.` };
-                if (tx.type === 'transfer' && (typeof tx.toAccount !== 'string' || tx.toAccount.length > 200)) return { ok: false, message: `Giao dịch #${i + 1} thiếu tài khoản đích hợp lệ.` };
+                if (tx.type === 'transfer') {
+                    if (typeof tx.toAccount !== 'string' || tx.toAccount.length > 200 || !Object.prototype.hasOwnProperty.call(accounts, tx.toAccount)) return { ok: false, message: `Giao dịch #${i + 1} có tài khoản đích không tồn tại.` };
+                    if (tx.account === tx.toAccount) return { ok: false, message: `Giao dịch #${i + 1} không thể chuyển tiền vào chính tài khoản nguồn.` };
+                }
                 if (tx.type === 'proxy' && !['in', 'out'].includes(tx.proxyDir)) return { ok: false, message: `Giao dịch #${i + 1} có chiều trung gian không hợp lệ.` };
             }
-            const accounts = data.userAccounts ?? data.initialBalances;
-            if (accounts != null && (typeof accounts !== 'object' || Array.isArray(accounts))) return { ok: false, message: 'Dữ liệu tài khoản không hợp lệ.' };
             if (data.idealBudget != null && (!Number.isFinite(Number(data.idealBudget)) || Number(data.idealBudget) < 0)) return { ok: false, message: 'Ngân sách tổng không hợp lệ.' };
             if (data.idealCategoryBudgets != null && (typeof data.idealCategoryBudgets !== 'object' || Array.isArray(data.idealCategoryBudgets))) return { ok: false, message: 'Ngân sách danh mục không hợp lệ.' };
             if (data.pinHash != null && (typeof data.pinHash !== 'string' || data.pinHash.length > 256)) return { ok: false, message: 'Mã PIN đồng bộ trong file không hợp lệ.' };
