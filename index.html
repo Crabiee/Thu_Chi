@@ -3011,13 +3011,77 @@
             Object.keys(userAccounts).forEach(acc => {
                 const safeAcc = escapeHTML(acc);
                 const encodedAcc = encodeURIComponent(acc);
-                list.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-between p-3 bg-slate-50 border rounded-lg"><div class="min-w-0"><span class="font-semibold text-slate-700 block">${safeAcc}</span><span class="text-[10px] text-slate-400">Số dư ban đầu</span></div><div class="flex items-center"><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" data-account="${encodedAcc}" value="${userAccounts[acc].toLocaleString('vi-VN')}" class="w-24 text-right border rounded-md p-1.5 text-sm font-semibold" style="font-size:16px"><span class="ml-1 text-xs text-slate-500">₫</span><button type="button" onclick="handleRemoveAccount(decodeURIComponent('${encodedAcc}'))" class="ml-3 text-rose-400"><i class="fa-solid fa-trash"></i></button></div></div>`);
+                list.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-between p-3 bg-slate-50 border rounded-lg"><div class="min-w-0 flex-1 pr-3"><span class="font-semibold text-slate-700 block truncate">${safeAcc}</span><span class="text-[10px] text-slate-400">Số dư ban đầu</span></div><div class="flex items-center shrink-0"><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" data-account="${encodedAcc}" value="${userAccounts[acc].toLocaleString('vi-VN')}" class="w-24 text-right border rounded-md p-1.5 text-sm font-semibold" style="font-size:16px"><span class="ml-1 text-xs text-slate-500">₫</span><button type="button" title="Đổi tên ví/tài khoản" aria-label="Đổi tên ví/tài khoản ${safeAcc}" onclick="handleRenameAccount(decodeURIComponent('${encodedAcc}'))" class="ml-3 text-indigo-400 hover:text-indigo-600"><i class="fa-solid fa-pen"></i></button><button type="button" title="Xóa ví/tài khoản" aria-label="Xóa ví/tài khoản ${safeAcc}" onclick="handleRemoveAccount(decodeURIComponent('${encodedAcc}'))" class="ml-3 text-rose-400 hover:text-rose-600"><i class="fa-solid fa-trash"></i></button></div></div>`);
             });
         }
         function handleAddAccount() {
             const n = document.getElementById('new-account-input').value.trim();
             if(!n || userAccounts[n]!==undefined) return showToast("Không hợp lệ", "fa-xmark", "text-rose-500");
             userAccounts[n] = 0; document.getElementById('new-account-input').value=''; renderAccountSetupList(); showToast(`Đã thêm ví: ${n}`, "fa-circle-check", "text-emerald-400");
+        }
+        function handleRenameAccount(oldName) {
+            const currentName = String(oldName || '').trim();
+            if (!currentName || !Object.prototype.hasOwnProperty.call(userAccounts, currentName)) {
+                return showToast('Ví/tài khoản không tồn tại.', 'fa-xmark', 'text-rose-500');
+            }
+            openPrompt('Đổi tên Ví / Tài khoản', currentName, (rawNewName) => {
+                const newName = String(rawNewName || '').trim();
+                if (!newName) return showToast('Tên không được để trống.', 'fa-xmark', 'text-rose-500');
+                if (newName === currentName) return;
+                if (Object.prototype.hasOwnProperty.call(userAccounts, newName)) {
+                    return showToast('Tên ví/tài khoản đã tồn tại.', 'fa-xmark', 'text-rose-500');
+                }
+                if (newName.length > 200) return showToast('Tên quá dài (tối đa 200 ký tự).', 'fa-xmark', 'text-rose-500');
+
+                const oldFilterAccount = document.getElementById('filter-account')?.value || 'all';
+                const affectedTransactionIds = new Set();
+                const initialBalance = userAccounts[currentName];
+                delete userAccounts[currentName];
+                userAccounts[newName] = initialBalance;
+
+                transactions = (transactions || []).map(tx => {
+                    let changed = false;
+                    const next = { ...tx };
+                    if (next.account === currentName) { next.account = newName; changed = true; }
+                    if (next.type === 'transfer' && next.toAccount === currentName) { next.toAccount = newName; changed = true; }
+                    if (changed) {
+                        next.updatedAt = new Date().toISOString();
+                        next.syncVersion = Math.max(1, Number(tx.syncVersion) || 0) + 1;
+                        affectedTransactionIds.add(String(next.id));
+                    }
+                    return next;
+                });
+
+                localStorage.setItem('personal_accounts_v4', JSON.stringify(userAccounts));
+                affectedTransactionIds.forEach(id => markTransactionDirty(id));
+
+                if (txStorageUid) {
+                    queueTxStorageWrite(async () => {
+                        if (txIdbAvailable) await idbReplaceTransactions(txStorageUid, transactions);
+                        else localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions));
+                    });
+                } else {
+                    localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions));
+                }
+
+                populateAccountSelects();
+                const filterAccount = document.getElementById('filter-account');
+                if (filterAccount) filterAccount.value = oldFilterAccount === currentName ? newName : (oldFilterAccount || 'all');
+                renderAccountSetupList();
+                updateDashboard();
+                applyFilters();
+                renderCategoryBudgets();
+
+                if (fbCurrentUid && firestoreV2Ready && syncReady) {
+                    clearTimeout(fbSaveTimer);
+                    void pushLocalDataToFirestore();
+                } else if (fbCurrentUid) {
+                    pendingSyncAfterReady = true;
+                }
+
+                const changedCount = affectedTransactionIds.size;
+                showToast(`Đã đổi tên “${currentName}” thành “${newName}”${changedCount ? ` và cập nhật ${changedCount} giao dịch` : ''}.`, 'fa-check', 'text-emerald-400');
+            });
         }
         function handleRemoveAccount(a) {
             if(Object.keys(userAccounts).length<=1) return showToast("Phải có ít nhất 1", "fa-xmark", "text-rose-500");
