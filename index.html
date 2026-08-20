@@ -3472,21 +3472,21 @@
                     </tr>`);
 
                     const mobileTitle = tx.type === 'transfer'
-                        ? `<button type="button" class="font-bold text-slate-800 text-sm text-left" onclick="setTransactionQuickFilter('target', decodeURIComponent('${encodeURIComponent(String(tx.toAccount || ''))}'), 'Đến: ${txToAccount}')">${txAccount}<span class="text-blue-500 mx-1">→</span>${txToAccount}</button>`
-                        : `<button type="button" class="font-bold text-slate-800 text-sm text-left" onclick="setTransactionQuickFilter('category', decodeURIComponent('${encodeURIComponent(String(tx.category || ''))}'), 'Danh mục: ${txCategory}')">${txCategory}</button>`;
+                        ? `<button type="button" class="font-bold text-slate-800 text-sm text-left whitespace-normal break-words leading-snug max-w-full" onclick="setTransactionQuickFilter('target', decodeURIComponent('${encodeURIComponent(String(tx.toAccount || ''))}'), 'Đến: ${txToAccount}')">${txAccount}<span class="text-blue-500 mx-1">→</span>${txToAccount}</button>`
+                        : `<button type="button" class="font-bold text-slate-800 text-sm text-left whitespace-normal break-words leading-snug max-w-full" onclick="setTransactionQuickFilter('category', decodeURIComponent('${encodeURIComponent(String(tx.category || ''))}'), 'Danh mục: ${txCategory}')">${txCategory}</button>`;
 
                     cards.insertAdjacentHTML('beforeend', `<div class="transaction-data-card p-4 hover:bg-slate-50 transition active:bg-slate-100 flex items-center justify-between${tx.type === 'proxy' ? ' bg-amber-50/40' : ''}">
-                        <div class="flex items-center gap-3 overflow-hidden min-w-0">
+                        <div class="flex items-center gap-3 min-w-0 flex-1">
                             ${bulkSelectMode ? `<input class="tx-select-box shrink-0" type="checkbox" data-tx-select="${escapeHTML(String(tx.id))}" ${selected ? 'checked' : ''} onchange="toggleTransactionSelection(decodeURIComponent('${txId}'), this.checked)">` : ''}
                             <div class="w-10 h-10 rounded-full flex shrink-0 items-center justify-center ${tx.type === 'income' ? 'bg-emerald-100 text-emerald-600' : tx.type === 'expense' ? 'bg-rose-100 text-rose-600' : tx.type === 'proxy' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}"><i class="fa-solid ${icon}"></i></div>
-                            <div class="min-w-0">
-                                <p class="truncate">${mobileTitle}</p>
-                                <p class="text-[11px] text-slate-500 flex gap-2"><span class="truncate">${txAccount}</span></p>
-                                ${tx.type === 'proxy' ? '<p class="text-[10px] text-amber-500 font-semibold">Trung gian — không tính vào Thu/Chi</p>' : ''}
-                                ${txNotes ? `<p class="text-[11px] text-slate-400 truncate mt-0.5">${txNotes}</p>` : ''}
+                            <div class="min-w-0 flex-1">
+                                <div class="whitespace-normal break-words leading-snug">${mobileTitle}</div>
+                                <p class="text-[11px] text-slate-500 whitespace-normal break-words leading-snug mt-0.5">${txAccount}</p>
+                                ${tx.type === 'proxy' ? '<p class="text-[10px] text-amber-500 font-semibold whitespace-normal break-words leading-snug mt-0.5">Trung gian — không tính vào Thu/Chi</p>' : ''}
+                                ${txNotes ? `<p class="text-[11px] text-slate-400 whitespace-normal break-words leading-snug mt-0.5">${txNotes}</p>` : ''}
                             </div>
                         </div>
-                        <div class="flex flex-col items-end shrink-0 pl-2">
+                        <div class="flex flex-col items-end shrink-0 pl-2 w-[88px]">
                             <p class="font-bold text-sm ${cColor}">${prefix}${maskCurrency(tx.amount)}</p>
                             <div class="flex gap-3 mt-1.5">
                                 <button type="button" onclick="handleEditTxClick(decodeURIComponent('${txId}'))" class="text-indigo-400 text-xs"><i class="fa-solid fa-pen"></i></button>
