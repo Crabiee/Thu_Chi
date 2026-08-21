@@ -1132,7 +1132,112 @@
             }
         }
 
-    </style>
+    
+        /* =========================================================
+           POLISH P1 + P2 — Transaction readability + Budget density
+           - Prevent long dynamic text from stealing column width.
+           - Make empty category targets read as a clear state.
+           - Keep desktop dense enough without feeling cramped.
+        ========================================================= */
+        #tab-transactions table {
+            table-layout: fixed;
+        }
+        #tab-transactions table th:nth-child(1),
+        #tab-transactions table td:nth-child(1) { width: 10%; }
+        #tab-transactions table th:nth-child(2),
+        #tab-transactions table td:nth-child(2) { width: 7%; }
+        #tab-transactions table th:nth-child(3),
+        #tab-transactions table td:nth-child(3) { width: 19%; }
+        #tab-transactions table th:nth-child(4),
+        #tab-transactions table td:nth-child(4) { width: 15%; }
+        #tab-transactions table th:nth-child(5),
+        #tab-transactions table td:nth-child(5) { width: 27%; }
+        #tab-transactions table th:nth-child(6),
+        #tab-transactions table td:nth-child(6) { width: 12%; }
+        #tab-transactions table th:nth-child(7),
+        #tab-transactions table td:nth-child(7) { width: 10%; }
+        #tab-transactions table td,
+        #tab-transactions table th {
+            min-width: 0;
+        }
+        #tab-transactions table td > *,
+        #tab-transactions table th > * {
+            min-width: 0;
+            max-width: 100%;
+        }
+        #tab-transactions table td:nth-child(3),
+        #tab-transactions table td:nth-child(4),
+        #tab-transactions table td:nth-child(5) {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        #tab-transactions table td:nth-child(5) {
+            line-height: 1.35;
+        }
+        #tab-transactions table td:nth-child(6) {
+            white-space: nowrap;
+        }
+
+        /* Budget: reduce visual bulk while keeping 2-column desktop layout. */
+        #tab-budget > .bg-white { gap: 1.15rem !important; }
+        #tab-budget .space-y-4.pt-4 { padding-top: .85rem !important; }
+        #tab-budget #category-budgets-container {
+            gap: 12px 18px !important;
+        }
+        #tab-budget #category-budgets-container > div {
+            padding: 14px 16px !important;
+            gap: 7px !important;
+            min-width: 0;
+        }
+        #tab-budget #category-budgets-container > div > div:first-child {
+            min-width: 0;
+            gap: 10px;
+        }
+        #tab-budget #category-budgets-container > div > div:first-child > span {
+            min-width: 0;
+            max-width: calc(100% - 150px);
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            line-height: 1.25;
+        }
+        #tab-budget .budget-category-input {
+            flex: 0 0 140px;
+            width: 140px !important;
+        }
+
+        @media (min-width: 1024px) and (max-width: 1279px) {
+            /* Laptop: 3 filters + 2 filters instead of squeezing five equal columns. */
+            #tab-transactions > div:first-child {
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            }
+            #tab-transactions > div:first-child > .col-span-2.md\:col-span-1:nth-child(4),
+            #tab-transactions > div:first-child > .flex.items-end.col-span-2 {
+                grid-column: span 1 !important;
+            }
+            #tab-transactions > div:first-child > .flex.items-end.col-span-2 {
+                grid-column: 3 / span 1 !important;
+            }
+            #tab-transactions table th,
+            #tab-transactions table td {
+                padding-left: 14px !important;
+                padding-right: 14px !important;
+            }
+            #tab-budget #category-budgets-container {
+                gap: 10px 14px !important;
+            }
+        }
+
+        @media (max-width: 767px) {
+            #tab-budget #category-budgets-container > div > div:first-child > span {
+                max-width: calc(100% - 120px);
+            }
+            #tab-budget .budget-category-input {
+                flex-basis: 118px;
+                width: 118px !important;
+            }
+        }
+
+</style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
 <!-- ========================================================= -->
@@ -4772,7 +4877,7 @@ let compareHtml = `
                 const max = Math.max(0, idealBudget-tot+lim);
                 const safeCat = escapeHTML(cat);
                 const encodedCat = encodeURIComponent(cat);
-                c.insertAdjacentHTML('beforeend', `<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-2"><div class="flex justify-between items-center"><span class="font-bold text-sm flex gap-2"><i class="fa-solid ${CATEGORY_ICONS[cat]||'fa-tag'} w-5 text-slate-400"></i> ${safeCat}</span><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" onchange="idealCategoryBudgets[decodeURIComponent('${encodedCat}')]=getRawNumber(this.value); localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); renderCategoryBudgets();" value="${lim>0?lim.toLocaleString('vi-VN'):''}" placeholder="Mục tiêu tự đặt" class="w-24 text-right border rounded p-1.5 text-xs focus:ring-1 focus:ring-indigo-500 outline-none" style="font-size:16px"></div><div class="h-2 bg-slate-100 rounded-full w-full"><div class="h-full ${barColor} rounded-full transition-all duration-500" style="width:${lim>0?percent:(spent>0?100:0)}%"></div></div><div class="flex justify-between text-xs text-slate-500 mt-1"><span>Đã chi: <strong>${formatCurrency(spent)}</strong></span><span class="${spent>lim&&lim>0?'text-rose-600 font-bold':''}">${lim>0?percent+'%':''}</span></div></div>`);
+                c.insertAdjacentHTML('beforeend', `<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-2"><div class="flex justify-between items-center"><span class="font-bold text-sm flex gap-2"><i class="fa-solid ${CATEGORY_ICONS[cat]||'fa-tag'} w-5 text-slate-400"></i> ${safeCat}</span><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" onchange="idealCategoryBudgets[decodeURIComponent('${encodedCat}')]=getRawNumber(this.value); localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); renderCategoryBudgets();" value="${lim>0?lim.toLocaleString('vi-VN'):''}" placeholder="Chưa đặt mục tiêu" class="budget-category-input w-36 min-w-0 text-right border rounded p-1.5 text-xs focus:ring-1 focus:ring-indigo-500 outline-none" style="font-size:16px"></div><div class="h-2 bg-slate-100 rounded-full w-full"><div class="h-full ${barColor} rounded-full transition-all duration-500" style="width:${lim>0?percent:(spent>0?100:0)}%"></div></div><div class="flex justify-between text-xs text-slate-500 mt-1"><span>Đã chi: <strong>${formatCurrency(spent)}</strong></span><span class="${spent>lim&&lim>0?'text-rose-600 font-bold':''}">${lim>0?percent+'%':''}</span></div></div>`);
 
             });
         }
