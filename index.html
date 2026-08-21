@@ -851,6 +851,287 @@
             .mobile-tab-btn { min-width: 36px !important; }
             #stat-income, #stat-expense, #stat-net { font-size: 15px !important; }
         }
+
+        /* =========================================================
+           MOBILE TEXT SAFETY — không cho dữ liệu động phá chiều ngang
+           Áp dụng cho tên danh mục, tài khoản, ghi chú, AI và số liệu.
+        ========================================================= */
+        @media (max-width: 767px) {
+            html, body { overflow-x: hidden !important; }
+
+            /* Mọi flex item chứa text động đều phải được phép co lại. */
+            .flex > .min-w-0,
+            .flex > [class*="flex-1"],
+            .grid > .min-w-0 {
+                min-width: 0 !important;
+            }
+
+            /* Dashboard stat cards: giữ card gọn, text dài xuống dòng có chủ đích. */
+            #tab-dashboard .grid.grid-cols-2.md\:grid-cols-4 > div,
+            #tab-dashboard .grid.grid-cols-2.md\:grid-cols-4 > button {
+                min-width: 0 !important;
+                overflow: hidden !important;
+            }
+
+            #tab-dashboard #stat-income,
+            #tab-dashboard #stat-expense,
+            #tab-dashboard #stat-net {
+                min-width: 0 !important;
+                max-width: 100% !important;
+                overflow-wrap: anywhere !important;
+                word-break: break-word !important;
+                white-space: normal !important;
+                line-height: 1.15 !important;
+            }
+
+            #tab-dashboard #stat-top-expense {
+                min-width: 0 !important;
+                max-width: 100% !important;
+                white-space: normal !important;
+                overflow: hidden !important;
+                overflow-wrap: anywhere !important;
+                word-break: break-word !important;
+                line-height: 1.18 !important;
+                display: -webkit-box !important;
+                -webkit-box-orient: vertical !important;
+                -webkit-line-clamp: 2 !important;
+            }
+
+            #tab-dashboard #stat-top-expense-amount {
+                max-width: 100% !important;
+                white-space: normal !important;
+                overflow-wrap: anywhere !important;
+                word-break: break-word !important;
+            }
+
+            /* Ví & Tài khoản: tên ví co lại, số dư luôn nằm trong card. */
+            #account-balances-list {
+                width: 100% !important;
+                min-width: 0 !important;
+                overflow-x: hidden !important;
+            }
+
+            #account-balances-list > div {
+                min-width: 0 !important;
+                width: 100% !important;
+                align-items: center !important;
+                gap: 10px !important;
+            }
+
+            #account-balances-list > div > div:first-child {
+                min-width: 0 !important;
+                flex: 1 1 auto !important;
+            }
+
+            #account-balances-list > div > div:first-child > span {
+                min-width: 0 !important;
+                display: block !important;
+                white-space: normal !important;
+                overflow-wrap: anywhere !important;
+                word-break: break-word !important;
+                line-height: 1.2 !important;
+            }
+
+            #account-balances-list > div > span {
+                flex: 0 0 auto !important;
+                max-width: 42% !important;
+                text-align: right !important;
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+            }
+
+            /* Tổng tài sản: cho phép co giãn thay vì ép một hàng. */
+            #balance-total {
+                min-width: 0 !important;
+                max-width: 58% !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+                white-space: nowrap !important;
+                text-align: right !important;
+            }
+
+            #balance-total-label {
+                min-width: 0 !important;
+                overflow-wrap: anywhere !important;
+            }
+
+            /* Header/card titles and explanatory text. */
+            #tab-dashboard h1,
+            #tab-dashboard h2,
+            #tab-dashboard h3,
+            #tab-dashboard h4,
+            #tab-dashboard p,
+            #tab-dashboard span,
+            #tab-assistant h1,
+            #tab-assistant h2,
+            #tab-assistant h3,
+            #tab-assistant h4,
+            #tab-assistant p,
+            #tab-assistant span {
+                max-width: 100%;
+                overflow-wrap: anywhere;
+                word-break: break-word;
+            }
+
+            /* AI cards: không ép một dòng cho dữ liệu sinh động. */
+            .ai-card,
+            .ai-card * {
+                min-width: 0;
+            }
+
+            #ai-projection-text,
+            #ai-projection-detail-text,
+            #ai-compare-text,
+            #ai-action-text,
+            #ai-save-text,
+            #ai-executive-summary,
+            #ai-pace-text {
+                white-space: normal !important;
+                overflow-wrap: anywhere !important;
+                word-break: break-word !important;
+            }
+
+            /* Các hàng flex có tiêu đề + nút/icon: tránh icon ép text tràn. */
+            #tab-dashboard .flex.justify-between.items-start,
+            #tab-dashboard .flex.justify-between.items-center,
+            #tab-assistant .flex.justify-between.items-start,
+            #tab-assistant .flex.justify-between.items-center {
+                min-width: 0 !important;
+            }
+
+            /* Nội dung filter / picker dài vẫn phải ở trong viewport. */
+            .month-picker-trigger,
+            .month-picker-action,
+            .month-picker-month,
+            .transaction-filter-chip {
+                min-width: 0 !important;
+                max-width: 100% !important;
+                overflow-wrap: anywhere !important;
+                word-break: break-word !important;
+            }
+
+            /* Giao dịch mobile: cột tiền có thể co nhưng không đẩy nội dung. */
+            #all-transactions-cards .transaction-data-card {
+                min-width: 0 !important;
+            }
+
+            #all-transactions-cards .transaction-data-card > .flex {
+                min-width: 0 !important;
+            }
+
+            #all-transactions-cards .transaction-data-card > .flex:last-child {
+                flex: 0 0 88px !important;
+                max-width: 88px !important;
+            }
+
+            /* Modal/list item chứa tên dài. */
+            #initialBalanceModal .min-w-0,
+            #transactionModal .min-w-0,
+            #mobileMenuSheet .min-w-0 {
+                min-width: 0 !important;
+            }
+
+            #initialBalanceModal span,
+            #transactionModal label,
+            #mobileMenuSheet span {
+                overflow-wrap: anywhere;
+                word-break: break-word;
+            }
+        }
+
+
+        /* =========================================================
+           DESKTOP LAYOUT REBALANCE — Smart Assistant
+           Giảm cảm giác chật: ưu tiên hierarchy thay vì ép mọi card
+           nằm ngang trên cùng một hàng.
+        ========================================================= */
+        @media (min-width: 1280px) {
+            #tab-assistant .assistant-hero {
+                display: grid !important;
+                grid-template-columns: minmax(0, 1.65fr) minmax(360px, .95fr) !important;
+                column-gap: 24px !important;
+                row-gap: 22px !important;
+                align-items: stretch !important;
+            }
+
+            #tab-assistant .assistant-hero > .flex.flex-col {
+                grid-column: 1 / -1 !important;
+                min-width: 0 !important;
+            }
+
+            #tab-assistant .assistant-hero > .grid {
+                grid-column: 1 !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                gap: 16px !important;
+                min-width: 0 !important;
+                align-content: start !important;
+            }
+
+            #tab-assistant .assistant-hero > .grid .ai-card {
+                min-width: 0 !important;
+                padding: 18px !important;
+            }
+
+            #tab-assistant .assistant-hero > .ai-card.border-indigo-100 {
+                grid-column: 2 !important;
+                grid-row: 2 !important;
+                min-width: 0 !important;
+                height: 100% !important;
+                padding: 20px !important;
+            }
+
+            #tab-assistant .assistant-hero > .ai-card.border-indigo-100 .flex {
+                min-width: 0 !important;
+            }
+
+            #tab-assistant .assistant-hero > .ai-card.border-indigo-100 #ai-executive-summary {
+                max-width: 72ch !important;
+            }
+
+            #tab-assistant .assistant-hero > .grid + .ai-card.border-indigo-100 {
+                align-self: stretch !important;
+            }
+
+            #tab-assistant > .ai-card {
+                padding: 22px !important;
+            }
+        }
+
+        /* Laptop/tablet: 2-column card grid, summary remains full width. */
+        @media (min-width: 1024px) and (max-width: 1279px) {
+            #tab-assistant .assistant-hero {
+                padding: 22px !important;
+            }
+
+            #tab-assistant .assistant-hero > .grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                gap: 16px !important;
+            }
+
+            #tab-assistant .assistant-hero > .ai-card.border-indigo-100 {
+                margin-top: 2px !important;
+            }
+        }
+
+        /* Desktop typography: more readable, less compressed. */
+        @media (min-width: 1024px) {
+            #tab-assistant .assistant-hero h3 {
+                max-width: 34ch;
+            }
+
+            #tab-assistant .assistant-hero #ai-summary-text {
+                max-width: 78ch;
+                line-height: 1.55;
+            }
+
+            #tab-assistant .ai-card p,
+            #tab-assistant .ai-card div,
+            #tab-assistant .ai-card li {
+                overflow-wrap: anywhere;
+            }
+        }
+
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
@@ -3568,7 +3849,7 @@
             for(let a in cAccs) { 
                 const icon = ics[i % ics.length];
                 const color = colors[i % colors.length];
-                l.insertAdjacentHTML('beforeend', `<div class="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl"><div class="flex items-center gap-3"><div class="bg-${color}-100 text-${color}-600 w-8 h-8 rounded-lg flex items-center justify-center"><i class="fa-solid ${icon}"></i></div><span class="font-semibold text-slate-700 text-sm">${escapeHTML(a)}</span></div><span class="font-bold text-slate-900">${maskCurrency(cAccs[a])}</span></div>`); 
+                l.insertAdjacentHTML('beforeend', `<div class="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl min-w-0 gap-3"><div class="flex items-center gap-3 min-w-0 flex-1"><div class="bg-${color}-100 text-${color}-600 w-8 h-8 rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid ${icon}"></i></div><span class="font-semibold text-slate-700 text-sm min-w-0 break-words whitespace-normal leading-tight">${escapeHTML(a)}</span></div><span class="font-bold text-slate-900 shrink-0 whitespace-nowrap">${maskCurrency(cAccs[a])}</span></div>`); 
                 gTot+=cAccs[a]; i++;
             }
             
