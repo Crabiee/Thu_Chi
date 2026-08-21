@@ -1177,6 +1177,30 @@
         #tab-transactions table td:nth-child(6) {
             white-space: nowrap;
         }
+        #tab-transactions table th:nth-child(2),
+        #tab-transactions table td:nth-child(2) {
+            white-space: nowrap !important;
+            overflow: hidden;
+        }
+        #tab-transactions table td:nth-child(2) > span {
+            white-space: nowrap !important;
+        }
+        @media (min-width: 1280px) {
+            #tab-transactions table th:nth-child(1),
+            #tab-transactions table td:nth-child(1) { width: 9%; }
+            #tab-transactions table th:nth-child(2),
+            #tab-transactions table td:nth-child(2) { width: 9%; }
+            #tab-transactions table th:nth-child(3),
+            #tab-transactions table td:nth-child(3) { width: 19%; }
+            #tab-transactions table th:nth-child(4),
+            #tab-transactions table td:nth-child(4) { width: 14%; }
+            #tab-transactions table th:nth-child(5),
+            #tab-transactions table td:nth-child(5) { width: 26%; }
+            #tab-transactions table th:nth-child(6),
+            #tab-transactions table td:nth-child(6) { width: 13%; }
+            #tab-transactions table th:nth-child(7),
+            #tab-transactions table td:nth-child(7) { width: 10%; }
+        }
 
         /* Budget: reduce visual bulk while keeping 2-column desktop layout. */
         #tab-budget > .bg-white { gap: 1.15rem !important; }
@@ -1237,6 +1261,105 @@
             }
         }
 
+
+        /* =========================================================
+           ASSISTANT LAYOUT V2 — thoáng, ưu tiên đọc và không ép 4 card
+        ========================================================= */
+        @media (min-width: 1280px) {
+            #tab-assistant .assistant-hero {
+                display: grid !important;
+                grid-template-columns: minmax(0, 1.72fr) minmax(420px, .92fr) !important;
+                grid-template-rows: auto minmax(0, 1fr) !important;
+                gap: 22px 24px !important;
+                align-items: stretch !important;
+                padding: 28px !important;
+            }
+            #tab-assistant .assistant-hero > .flex.flex-col {
+                grid-column: 1 / -1 !important;
+                grid-row: 1 !important;
+                min-width: 0 !important;
+                padding-bottom: 2px !important;
+            }
+            #tab-assistant .assistant-hero > .grid {
+                grid-column: 1 !important;
+                grid-row: 2 !important;
+                display: grid !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                gap: 18px !important;
+                align-content: stretch !important;
+                min-width: 0 !important;
+            }
+            #tab-assistant .assistant-hero > .grid .ai-card {
+                min-width: 0 !important;
+                min-height: 220px !important;
+                padding: 22px !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: flex-start !important;
+            }
+            #tab-assistant .assistant-hero > .ai-card.border-indigo-100 {
+                grid-column: 2 !important;
+                grid-row: 2 !important;
+                height: 100% !important;
+                min-width: 0 !important;
+                padding: 24px !important;
+                overflow: hidden !important;
+            }
+            #tab-assistant .assistant-hero > .ai-card.border-indigo-100 #ai-executive-summary {
+                max-width: 62ch !important;
+            }
+            #tab-assistant .assistant-hero > .grid .ai-card p,
+            #tab-assistant .assistant-hero > .grid .ai-card div,
+            #tab-assistant .assistant-hero > .grid .ai-card strong {
+                overflow-wrap: anywhere;
+                word-break: break-word;
+            }
+        }
+
+        @media (min-width: 1024px) and (max-width: 1279px) {
+            #tab-assistant .assistant-hero {
+                display: grid !important;
+                grid-template-columns: 1fr !important;
+                gap: 18px !important;
+                padding: 22px !important;
+            }
+            #tab-assistant .assistant-hero > .flex.flex-col {
+                grid-column: 1 !important;
+            }
+            #tab-assistant .assistant-hero > .grid {
+                grid-column: 1 !important;
+                display: grid !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                gap: 16px !important;
+            }
+            #tab-assistant .assistant-hero > .ai-card.border-indigo-100 {
+                grid-column: 1 !important;
+                grid-row: auto !important;
+                height: auto !important;
+                padding: 20px !important;
+            }
+        }
+
+        @media (max-width: 767px) {
+            #tab-assistant .assistant-hero {
+                display: block !important;
+                padding: 16px !important;
+            }
+            #tab-assistant .assistant-hero > .grid {
+                display: grid !important;
+                grid-template-columns: 1fr !important;
+                gap: 12px !important;
+            }
+            #tab-assistant .assistant-hero > .grid .ai-card {
+                min-height: 0 !important;
+                padding: 16px !important;
+            }
+            #tab-assistant .assistant-hero > .ai-card.border-indigo-100 {
+                margin-top: 12px !important;
+                height: auto !important;
+                padding: 16px !important;
+            }
+        }
 </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
@@ -3837,7 +3960,7 @@
                         icon = CATEGORY_ICONS[tx.category] || 'fa-tag';
                     } else if (tx.type === 'proxy') {
                         const isIn = tx.proxyDir === 'in';
-                        badge = `<span class="bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded text-[10px]">Trung gian ${isIn ? '↓' : '↑'}</span>`;
+                        badge = `<span title="Trung gian — không tính vào Thu/Chi" class="bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded text-[10px] inline-flex items-center justify-center whitespace-nowrap">Trung gian ${isIn ? '↓' : '↑'}</span>`;
                         cColor = 'text-amber-600';
                         prefix = isIn ? '+' : '-';
                         icon = 'fa-handshake';
@@ -3848,9 +3971,7 @@
                         icon = 'fa-arrow-right-arrow-left';
                     }
 
-                    const proxyNote = tx.type === 'proxy'
-                        ? '<span class="text-[9px] text-amber-500 font-semibold ml-1">(trung gian — không tính vào thu/chi)</span>'
-                        : '';
+                    const proxyNote = '';
 
                     const txId = encodeURIComponent(String(tx.id));
                     const txCategory = escapeHTML(tx.category || 'Khác');
@@ -3901,7 +4022,6 @@
                             <div class="min-w-0 flex-1">
                                 <div class="whitespace-normal break-words leading-snug">${mobileTitle}</div>
                                 <p class="text-[11px] text-slate-500 whitespace-normal break-words leading-snug mt-0.5">${txAccount}</p>
-                                ${tx.type === 'proxy' ? '<p class="text-[10px] text-amber-500 font-semibold whitespace-normal break-words leading-snug mt-0.5">Trung gian — không tính vào Thu/Chi</p>' : ''}
                                 ${txNotes ? `<p class="text-[11px] text-slate-400 whitespace-normal break-words leading-snug mt-0.5">${txNotes}</p>` : ''}
                             </div>
                         </div>
