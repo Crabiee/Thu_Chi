@@ -1139,6 +1139,7 @@
 </div>
 </div>
 </div>
+</div>
 <div class="ai-card">
 <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
 <h4 class="font-bold text-slate-900 flex items-center gap-2"><i class="fa-solid fa-chart-line text-indigo-500"></i>Nhịp độ chi tiêu trong tháng</h4>
@@ -1153,6 +1154,7 @@
 <div class="ai-card">
 <h4 class="font-bold text-slate-900 mb-3 flex items-center gap-2"><i class="fa-solid fa-arrow-trend-up text-rose-500"></i>Danh mục biến động mạnh nhất</h4>
 <p class="text-xs text-slate-400 mb-2">So với cùng danh mục ở tháng trước.</p>
+<p class="text-[11px] text-amber-500/90 font-medium mb-1 hidden" id="ai-trends-logscale-note"><i class="fa-solid fa-circle-info mr-1"></i>Trục dọc dùng thang log vì có 1 danh mục biến động vượt trội hẳn — số tiền thật vẫn hiện đúng khi rê chuột vào từng cột.</p>
 <div class="relative w-full mb-3" style="height:170px;"><canvas id="trendsChart"></canvas></div>
 <ul class="ai-list text-sm text-slate-600" id="ai-trends-list"></ul>
 </div>
@@ -2849,7 +2851,12 @@
         
         function monthPickerChangeYear(delta) { monthPickerYear += delta; renderMonthPicker(); }
         function monthPickerSetToday() { if (activeMonthPickerTarget) { setMonthPickerValue(activeMonthPickerTarget, getCurrentMonthStr(), true); closeMonthPicker(); } }
-        function monthPickerClear() { if (activeMonthPickerTarget) { setMonthPickerValue(activeMonthPickerTarget, '', true); closeMonthPicker(); } }
+        function monthPickerClear() {
+            if (!activeMonthPickerTarget) return;
+            if (activeMonthPickerTarget === 'dashboard-month-filter') setMonthPickerValue(activeMonthPickerTarget, getCurrentMonthStr(), true);
+            else setMonthPickerValue(activeMonthPickerTarget, '', true);
+            closeMonthPicker();
+        }
 
         document.addEventListener('click', (event) => {
             const popover = document.getElementById('monthPickerPopover');
@@ -3014,10 +3021,25 @@
                 list.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-between p-3 bg-slate-50 border rounded-lg"><div class="min-w-0 flex-1 pr-3"><span class="font-semibold text-slate-700 block truncate">${safeAcc}</span><span class="text-[10px] text-slate-400">Số dư ban đầu</span></div><div class="flex items-center shrink-0"><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" data-account="${encodedAcc}" value="${userAccounts[acc].toLocaleString('vi-VN')}" class="w-24 text-right border rounded-md p-1.5 text-sm font-semibold" style="font-size:16px"><span class="ml-1 text-xs text-slate-500">₫</span><button type="button" title="Đổi tên ví/tài khoản" aria-label="Đổi tên ví/tài khoản ${safeAcc}" onclick="handleRenameAccount(decodeURIComponent('${encodedAcc}'))" class="ml-3 text-indigo-400 hover:text-indigo-600"><i class="fa-solid fa-pen"></i></button><button type="button" title="Xóa ví/tài khoản" aria-label="Xóa ví/tài khoản ${safeAcc}" onclick="handleRemoveAccount(decodeURIComponent('${encodedAcc}'))" class="ml-3 text-rose-400 hover:text-rose-600"><i class="fa-solid fa-trash"></i></button></div></div>`);
             });
         }
+        function persistAccountsAndSync() {
+            setScopedSetting('personal_accounts_v4', JSON.stringify(userAccounts));
+            if (fbCurrentUid && firestoreV2Ready && syncReady) {
+                clearTimeout(fbSaveTimer);
+                void pushLocalDataToFirestore();
+            } else if (fbCurrentUid) {
+                pendingSyncAfterReady = true;
+            }
+        }
         function handleAddAccount() {
             const n = document.getElementById('new-account-input').value.trim();
-            if(!n || userAccounts[n]!==undefined) return showToast("Không hợp lệ", "fa-xmark", "text-rose-500");
-            userAccounts[n] = 0; document.getElementById('new-account-input').value=''; renderAccountSetupList(); showToast(`Đã thêm ví: ${n}`, "fa-circle-check", "text-emerald-400");
+            if(!n || Object.prototype.hasOwnProperty.call(userAccounts, n)) return showToast("Không hợp lệ", "fa-xmark", "text-rose-500");
+            if (n.length > 200) return showToast("Tên quá dài (tối đa 200 ký tự).", "fa-xmark", "text-rose-500");
+            userAccounts[n] = 0;
+            document.getElementById('new-account-input').value='';
+            persistAccountsAndSync();
+            populateAccountSelects();
+            renderAccountSetupList();
+            showToast(`Đã thêm ví: ${n}`, "fa-circle-check", "text-emerald-400");
         }
         function handleRenameAccount(oldName) {
             const currentName = String(oldName || '').trim();
@@ -3052,7 +3074,7 @@
                     return next;
                 });
 
-                localStorage.setItem('personal_accounts_v4', JSON.stringify(userAccounts));
+                persistAccountsAndSync();
                 affectedTransactionIds.forEach(id => markTransactionDirty(id));
 
                 if (txStorageUid) {
@@ -3089,7 +3111,18 @@
             if (usedBy.length) {
                 return showToast(`Không thể xóa ${a}: còn ${usedBy.length} giao dịch đang dùng ví này.`, "fa-triangle-exclamation", "text-rose-500");
             }
-            openConfirm("Xóa", `Xóa "${a}"?`, () => { delete userAccounts[a]; renderAccountSetupList(); showToast(`Đã xóa ${a}`, "fa-trash", "text-rose-400"); });
+            openConfirm("Xóa", `Xóa "${a}"?`, () => {
+                const oldFilterAccount = document.getElementById('filter-account')?.value || 'all';
+                delete userAccounts[a];
+                persistAccountsAndSync();
+                populateAccountSelects();
+                const filterAccount = document.getElementById('filter-account');
+                if (filterAccount) filterAccount.value = oldFilterAccount === a ? 'all' : oldFilterAccount;
+                renderAccountSetupList();
+                updateDashboard();
+                applyFilters();
+                showToast(`Đã xóa ${a}`, "fa-trash", "text-rose-400");
+            });
         }
         function saveAllAccounts() {
             // Lưu số dư ban đầu người dùng nhập — không đổi logic, không checkpoint
@@ -3097,7 +3130,7 @@
                 const a = decodeURIComponent(e.getAttribute('data-account') || '');
                 if (Object.prototype.hasOwnProperty.call(userAccounts, a)) userAccounts[a] = getRawNumber(e.value);
             });
-            localStorage.setItem('personal_accounts_v4', JSON.stringify(userAccounts));
+            persistAccountsAndSync();
             populateAccountSelects(); updateDashboard(); closeModal('initialBalanceModal');
             showToast('Đã lưu số dư ban đầu', 'fa-check', 'text-emerald-400');
         }
@@ -3512,7 +3545,12 @@
 
         // ================== DASHBOARD CALC ==================
         function updateDashboard() {
-            const m = document.getElementById('dashboard-month-filter').value;
+            let m = document.getElementById('dashboard-month-filter').value;
+            if (!/^\d{4}-\d{2}$/.test(m)) {
+                m = getCurrentMonthStr();
+                const monthInput = document.getElementById('dashboard-month-filter');
+                if (monthInput) monthInput.value = m;
+            }
             // Dùng computeCurrentBalances() thay vì cộng thủ công để tránh đếm đôi
             let cAccs = computeCurrentBalances(), gTot = 0, mIn = 0, mEx = 0, topA = 0, topC = "-", cExp = {}, yIn = Array(12).fill(0), yEx = Array(12).fill(0);
             
@@ -3802,18 +3840,44 @@
                 const curVals = trends.length ? trends.map(t => t.cur) : [0];
                 const prevVals = trends.length ? trends.map(t => t.prev) : [0];
                 const curColors = trends.length ? trends.map(t => t.diff > 0 ? '#fb7185' : '#34d399') : ['#e2e8f0'];
+
+                // Nếu 1 danh mục biến động quá lớn so với các danh mục còn lại (ví dụ 1 khoản chi
+                // đột biến như trả nợ 1 lần), thang tuyến tính sẽ nén phẳng mọi cột khác gần như
+                // biến mất. Tự động chuyển sang thang log khi chênh lệch quá 15 lần để vẫn thấy
+                // được biến động của các danh mục nhỏ hơn, không cần ẩn hay làm tròn dữ liệu thật.
+                const allVals = [...curVals, ...prevVals].filter(v => v > 0);
+                const maxV = allVals.length ? Math.max(...allVals) : 0;
+                const minV = allVals.length ? Math.min(...allVals) : 0;
+                const useLog = trends.length > 1 && minV > 0 && maxV / minV > 15;
+                const logNoteEl = document.getElementById('ai-trends-logscale-note');
+                if (logNoteEl) logNoteEl.classList.toggle('hidden', !useLog);
+                const logFloor = useLog ? Math.max(1, Math.round(minV * 0.15)) : 0;
+                const toPlot = (v) => useLog && v === 0 ? logFloor : v;
+                const curPlot = curVals.map(toPlot);
+                const prevPlot = prevVals.map(toPlot);
+
                 charts.trends = new Chart(trendCtx, {
                     type: 'bar',
                     data: { labels, datasets: [
-                        { label: 'Tháng trước', data: prevVals, backgroundColor: 'rgba(148,163,184,.5)', borderRadius: 5, barPercentage: .7, categoryPercentage: .7 },
-                        { label: 'Tháng này', data: curVals, backgroundColor: curColors, borderRadius: 5, barPercentage: .7, categoryPercentage: .7 }
+                        { label: 'Tháng trước', data: prevPlot, backgroundColor: 'rgba(148,163,184,.5)', borderRadius: 5, barPercentage: .7, categoryPercentage: .7 },
+                        { label: 'Tháng này', data: curPlot, backgroundColor: curColors, borderRadius: 5, barPercentage: .7, categoryPercentage: .7 }
                     ] },
                     options: {
                         responsive: true, maintainAspectRatio: false, animation: { duration: 700, easing: 'easeOutQuart' },
-                        plugins: { legend: { position: 'top', align: 'end', labels: { boxWidth: 10, usePointStyle: true, font: { size: 10 } } }, tooltip: { backgroundColor: chartTheme.tooltipBg, callbacks: { label: (c) => `${c.dataset.label}: ${formatCurrency(c.raw)}` } } },
+                        plugins: {
+                            legend: { position: 'top', align: 'end', labels: { boxWidth: 10, usePointStyle: true, font: { size: 10 } } },
+                            tooltip: {
+                                backgroundColor: chartTheme.tooltipBg,
+                                callbacks: {
+                                    label: (c) => `${c.dataset.label}: ${formatCurrency(c.datasetIndex === 0 ? prevVals[c.dataIndex] : curVals[c.dataIndex])}`
+                                }
+                            }
+                        },
                         scales: {
                             x: { grid: { display: false }, ticks: { font: { size: 10 }, color: chartTheme.text } },
-                            y: { beginAtZero: true, grid: { color: chartTheme.grid }, ticks: { font: { size: 10 }, color: chartTheme.text, callback: (v) => formatCompactCurrency(v) } }
+                            y: useLog
+                                ? { type: 'logarithmic', grid: { color: chartTheme.grid }, ticks: { font: { size: 10 }, color: chartTheme.text, callback: (v) => { const s = String(v)[0]; return (s === '1' || s === '2' || s === '5') ? formatCompactCurrency(v) : ''; } } }
+                                : { beginAtZero: true, grid: { color: chartTheme.grid }, ticks: { font: { size: 10 }, color: chartTheme.text, callback: (v) => formatCompactCurrency(v) } }
                         }
                     }
                 });
@@ -5846,6 +5910,9 @@ let compareHtml = `
                         syncVersion: Math.max(1, Number(localTx.syncVersion) || 1),
                         serverUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true });
+                    if (localTomb && compareTransactionToTombstone(localTx, localTomb) > 0) {
+                        batch.delete(firestoreTombstonesRef(uid).doc(id));
+                    }
                     count++;
                 }
             });
