@@ -3201,9 +3201,8 @@ tbody tr { animation: none !important; }
                 _origLocalStorageSetItem(scopedSettingsKey(SETTINGS_TIMESTAMP_KEYS[key], uid), ts);
                 setSettingMutationId(key, mutationId, uid);
             }
-            if (DRIVE_SYNC_KEYS.includes(key) && typeof scheduleDriveSync === 'function') {
-                localSyncGeneration++;
-                scheduleDriveSync();
+            if (DRIVE_SYNC_KEYS.includes(key) && typeof triggerSettingsSync === 'function') {
+                triggerSettingsSync();
             }
         }
         function removeScopedSetting(key, uid = fbCurrentUid, options = {}) {
@@ -3214,9 +3213,8 @@ tbody tr { animation: none !important; }
                 _origLocalStorageSetItem(scopedSettingsKey(SETTINGS_TIMESTAMP_KEYS[key], uid), ts);
                 setSettingMutationId(key, mutationId, uid);
             }
-            if (DRIVE_SYNC_KEYS.includes(key)) {
-                localSyncGeneration++;
-                if (typeof scheduleDriveSync === 'function') scheduleDriveSync();
+            if (DRIVE_SYNC_KEYS.includes(key) && typeof triggerSettingsSync === 'function') {
+                triggerSettingsSync();
             }
         }
         function migrateLegacyTransactionFallbackToUid(uid, allowLegacyMigration) {
@@ -3851,12 +3849,58 @@ tbody tr { animation: none !important; }
         // hoạt - nếu người dùng chỉ sửa cài đặt rồi tắt app/mất mạng ngay sau đó mà không có
         // hành động nào khác, thay đổi sẽ kẹt lại cục bộ và không bao giờ tới được thiết bị
         // khác. Mọi hàm sửa cài đặt phải gọi hàm này ngay sau khi ghi localStorage.
+        // Settings phải có đường đồng bộ riêng, không phụ thuộc giao dịch.
+        // Trước đây triggerSettingsSync() gọi pushLocalDataToFirestore(), nên nếu
+        // luồng transaction đang bận/lỗi thì settings (Ví, Danh mục, Ngân sách, PIN)
+        // cũng không bao giờ tới Firestore.
+        let settingsSaveTimer = null;
+        let settingsPushInFlight = false;
+        let settingsPushRequested = false;
+        let pendingSettingsSync = false;
+
         function triggerSettingsSync() {
-            if (fbCurrentUid && firestoreV2Ready && syncReady) {
-                clearTimeout(fbSaveTimer);
-                void pushLocalDataToFirestore();
-            } else if (fbCurrentUid) {
-                pendingSyncAfterReady = true;
+            if (!fbCurrentUid) {
+                pendingSettingsSync = true;
+                return;
+            }
+            if (!firestoreV2Ready || !syncReady) {
+                pendingSettingsSync = true;
+                return;
+            }
+            clearTimeout(settingsSaveTimer);
+            settingsSaveTimer = setTimeout(() => { void pushSettingsOnlyToFirestore(); }, 150);
+        }
+
+        async function pushSettingsOnlyToFirestore() {
+            if (!fbCurrentUid || !fbDb || !firestoreV2Ready || !syncReady) {
+                if (fbCurrentUid) pendingSettingsSync = true;
+                return;
+            }
+            if (settingsPushInFlight) {
+                settingsPushRequested = true;
+                return;
+            }
+            settingsPushInFlight = true;
+            settingsPushRequested = false;
+            pendingSettingsSync = false;
+            try {
+                const snapshot = localSyncSnapshot();
+                await pushSettingsV2(fbCurrentUid, snapshot);
+                if (typeof fbDb.waitForPendingWrites === 'function') await fbDb.waitForPendingWrites();
+                updateSyncStatusUI('connected', 'Đã đồng bộ cài đặt lúc ' + new Date().toLocaleTimeString('vi-VN'));
+            } catch (err) {
+                pendingSettingsSync = true;
+                console.error('pushSettingsOnlyToFirestore error', err);
+                const errCode = err && err.code ? String(err.code) : 'unknown-error';
+                const errMsg = err && err.message ? String(err.message).split('\n')[0].slice(0, 140) : '';
+                updateSyncStatusUI('error', `Lưu cài đặt thất bại (${errCode}).${errMsg ? ' ' + errMsg : ''}`);
+            } finally {
+                settingsPushInFlight = false;
+                if (settingsPushRequested || pendingSettingsSync) {
+                    settingsPushRequested = false;
+                    clearTimeout(settingsSaveTimer);
+                    if (syncReady && fbCurrentUid) settingsSaveTimer = setTimeout(() => { void pushSettingsOnlyToFirestore(); }, 100);
+                }
             }
         }
         function persistAccountsAndSync() {
@@ -5846,11 +5890,6 @@ let compareHtml = `
         const FIRESTORE_SCHEMA_VERSION = 2;
         const FIRESTORE_TX_SUBCOLLECTION = 'transactions';
         const FIRESTORE_TOMBSTONE_SUBCOLLECTION = 'deletedTransactions';
-        // SETTINGS V3: lưu từng nhóm cài đặt ở document riêng để loại bỏ xung đột
-        // giữa các nhóm khi nhiều thiết bị cùng chỉnh sửa. Cơ chế V2 vẫn được giữ
-        // để tương thích với các thiết bị/file cũ.
-        const FIRESTORE_SETTINGS_V3_SUBCOLLECTION = 'settingsV3';
-        const FIRESTORE_SETTINGS_V3_KEYS = ['categories','accounts','idealBudget','idealCategoryBudgets','pinHash'];
         const FIRESTORE_BATCH_LIMIT = 400;
         const FIRESTORE_TX_CACHE = new Map();
         const FIRESTORE_TOMBSTONE_CACHE = new Map();
@@ -6935,170 +6974,6 @@ let compareHtml = `
             });
         }
 
-        function firestoreSettingsV3Ref(uid = fbCurrentUid, key = '') {
-            return firestoreSettingsRef(uid).collection(FIRESTORE_SETTINGS_V3_SUBCOLLECTION).doc(key);
-        }
-
-        function localSettingsV3Snapshot() {
-            ensureSettingsTimestamps();
-            return {
-                categories: {
-                    value: getStoredJSON('personal_categories_v4', categories || null),
-                    updatedAt: getScopedSetting(SETTINGS_TIMESTAMP_KEYS.personal_categories_v4) || new Date(0).toISOString(),
-                    mutationId: getSettingMutationId('personal_categories_v4') || ''
-                },
-                accounts: {
-                    value: getStoredJSON('personal_accounts_v4', userAccounts || null) || {},
-                    meta: getAccountsMeta(),
-                    updatedAt: getScopedSetting(SETTINGS_TIMESTAMP_KEYS.personal_accounts_v4) || new Date(0).toISOString(),
-                    mutationId: getSettingMutationId('personal_accounts_v4') || ''
-                },
-                idealBudget: {
-                    value: Number(getScopedSetting('personal_ideal_budget_v4')) || 0,
-                    updatedAt: getScopedSetting(SETTINGS_TIMESTAMP_KEYS.personal_ideal_budget_v4) || new Date(0).toISOString(),
-                    mutationId: getSettingMutationId('personal_ideal_budget_v4') || ''
-                },
-                idealCategoryBudgets: {
-                    value: getStoredJSON('personal_ideal_cat_budgets_v4', idealCategoryBudgets || {}) || {},
-                    updatedAt: getScopedSetting(SETTINGS_TIMESTAMP_KEYS.personal_ideal_cat_budgets_v4) || new Date(0).toISOString(),
-                    mutationId: getSettingMutationId('personal_ideal_cat_budgets_v4') || ''
-                },
-                pinHash: {
-                    value: getScopedSetting('personal_pin_hash_v1') || null,
-                    updatedAt: getScopedSetting(SETTINGS_TIMESTAMP_KEYS.personal_pin_hash_v1) || new Date(0).toISOString(),
-                    mutationId: getSettingMutationId('personal_pin_hash_v1') || ''
-                }
-            };
-        }
-
-        function applyV3RemoteSetting(key, remote) {
-            if (!remote || typeof remote !== 'object') return false;
-            const local = localSettingsV3Snapshot()[key];
-            const remoteVersion = { updatedAt: remote.updatedAt || new Date(0).toISOString(), mutationId: remote.mutationId || '' };
-            const localVersion = { updatedAt: local.updatedAt, mutationId: local.mutationId };
-            if (compareSettingVersions(remoteVersion, localVersion) <= 0) return false;
-
-            if (key === 'categories') {
-                categories = remote.value && typeof remote.value === 'object' ? remote.value : categories;
-                _origLocalStorageSetItem(scopedSettingsKey('personal_categories_v4'), JSON.stringify(categories));
-                _origLocalStorageSetItem(scopedSettingsKey(SETTINGS_TIMESTAMP_KEYS.personal_categories_v4), remoteVersion.updatedAt);
-                setSettingMutationId('personal_categories_v4', remoteVersion.mutationId);
-            } else if (key === 'accounts') {
-                const localAccounts = getStoredJSON('personal_accounts_v4', userAccounts || {}) || {};
-                const localMeta = getAccountsMeta();
-                const merged = mergeAccountsWithMeta(localAccounts, localMeta, remote.value || {}, remote.meta || {});
-                userAccounts = merged.accounts;
-                _origLocalStorageSetItem(scopedSettingsKey('personal_accounts_v4'), JSON.stringify(userAccounts));
-                setAccountsMeta(merged.meta);
-                _origLocalStorageSetItem(scopedSettingsKey(SETTINGS_TIMESTAMP_KEYS.personal_accounts_v4), remoteVersion.updatedAt);
-                setSettingMutationId('personal_accounts_v4', remoteVersion.mutationId);
-            } else if (key === 'idealBudget') {
-                idealBudget = Number(remote.value) || 0;
-                _origLocalStorageSetItem(scopedSettingsKey('personal_ideal_budget_v4'), String(idealBudget));
-                _origLocalStorageSetItem(scopedSettingsKey(SETTINGS_TIMESTAMP_KEYS.personal_ideal_budget_v4), remoteVersion.updatedAt);
-                setSettingMutationId('personal_ideal_budget_v4', remoteVersion.mutationId);
-            } else if (key === 'idealCategoryBudgets') {
-                idealCategoryBudgets = remote.value && typeof remote.value === 'object' ? remote.value : {};
-                _origLocalStorageSetItem(scopedSettingsKey('personal_ideal_cat_budgets_v4'), JSON.stringify(idealCategoryBudgets));
-                _origLocalStorageSetItem(scopedSettingsKey(SETTINGS_TIMESTAMP_KEYS.personal_ideal_cat_budgets_v4), remoteVersion.updatedAt);
-                setSettingMutationId('personal_ideal_cat_budgets_v4', remoteVersion.mutationId);
-            } else if (key === 'pinHash') {
-                if (remote.value) _origLocalStorageSetItem(scopedSettingsKey('personal_pin_hash_v1'), String(remote.value));
-                else _origLocalStorageRemoveItem(scopedSettingsKey('personal_pin_hash_v1'));
-                _origLocalStorageSetItem(scopedSettingsKey(SETTINGS_TIMESTAMP_KEYS.personal_pin_hash_v1), remoteVersion.updatedAt);
-                setSettingMutationId('personal_pin_hash_v1', remoteVersion.mutationId);
-            } else {
-                return false;
-            }
-            return true;
-        }
-
-        async function pushSettingsV3(uid, snapshot) {
-            if (!fbDb || !uid) return;
-            const defs = [
-                ['categories', snapshot.categories],
-                ['accounts', snapshot.accounts],
-                ['idealBudget', snapshot.idealBudget],
-                ['idealCategoryBudgets', snapshot.idealCategoryBudgets],
-                ['pinHash', snapshot.pinHash]
-            ];
-            for (const [key, local] of defs) {
-                const ref = firestoreSettingsV3Ref(uid, key);
-                await fbDb.runTransaction(async transaction => {
-                    const snap = await transaction.get(ref);
-                    const remote = snap.exists ? (snap.data() || {}) : null;
-                    if (!remote || compareSettingVersions({ updatedAt: local.updatedAt, mutationId: local.mutationId }, { updatedAt: remote.updatedAt, mutationId: remote.mutationId }) > 0) {
-                        const payload = {
-                            schemaVersion: 3,
-                            key,
-                            updatedAt: local.updatedAt || new Date().toISOString(),
-                            mutationId: local.mutationId || makeMutationId()
-                        };
-                        if (key === 'accounts') {
-                            const merged = mergeAccountsWithMeta(local.value || {}, local.meta || {}, remote?.value || {}, remote?.meta || {});
-                            payload.value = merged.accounts;
-                            payload.meta = merged.meta;
-                        } else {
-                            payload.value = local.value;
-                        }
-                        transaction.set(ref, payload, { merge: true });
-                    } else if (key === 'accounts') {
-                        // Hai thiết bị có thể cùng sửa ví khác nhau: luôn merge theo từng ví
-                        // ngay cả khi group version của local không thắng.
-                        const merged = mergeAccountsWithMeta(local.value || {}, local.meta || {}, remote?.value || {}, remote?.meta || {});
-                        transaction.set(ref, {
-                            schemaVersion: 3,
-                            key,
-                            updatedAt: Math.max(firestoreTime(local.updatedAt), firestoreTime(remote.updatedAt)) ? new Date(Math.max(firestoreTime(local.updatedAt), firestoreTime(remote.updatedAt))).toISOString() : new Date().toISOString(),
-                            mutationId: compareSettingVersions({updatedAt: local.updatedAt, mutationId: local.mutationId}, {updatedAt: remote.updatedAt, mutationId: remote.mutationId}) >= 0 ? (local.mutationId || remote.mutationId || makeMutationId()) : (remote.mutationId || local.mutationId || makeMutationId()),
-                            value: merged.accounts,
-                            meta: merged.meta
-                        }, { merge: true });
-                    }
-                });
-            }
-        }
-
-        async function loadSettingsV3(uid) {
-            if (!fbDb || !uid) return false;
-            const refs = FIRESTORE_SETTINGS_V3_KEYS.map(key => firestoreSettingsV3Ref(uid, key));
-            const snaps = await Promise.all(refs.map(ref => ref.get({ source: 'server' })));
-            let changed = false;
-            snaps.forEach((snap, idx) => {
-                if (snap.exists) changed = applyV3RemoteSetting(FIRESTORE_SETTINGS_V3_KEYS[idx], snap.data() || {}) || changed;
-            });
-            if (changed) {
-                populateAccountSelects();
-                updateDashboard();
-                applyFilters();
-                renderCategoryBudgets();
-                if (typeof renderCategoryManager === 'function') renderCategoryManager();
-                const budgetInput = document.getElementById('input-overall-budget');
-                if (budgetInput && document.activeElement !== budgetInput) budgetInput.value = idealBudget > 0 ? idealBudget.toLocaleString('vi-VN') : '';
-                const balanceModal = document.getElementById('initialBalanceModal');
-                if (balanceModal && !balanceModal.classList.contains('hidden')) renderAccountSetupList();
-            }
-            return changed;
-        }
-
-        function startSettingsV3Listeners(uid) {
-            return FIRESTORE_SETTINGS_V3_KEYS.map(key => firestoreSettingsV3Ref(uid, key).onSnapshot({ includeMetadataChanges: false }, snap => {
-                if (snap.metadata.hasPendingWrites || !snap.exists) return;
-                if (applyV3RemoteSetting(key, snap.data() || {})) {
-                    populateAccountSelects();
-                    updateDashboard();
-                    applyFilters();
-                    renderCategoryBudgets();
-                    if (typeof renderCategoryManager === 'function') renderCategoryManager();
-                    const budgetInput = document.getElementById('input-overall-budget');
-                    if (budgetInput && document.activeElement !== budgetInput) budgetInput.value = idealBudget > 0 ? idealBudget.toLocaleString('vi-VN') : '';
-                    const balanceModal = document.getElementById('initialBalanceModal');
-                    if (balanceModal && !balanceModal.classList.contains('hidden')) renderAccountSetupList();
-                    updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
-                }
-            }, err => console.error('Firestore settingsV3 listener error', key, err)));
-        }
-
         async function pushLocalDataToFirestore(options = {}) {
             if (!fbCurrentUid || !fbDb || !firestoreV2Ready) return;
             if (syncPushInFlight) { syncPushRequested = true; return; }
@@ -7116,7 +6991,6 @@ let compareHtml = `
                     result.retryIds.forEach(id => retryIds.add(String(id)));
                 }
                 await pushSettingsV2(fbCurrentUid, snapshot, options);
-                await pushSettingsV3(fbCurrentUid, localSettingsV3Snapshot());
                 if (fbDb && typeof fbDb.waitForPendingWrites === 'function') await fbDb.waitForPendingWrites();
 
                 // Chỉ clear dirty flag nếu phiên bản dirty chưa thay đổi kể từ lúc push bắt đầu.
@@ -7165,10 +7039,10 @@ let compareHtml = `
             try {
                 await ensureServerSyncFields(fbCurrentUid);
                 await loadV2DeltaState(fbCurrentUid);
-                await loadSettingsV3(fbCurrentUid);
                 syncReady = true;
                 if (DIRTY_TX_IDS.size || DIRTY_TOMBSTONE_IDS.size || pendingSyncAfterReady) { pendingSyncAfterReady = false; await pushLocalDataToFirestore(); }
-                else updateSyncStatusUI('connected', 'Đã kiểm tra và đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
+                if (pendingSettingsSync) await pushSettingsOnlyToFirestore();
+                if (!DIRTY_TX_IDS.size && !DIRTY_TOMBSTONE_IDS.size && !pendingSettingsSync) updateSyncStatusUI('connected', 'Đã kiểm tra và đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
                 showToast('Đã kiểm tra - dữ liệu mới nhất đã được cập nhật.', 'fa-check', 'text-emerald-400');
             } catch (err) {
                 console.error('manualSyncNow v2 error', err);
@@ -7251,10 +7125,6 @@ let compareHtml = `
                     const hasLocalTransactionDataset = Array.isArray(transactions) && transactions.length > 0;
                     if (getTxSyncCursor(user.uid) && hasLocalTransactionDataset) await loadV2DeltaState(user.uid);
                     else await loadV2ServerState(user.uid);
-                    // SETTINGS V3 là nguồn đồng bộ cài đặt chính giữa các bản file mới.
-                    // Nó nằm ở subcollection riêng nên chỉnh sửa Ví/Tài khoản, Danh mục,
-                    // Ngân sách và PIN không còn phụ thuộc vào thứ tự ghi của document V2.
-                    await loadSettingsV3(user.uid);
 
                     // IMPORTANT: hydration can change the in-memory transaction dataset without
                     // causing mergeRemoteV2Data() to report a logical diff (for example, the
@@ -7270,16 +7140,11 @@ let compareHtml = `
                     firestoreV2Ready = true;
                     syncReady = true;
                     await startV2Listeners(user.uid);
-                    const settingsV3Unsubs = startSettingsV3Listeners(user.uid);
-                    fbUnsubscribe = fbUnsubscribe.concat(settingsV3Unsubs);
                     updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
-                    // Đẩy ngay settings cục bộ lên V3 sau khi server đã được hydrate.
-                    // Nếu server đã có bản mới hơn, transaction V3 sẽ giữ bản mới và listener
-                    // lập tức đưa nó về máy; nếu server chưa có, local sẽ được ghi ngay.
-                    try { await pushSettingsV3(user.uid, localSettingsV3Snapshot()); } catch (e) { console.warn('Initial settings V3 push failed:', e); }
                     // Sau hydration, luôn kiểm tra lại settings local. Điều này bảo đảm các thay đổi
                     // được thực hiện rất sớm trong vòng đời app hoặc khi mạng chập chờn không bị kẹt local.
                     if (pendingSyncAfterReady || DIRTY_TX_IDS.size || DIRTY_TOMBSTONE_IDS.size) { pendingSyncAfterReady = false; scheduleDriveSync(); }
+                    if (pendingSettingsSync) { clearTimeout(settingsSaveTimer); settingsSaveTimer = setTimeout(() => { void pushSettingsOnlyToFirestore(); }, 100); }
                 } catch (err) {
                     firestoreV2Ready = false; syncReady = false;
                     console.error('Firestore v2 startup error', err);
@@ -7320,10 +7185,10 @@ let compareHtml = `
             updateSyncStatusUI('syncing', 'Đang đồng bộ...');
             try {
                 await loadV2DeltaState(fbCurrentUid);
-                await loadSettingsV3(fbCurrentUid);
                 const localPending = DIRTY_TX_IDS.size + DIRTY_TOMBSTONE_IDS.size;
                 if (localPending && syncReady) { clearTimeout(fbSaveTimer); void pushLocalDataToFirestore(); }
-                else updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
+                if (pendingSettingsSync && syncReady) { clearTimeout(settingsSaveTimer); void pushSettingsOnlyToFirestore(); }
+                if (!localPending && !pendingSettingsSync) updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
             } catch (err) { console.warn('visibility sync failed', err); updateSyncStatusUI('error', 'Mất kết nối đồng bộ, đang thử lại...'); }
         });
 
@@ -7334,6 +7199,7 @@ let compareHtml = `
                 pendingSyncAfterReady = false;
                 scheduleDriveSync();
             }
+            if (pendingSettingsSync) { clearTimeout(settingsSaveTimer); settingsSaveTimer = setTimeout(() => { void pushSettingsOnlyToFirestore(); }, 100); }
         });
 
         window.addEventListener('pagehide', () => {
@@ -7341,6 +7207,7 @@ let compareHtml = `
                 clearTimeout(fbSaveTimer);
                 if (!syncPushInFlight) void pushLocalDataToFirestore();
                 else syncPushRequested = true;
+                if (pendingSettingsSync || settingsSaveTimer) { clearTimeout(settingsSaveTimer); void pushSettingsOnlyToFirestore(); }
             }
         });
     </script>
