@@ -3082,6 +3082,16 @@ tbody tr { animation: none !important; }
             personal_pin_hash_v1: 'financepro_pin_updated_at'
         };
         const SETTINGS_TIMESTAMP_FIELDS = Object.values(SETTINGS_TIMESTAMP_KEYS);
+        // Mỗi thay đổi settings có thêm mutationId để xử lý trường hợp 2 thiết bị sửa
+        // trong cùng một millisecond. updatedAt vẫn là mốc chính, mutationId là tie-breaker.
+        const SETTINGS_MUTATION_KEYS = {
+            personal_categories_v4: 'financepro_categories_mutation_v1',
+            personal_accounts_v4: 'financepro_accounts_mutation_v1',
+            personal_ideal_budget_v4: 'financepro_budget_mutation_v1',
+            personal_ideal_cat_budgets_v4: 'financepro_category_budgets_mutation_v1',
+            personal_pin_hash_v1: 'financepro_pin_mutation_v1'
+        };
+        const SETTINGS_MUTATION_FIELDS = Object.values(SETTINGS_MUTATION_KEYS);
         // Metadata riêng cho từng VÍ/TÀI KHOẢN (không phải cho cả object userAccounts).
         // userAccounts vẫn được merge nguyên khối như 1 nhóm settings (accountsUpdatedAt) để
         // biết cục bộ có gì mới hơn hay không, NHƯNG khi merge dữ liệu thật, ta merge theo
@@ -3104,7 +3114,7 @@ tbody tr { animation: none !important; }
             return uid ? `${TOMBSTONE_UID_STORAGE_PREFIX}${uid}` : 'personal_deleted_tx_v4';
         }
         function scopedSettingsKey(key, uid = fbCurrentUid) {
-            return (uid && (SETTINGS_SYNC_KEYS.includes(key) || SETTINGS_TIMESTAMP_FIELDS.includes(key) || key === ACCOUNTS_META_KEY)) ? `${SETTINGS_UID_PREFIX}${uid}__${key}` : key;
+            return (uid && (SETTINGS_SYNC_KEYS.includes(key) || SETTINGS_TIMESTAMP_FIELDS.includes(key) || SETTINGS_MUTATION_FIELDS.includes(key) || key === ACCOUNTS_META_KEY)) ? `${SETTINGS_UID_PREFIX}${uid}__${key}` : key;
         }
         function getScopedSetting(key, uid = fbCurrentUid) {
             return _origLocalStorageGetItem(scopedSettingsKey(key, uid));
@@ -3116,16 +3126,40 @@ tbody tr { animation: none !important; }
         function setAccountsMeta(meta, uid = fbCurrentUid) {
             _origLocalStorageSetItem(scopedSettingsKey(ACCOUNTS_META_KEY, uid), JSON.stringify(meta || {}));
         }
-        function touchAccountMeta(name, atIso) {
+        function makeMutationId() {
+            try {
+                if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+            } catch (_) {}
+            return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+        }
+        function settingVersionAt(updatedAt, mutationId) {
+            return { updatedAt: updatedAt || new Date(0).toISOString(), mutationId: String(mutationId || '') };
+        }
+        function compareSettingVersions(a, b) {
+            const at = firestoreTime(a?.updatedAt);
+            const bt = firestoreTime(b?.updatedAt);
+            if (at !== bt) return at - bt;
+            return String(a?.mutationId || '').localeCompare(String(b?.mutationId || ''));
+        }
+        function getSettingMutationId(key, uid = fbCurrentUid) {
+            const mutationKey = SETTINGS_MUTATION_KEYS[key];
+            return mutationKey ? (_origLocalStorageGetItem(scopedSettingsKey(mutationKey, uid)) || '') : '';
+        }
+        function setSettingMutationId(key, mutationId, uid = fbCurrentUid) {
+            const mutationKey = SETTINGS_MUTATION_KEYS[key];
+            if (!mutationKey) return;
+            _origLocalStorageSetItem(scopedSettingsKey(mutationKey, uid), String(mutationId || ''));
+        }
+        function touchAccountMeta(name, atIso, mutationId) {
             if (!name) return;
             const meta = getAccountsMeta();
-            meta[name] = { updatedAt: atIso || new Date().toISOString(), deleted: false };
+            meta[name] = { updatedAt: atIso || new Date().toISOString(), mutationId: String(mutationId || makeMutationId()), deleted: false };
             setAccountsMeta(meta);
         }
-        function tombstoneAccountMeta(name, atIso) {
+        function tombstoneAccountMeta(name, atIso, mutationId) {
             if (!name) return;
             const meta = getAccountsMeta();
-            meta[name] = { updatedAt: atIso || new Date().toISOString(), deleted: true };
+            meta[name] = { updatedAt: atIso || new Date().toISOString(), mutationId: String(mutationId || makeMutationId()), deleted: true };
             setAccountsMeta(meta);
         }
         // Hợp nhất userAccounts theo TỪNG VÍ dựa trên timestamp riêng của ví đó, thay vì so
@@ -3143,9 +3177,9 @@ tbody tr { animation: none !important; }
             names.forEach(name => {
                 const lm = localMeta[name];
                 const rm = remoteMeta[name];
-                const lt = lm ? firestoreTime(lm.updatedAt) : (Object.prototype.hasOwnProperty.call(localAccounts, name) ? 1 : 0);
-                const rt = rm ? firestoreTime(rm.updatedAt) : (Object.prototype.hasOwnProperty.call(remoteAccounts, name) ? 1 : 0);
-                const remoteWins = rt > lt;
+                const lv = lm ? settingVersionAt(lm.updatedAt, lm.mutationId) : settingVersionAt(Object.prototype.hasOwnProperty.call(localAccounts, name) ? new Date(1).toISOString() : null, '');
+                const rv = rm ? settingVersionAt(rm.updatedAt, rm.mutationId) : settingVersionAt(Object.prototype.hasOwnProperty.call(remoteAccounts, name) ? new Date(1).toISOString() : null, '');
+                const remoteWins = compareSettingVersions(rv, lv) > 0;
                 const winnerMeta = remoteWins ? rm : lm;
                 const winnerDeleted = !!(winnerMeta && winnerMeta.deleted);
                 const winnerValue = remoteWins ? remoteAccounts[name] : localAccounts[name];
@@ -3158,22 +3192,27 @@ tbody tr { animation: none !important; }
             }
             return { accounts: mergedAccounts, meta: mergedMeta };
         }
-        function setScopedSetting(key, value, uid = fbCurrentUid) {
+        function setScopedSetting(key, value, uid = fbCurrentUid, options = {}) {
             const scopedKey = scopedSettingsKey(key, uid);
             _origLocalStorageSetItem(scopedKey, String(value));
             if (Object.prototype.hasOwnProperty.call(SETTINGS_TIMESTAMP_KEYS, key)) {
-                const ts = new Date().toISOString();
+                const ts = options.updatedAt || new Date().toISOString();
+                const mutationId = options.mutationId || makeMutationId();
                 _origLocalStorageSetItem(scopedSettingsKey(SETTINGS_TIMESTAMP_KEYS[key], uid), ts);
+                setSettingMutationId(key, mutationId, uid);
             }
             if (DRIVE_SYNC_KEYS.includes(key) && typeof scheduleDriveSync === 'function') {
                 localSyncGeneration++;
                 scheduleDriveSync();
             }
         }
-        function removeScopedSetting(key, uid = fbCurrentUid) {
+        function removeScopedSetting(key, uid = fbCurrentUid, options = {}) {
             _origLocalStorageRemoveItem(scopedSettingsKey(key, uid));
             if (Object.prototype.hasOwnProperty.call(SETTINGS_TIMESTAMP_KEYS, key)) {
-                _origLocalStorageRemoveItem(scopedSettingsKey(SETTINGS_TIMESTAMP_KEYS[key], uid));
+                const ts = options.updatedAt || new Date().toISOString();
+                const mutationId = options.mutationId || makeMutationId();
+                _origLocalStorageSetItem(scopedSettingsKey(SETTINGS_TIMESTAMP_KEYS[key], uid), ts);
+                setSettingMutationId(key, mutationId, uid);
             }
             if (DRIVE_SYNC_KEYS.includes(key)) {
                 localSyncGeneration++;
@@ -3215,6 +3254,8 @@ tbody tr { animation: none !important; }
                     if (tsKey) {
                         const legacyTs = _origLocalStorageGetItem(tsKey);
                         if (legacyTs) _origLocalStorageSetItem(scopedSettingsKey(tsKey, uid), legacyTs);
+                        const legacyMutation = _origLocalStorageGetItem(SETTINGS_MUTATION_KEYS[key] || '');
+                        if (legacyMutation) _origLocalStorageSetItem(scopedSettingsKey(SETTINGS_MUTATION_KEYS[key], uid), legacyMutation);
                     }
                     migrated = true;
                 }
@@ -3227,6 +3268,8 @@ tbody tr { animation: none !important; }
                 _origLocalStorageRemoveItem(scopedSettingsKey(key, uid));
                 const tsKey = SETTINGS_TIMESTAMP_KEYS[key];
                 if (tsKey) _origLocalStorageRemoveItem(scopedSettingsKey(tsKey, uid));
+                const mutationKey = SETTINGS_MUTATION_KEYS[key];
+                if (mutationKey) _origLocalStorageRemoveItem(scopedSettingsKey(mutationKey, uid));
             });
             _origLocalStorageRemoveItem(scopedSettingsKey(ACCOUNTS_META_KEY, uid));
         }
@@ -3273,8 +3316,14 @@ tbody tr { animation: none !important; }
         };
         function ensureSettingsTimestamps() {
             const fallbackAt = fbCurrentUid ? new Date(0).toISOString() : (_origLocalStorageGetItem(LEGACY_SETTINGS_TIMESTAMP_KEY) || new Date(0).toISOString());
-            SETTINGS_TIMESTAMP_FIELDS.forEach(tsKey => {
-                if (!_origLocalStorageGetItem(scopedSettingsKey(tsKey))) _origLocalStorageSetItem(scopedSettingsKey(tsKey), fallbackAt);
+            Object.entries(SETTINGS_TIMESTAMP_KEYS).forEach(([dataKey, tsKey]) => {
+                const scopedTsKey = scopedSettingsKey(tsKey);
+                if (!_origLocalStorageGetItem(scopedTsKey)) _origLocalStorageSetItem(scopedTsKey, fallbackAt);
+                const mutationKey = SETTINGS_MUTATION_KEYS[dataKey];
+                if (mutationKey) {
+                    const scopedMutationKey = scopedSettingsKey(mutationKey);
+                    if (!_origLocalStorageGetItem(scopedMutationKey)) _origLocalStorageSetItem(scopedMutationKey, '');
+                }
             });
         }
 
@@ -3846,8 +3895,9 @@ tbody tr { animation: none !important; }
                 delete userAccounts[currentName];
                 userAccounts[newName] = initialBalance;
                 const renameAt = new Date().toISOString();
-                tombstoneAccountMeta(currentName, renameAt);
-                touchAccountMeta(newName, renameAt);
+                const renameMutationId = makeMutationId();
+                tombstoneAccountMeta(currentName, renameAt, renameMutationId);
+                touchAccountMeta(newName, renameAt, renameMutationId);
 
                 transactions = (transactions || []).map(tx => {
                     let changed = false;
@@ -5717,7 +5767,8 @@ let compareHtml = `
                             {
                                 const restoredAccountsObj = safeParseJSON(localStorage.getItem('personal_accounts_v4'), {}) || {};
                                 const restoredMeta = {};
-                                Object.keys(restoredAccountsObj).forEach(name => { restoredMeta[name] = { updatedAt: importAt, deleted: false }; });
+                                const restoreMutationId = makeMutationId();
+                                Object.keys(restoredAccountsObj).forEach(name => { restoredMeta[name] = { updatedAt: importAt, mutationId: restoreMutationId, deleted: false }; });
                                 setAccountsMeta(restoredMeta);
                             }
 
@@ -5737,8 +5788,10 @@ let compareHtml = `
                                 personal_ideal_cat_budgets_v4: importAt,
                                 personal_pin_hash_v1: importAt
                             };
+                            const restoreMutationId = makeMutationId();
                             Object.entries(settingsTs).forEach(([key, ts]) => {
                                 _origLocalStorageSetItem(scopedSettingsKey(SETTINGS_TIMESTAMP_KEYS[key]), ts);
+                                setSettingMutationId(key, restoreMutationId);
                             });
                             _origLocalStorageSetItem(LEGACY_SETTINGS_TIMESTAMP_KEY, importAt);
 
@@ -6127,10 +6180,15 @@ let compareHtml = `
                 idealCategoryBudgets: catBudgets,
                 pinHash: pinHash || null,
                 categoriesUpdatedAt: getScopedSetting(SETTINGS_TIMESTAMP_KEYS.personal_categories_v4) || null,
+                categoriesMutationId: getSettingMutationId('personal_categories_v4') || null,
                 accountsUpdatedAt: getScopedSetting(SETTINGS_TIMESTAMP_KEYS.personal_accounts_v4) || null,
+                accountsMutationId: getSettingMutationId('personal_accounts_v4') || null,
                 budgetUpdatedAt: getScopedSetting(SETTINGS_TIMESTAMP_KEYS.personal_ideal_budget_v4) || null,
+                budgetMutationId: getSettingMutationId('personal_ideal_budget_v4') || null,
                 categoryBudgetsUpdatedAt: getScopedSetting(SETTINGS_TIMESTAMP_KEYS.personal_ideal_cat_budgets_v4) || null,
-                pinUpdatedAt: getScopedSetting(SETTINGS_TIMESTAMP_KEYS.personal_pin_hash_v1) || null
+                categoryBudgetsMutationId: getSettingMutationId('personal_ideal_cat_budgets_v4') || null,
+                pinUpdatedAt: getScopedSetting(SETTINGS_TIMESTAMP_KEYS.personal_pin_hash_v1) || null,
+                pinMutationId: getSettingMutationId('personal_pin_hash_v1') || null
             };
         }
 
@@ -6231,8 +6289,13 @@ let compareHtml = `
                 ];
                 defs.forEach(def => {
                     const localAt = localStorage.getItem(def.timestampKey) || new Date(0).toISOString();
-                    const remoteAt = remoteSettings[def.field + 'UpdatedAt'] || remoteSettings.settingsUpdatedAt || null;
-                    if (!remoteAt || firestoreTime(remoteAt) <= firestoreTime(localAt) || remoteSettings[def.field] === undefined) return;
+                    const localMutationId = getSettingMutationId(def.storageKey);
+                    const remoteVersion = {
+                        updatedAt: remoteSettings[def.field + 'UpdatedAt'] || remoteSettings.settingsUpdatedAt || null,
+                        mutationId: remoteSettings[def.field + 'MutationId'] || ''
+                    };
+                    const localVersion = { updatedAt: localAt, mutationId: localMutationId };
+                    if (remoteSettings[def.field] === undefined || compareSettingVersions(remoteVersion, localVersion) <= 0) return;
                     if (def.stateKey === 'idealBudget') {
                         idealBudget = Number(remoteSettings[def.field]) || 0;
                         localStorage.setItem(def.storageKey, idealBudget);
@@ -6243,7 +6306,9 @@ let compareHtml = `
                     } else {
                         idealCategoryBudgets = remoteSettings[def.field]; localStorage.setItem(def.storageKey, JSON.stringify(idealCategoryBudgets));
                     }
-                    _origLocalStorageSetItem(scopedSettingsKey(def.timestampKey), remoteAt); changed = true;
+                    _origLocalStorageSetItem(scopedSettingsKey(def.timestampKey), remoteVersion.updatedAt);
+                    setSettingMutationId(def.storageKey, remoteVersion.mutationId || '', fbCurrentUid);
+                    changed = true;
                 });
 
                 // userAccounts: merge theo TỪNG VÍ (xem giải thích chi tiết ở mergeAccountsWithMeta),
@@ -6252,12 +6317,12 @@ let compareHtml = `
                     const localAccountsNow = getStoredJSON('personal_accounts_v4', userAccounts || null) || {};
                     const localMetaNow = getAccountsMeta();
                     const mergedAcc = mergeAccountsWithMeta(localAccountsNow, localMetaNow, remoteSettings.userAccounts, remoteSettings.userAccountsMeta);
-                    if (JSON.stringify(mergedAcc.accounts) !== JSON.stringify(localAccountsNow)) {
+                    if (JSON.stringify(mergedAcc.accounts) !== JSON.stringify(localAccountsNow) || JSON.stringify(mergedAcc.meta) !== JSON.stringify(localMetaNow)) {
                         userAccounts = mergedAcc.accounts;
                         localStorage.setItem('personal_accounts_v4', JSON.stringify(userAccounts));
+                        setAccountsMeta(mergedAcc.meta);
                         changed = true;
                     }
-                    setAccountsMeta(mergedAcc.meta);
                 }
 
                 if (changed) {
@@ -6825,20 +6890,22 @@ let compareHtml = `
                 const remote = snap.exists ? snap.data() : {};
                 const merged = { schemaVersion: FIRESTORE_SCHEMA_VERSION, savedAt: new Date().toISOString() };
                 const defs = [
-                    { field: 'categories', localValue: snapshot.categories, localAt: snapshot.categoriesUpdatedAt },
-                    { field: 'idealBudget', localValue: snapshot.idealBudget, localAt: snapshot.budgetUpdatedAt },
-                    { field: 'idealCategoryBudgets', localValue: snapshot.idealCategoryBudgets, localAt: snapshot.categoryBudgetsUpdatedAt },
-                    { field: 'pinHash', localValue: snapshot.pinHash, localAt: snapshot.pinUpdatedAt }
+                    { field: 'categories', localValue: snapshot.categories, localVersion: { updatedAt: snapshot.categoriesUpdatedAt, mutationId: snapshot.categoriesMutationId } },
+                    { field: 'idealBudget', localValue: snapshot.idealBudget, localVersion: { updatedAt: snapshot.budgetUpdatedAt, mutationId: snapshot.budgetMutationId } },
+                    { field: 'idealCategoryBudgets', localValue: snapshot.idealCategoryBudgets, localVersion: { updatedAt: snapshot.categoryBudgetsUpdatedAt, mutationId: snapshot.categoryBudgetsMutationId } },
+                    { field: 'pinHash', localValue: snapshot.pinHash, localVersion: { updatedAt: snapshot.pinUpdatedAt, mutationId: snapshot.pinMutationId } }
                 ];
                 defs.forEach(def => {
-                    const remoteAt = remote[def.field + 'UpdatedAt'] || remote.settingsUpdatedAt || null;
-                    // Normal sync remains timestamp-based for settings because settings do not
-                    // participate in the transaction/tombstone syncVersion sequence.
-                    // Explicit Restore is different: it is a user command whose contract is
-                    // to make the cloud settings exactly equal to the imported backup.
-                    if (forceRestore || !remoteAt || firestoreTime(def.localAt) > firestoreTime(remoteAt)) {
+                    const remoteVersion = {
+                        updatedAt: remote[def.field + 'UpdatedAt'] || remote.settingsUpdatedAt || null,
+                        mutationId: remote[def.field + 'MutationId'] || ''
+                    };
+                    // Settings dùng updatedAt + mutationId để mọi thiết bị quyết định cùng một
+                    // winner, kể cả khi hai thao tác xảy ra trong cùng một millisecond.
+                    if (forceRestore || compareSettingVersions(def.localVersion, remoteVersion) > 0) {
                         merged[def.field] = def.localValue;
-                        merged[def.field + 'UpdatedAt'] = def.localAt || new Date().toISOString();
+                        merged[def.field + 'UpdatedAt'] = def.localVersion.updatedAt || new Date().toISOString();
+                        merged[def.field + 'MutationId'] = def.localVersion.mutationId || makeMutationId();
                     }
                 });
 
@@ -7029,6 +7096,8 @@ let compareHtml = `
                     syncReady = true;
                     await startV2Listeners(user.uid);
                     updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
+                    // Sau hydration, luôn kiểm tra lại settings local. Điều này bảo đảm các thay đổi
+                    // được thực hiện rất sớm trong vòng đời app hoặc khi mạng chập chờn không bị kẹt local.
                     if (pendingSyncAfterReady || DIRTY_TX_IDS.size || DIRTY_TOMBSTONE_IDS.size) { pendingSyncAfterReady = false; scheduleDriveSync(); }
                 } catch (err) {
                     firestoreV2Ready = false; syncReady = false;
