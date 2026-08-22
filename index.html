@@ -1268,6 +1268,56 @@ tbody tr { animation: none !important; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
 }
+
+        /* =========================================================
+           INFORMATION DENSITY PASS — Transactions / Budget / Categories
+           ========================================================= */
+        .tx-clear-filters-btn { width:auto; white-space:nowrap; }
+        .transaction-table { table-layout: fixed; }
+        .tx-col-type { width: 108px; }
+        .tx-col-category { width: 26%; }
+        .tx-col-account { width: 18%; }
+        .tx-col-notes { width: 27%; }
+        .tx-col-amount { width: 14%; }
+        .tx-col-actions { width: 92px; }
+        .tx-note-cell { max-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .transaction-data-row td { vertical-align: middle; }
+        .transaction-day-group-row td { padding: 8px 16px !important; }
+        .category-list { margin: 0; }
+        .category-list-expense { display:grid; grid-template-columns: repeat(1, minmax(0,1fr)); }
+        .category-list-income, .category-list-expense { background: var(--ui-card); }
+        .category-item { min-height: 48px; }
+        .category-item-actions { opacity:.72; transition: opacity .18s ease; }
+        .category-item:hover .category-item-actions { opacity:1; }
+        .category-item-icon { box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+
+        @media (min-width: 1200px) {
+            .category-list-expense { grid-template-columns: repeat(2, minmax(0,1fr)); }
+            .category-list-expense .category-item { border-bottom: 1px solid rgba(148,163,184,.14); }
+            .category-list-expense .category-item:nth-child(odd) { border-right: 1px solid rgba(148,163,184,.14); }
+            .category-list-expense .category-item:nth-last-child(-n+2) { border-bottom: 0; }
+        }
+
+        body.dark-mode .category-list-income, body.dark-mode .category-list-expense { background: var(--fp-surface-2); border-color: var(--fp-border) !important; }
+        body.dark-mode .category-item { border-color: var(--fp-border) !important; }
+        body.dark-mode .category-item:hover { background: var(--fp-surface) !important; }
+        body.dark-mode .category-item-name { color: var(--fp-text) !important; }
+
+        @media (min-width: 768px) and (max-width: 1279px) {
+            #tab-transactions > div:first-child { grid-template-columns: repeat(4, minmax(0,1fr)); }
+            #tab-transactions > div:first-child > .col-span-2:first-child { grid-column: span 2; }
+            #tab-transactions > div:first-child > .md\:col-span-1:last-child { grid-column: auto; }
+            .tx-col-category { width: 24%; }
+            .tx-col-account { width: 17%; }
+            .tx-col-notes { width: 25%; }
+            .tx-col-amount { width: 15%; }
+        }
+
+        @media (max-width: 767px) {
+            .tx-clear-filters-btn { width:100%; }
+            .category-item { min-height: 46px; }
+            .category-item-actions { opacity:1; }
+        }
 </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
@@ -1633,8 +1683,8 @@ tbody tr { animation: none !important; }
 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1 md:mb-2">Sắp xếp</label>
 <select class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 md:p-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500" id="filter-sort" onchange="applyFilters()"><option value="desc">Mới nhất</option><option value="asc">Cũ nhất</option></select>
 </div>
-<div class="flex items-end col-span-2 md:col-span-1">
-<button class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold p-2 md:p-2.5 rounded-lg text-sm transition" onclick="clearFilters()"><i class="fa-solid fa-filter-circle-xmark mr-1"></i> Bỏ lọc</button>
+<div class="flex items-end col-span-2 md:col-span-1 md:justify-start">
+<button class="tx-clear-filters-btn bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold px-4 py-2 md:py-2.5 rounded-lg text-sm transition" onclick="clearFilters()" title="Xóa các bộ lọc đang chọn"><i class="fa-solid fa-filter-circle-xmark mr-1"></i> Bỏ lọc</button>
 </div>
 </div>
 <div class="bg-white md:rounded-2xl shadow-sm border border-slate-100 overflow-hidden rounded-xl">
@@ -1662,14 +1712,19 @@ tbody tr { animation: none !important; }
 </div>
 <!-- Chế độ Table cho Desktop -->
 <div class="hidden md:block overflow-x-auto custom-scrollbar">
-<table class="w-full text-left border-collapse min-w-[800px]">
+<div class="max-w-[1240px] mx-auto">
+<table class="w-full text-left border-collapse min-w-[940px] transaction-table">
+<colgroup>
+<col class="tx-col-type"/><col class="tx-col-category"/><col class="tx-col-account"/><col class="tx-col-notes"/><col class="tx-col-amount"/><col class="tx-col-actions"/>
+</colgroup>
 <thead>
 <tr class="border-b border-slate-100 bg-slate-50 text-slate-400 text-xs font-semibold uppercase">
-<th class="py-3 px-6">Ngày</th><th class="py-3 px-6">Loại</th><th class="py-3 px-6">Danh Mục/Đến</th><th class="py-3 px-6">TK Nguồn</th><th class="py-3 px-6 w-1/4">Ghi Chú</th><th class="py-3 px-6 text-right">Số Tiền</th><th class="py-3 px-6 text-center">Hành Động</th>
+<th class="py-3 px-4">Loại</th><th class="py-3 px-4">Danh Mục/Đến</th><th class="py-3 px-4">TK Nguồn</th><th class="py-3 px-4">Ghi Chú</th><th class="py-3 px-4 text-right">Số Tiền</th><th class="py-3 px-4 text-center">Hành Động</th>
 </tr>
 </thead>
 <tbody class="divide-y divide-slate-100 text-sm" id="all-transactions-tbody"></tbody>
 </table>
+</div>
 </div>
 <!-- Chế độ Card cho Mobile -->
 <div class="md:hidden divide-y divide-slate-100" id="all-transactions-cards">
@@ -1684,15 +1739,15 @@ tbody tr { animation: none !important; }
 <h3 class="text-lg md:text-xl font-bold text-slate-900">Mục Tiêu Chi Tiêu Lý Tưởng</h3>
 <p class="text-sm text-slate-500 mt-1 hidden sm:block">Thiết lập ngân sách chung. Theo dõi tiến độ thực tế sẽ được so sánh với tháng đang chọn tại Bảng Điều Khiển.</p>
 </div>
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end bg-slate-50 p-4 md:p-6 rounded-xl border border-slate-200">
-<div>
+<div class="flex flex-col md:flex-row md:items-end gap-3 bg-slate-50 p-4 md:p-5 rounded-xl border border-slate-200">
+<div class="w-full md:max-w-md">
 <label class="block text-sm font-semibold text-slate-700 mb-2">Hạn Mức Chi Tiêu Tổng</label>
 <div class="relative">
 <input class="w-full bg-white border border-slate-200 rounded-lg p-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 pr-10" id="input-overall-budget" inputmode="numeric" oninput="formatNumberInput(this)" placeholder="Nhập số tiền..." type="text"/>
 <span class="absolute right-3 top-3 text-slate-400 text-sm font-semibold">₫</span>
 </div>
 </div>
-<button class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg text-sm shadow-sm transition" onclick="updateIdealBudget()">Lưu mục tiêu tổng</button>
+<button class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-5 rounded-lg text-sm shadow-sm transition shrink-0 md:mb-0" onclick="updateIdealBudget()"><i class="fa-solid fa-floppy-disk mr-1.5"></i>Lưu mục tiêu</button>
 </div>
 <div class="space-y-4 pt-4 border-t border-slate-100">
 <h4 class="font-bold text-slate-900 text-sm md:text-base">Thiết Lập Hạn Mức Từng Danh Mục</h4>
@@ -1700,12 +1755,12 @@ tbody tr { animation: none !important; }
 <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
 <div class="text-center md:text-left">
 <p class="text-[10px] md:text-xs text-indigo-400 font-bold uppercase tracking-wider mb-1">Mục Tiêu Tổng</p>
-<p class="font-bold text-indigo-900 text-base md:text-lg" id="allocation-total">0 ₫</p>
+<p class="font-bold text-indigo-950 text-xl md:text-2xl font-mono tracking-tight" id="allocation-total">0 ₫</p>
 </div>
 <div class="hidden md:block text-indigo-200"><i class="fa-solid fa-minus"></i></div>
 <div class="text-center">
 <p class="text-[10px] md:text-xs text-indigo-400 font-bold uppercase tracking-wider mb-1">Đã Phân Bổ</p>
-<p class="font-bold text-indigo-900 text-base md:text-lg" id="allocation-used">0 ₫</p>
+<p class="font-bold text-indigo-950 text-xl md:text-2xl font-mono tracking-tight" id="allocation-used">0 ₫</p>
 </div>
 <div class="hidden md:block text-indigo-200"><i class="fa-solid fa-equals"></i></div>
 <div class="text-center md:text-right">
@@ -1724,16 +1779,16 @@ tbody tr { animation: none !important; }
 <h3 class="text-lg md:text-xl font-bold text-slate-900">Quản Lý Danh Mục</h3>
 <p class="text-sm text-slate-500 hidden sm:block">Tùy chỉnh danh mục thu/chi để phân loại chính xác hơn.</p>
 </div>
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
-<div class="space-y-4">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
+<div class="lg:col-span-4 self-start space-y-3">
 <h4 class="font-bold text-emerald-600 flex items-center space-x-2 pb-2 border-b border-slate-100"><i class="fa-solid fa-circle-plus"></i><span>Danh Mục Thu Nhập</span></h4>
 <div class="flex space-x-2"><input class="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" id="new-income-cat-input" placeholder="Tên danh mục mới..." type="text"/><button class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 rounded-lg text-sm transition" onclick="handleAddCategory('income')">Thêm</button></div>
-<ul class="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden bg-slate-50 text-sm" id="income-categories-list"></ul>
+<ul class="category-list category-list-income border border-slate-100 rounded-xl overflow-hidden bg-slate-50 text-sm" id="income-categories-list"></ul>
 </div>
-<div class="space-y-4">
+<div class="lg:col-span-8 self-start space-y-3">
 <h4 class="font-bold text-rose-600 flex items-center space-x-2 pb-2 border-b border-slate-100"><i class="fa-solid fa-circle-minus"></i><span>Danh Mục Chi Tiêu</span></h4>
 <div class="flex space-x-2"><input class="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none" id="new-expense-cat-input" placeholder="Tên danh mục mới..." type="text"/><button class="bg-rose-600 hover:bg-rose-700 text-white font-semibold px-4 rounded-lg text-sm transition" onclick="handleAddCategory('expense')">Thêm</button></div>
-<ul class="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden bg-slate-50 text-sm" id="expense-categories-list"></ul>
+<ul class="category-list category-list-expense border border-slate-100 rounded-xl overflow-hidden bg-slate-50 text-sm" id="expense-categories-list"></ul>
 </div>
 </div>
 </div>
@@ -4031,7 +4086,7 @@ tbody tr { animation: none !important; }
             cards.innerHTML = '';
 
             if (!f.length) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-slate-400">Không có giao dịch phù hợp</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-400">Không có giao dịch phù hợp</td></tr>';
                 cards.innerHTML = '<div class="p-6 text-center text-slate-400 text-sm">Không có dữ liệu phù hợp</div>';
                 updateBulkSelectionUI();
                 return;
@@ -4047,7 +4102,7 @@ tbody tr { animation: none !important; }
             groups.forEach((dayTxs, dayKey) => {
                 // Date is shown ONCE here. No per-row date repetition, no daily totals/counts.
                 tbody.insertAdjacentHTML('beforeend', `<tr class="transaction-day-group-row">
-                    <td colspan="7">
+                    <td colspan="6">
                         <div class="flex items-center justify-between">
                             <span>${transactionDayLabel(dayKey)}</span>
                         </div>
@@ -4094,8 +4149,8 @@ tbody tr { animation: none !important; }
                     const txNotes = escapeHTML(tx.notes || '');
                     const selected = selectedTransactionIds.has(String(tx.id));
 
-                    const dateCellContent = bulkSelectMode
-                        ? `<div class="flex items-center gap-2"><input class="tx-select-box" type="checkbox" data-tx-select="${escapeHTML(String(tx.id))}" ${selected ? 'checked' : ''} onchange="toggleTransactionSelection(decodeURIComponent('${txId}'), this.checked)"><span class="text-slate-500">•</span></div>`
+                    const selectControl = bulkSelectMode
+                        ? `<input class="tx-select-box shrink-0" type="checkbox" data-tx-select="${escapeHTML(String(tx.id))}" ${selected ? 'checked' : ''} onchange="toggleTransactionSelection(decodeURIComponent('${txId}'), this.checked)">`
                         : '';
 
                     let displayMain;
@@ -4113,13 +4168,14 @@ tbody tr { animation: none !important; }
                     }
 
                     tbody.insertAdjacentHTML('beforeend', `<tr class="transaction-data-row border-b hover:bg-slate-50${tx.type === 'proxy' ? ' bg-amber-50/30' : ''}">
-                        <td class="py-3 px-6 whitespace-nowrap text-slate-600 text-xs">${dateCellContent}</td>
-                        <td class="py-3 px-6">${badge}</td>
-                        <td class="py-3 px-6 whitespace-nowrap">${displayMain}</td>
-                        <td class="py-3 px-6">${txAccount}</td>
-                        <td class="py-3 px-6 truncate max-w-[150px]">${txNotes}</td>
-                        <td class="py-3 px-6 text-right font-bold ${cColor}">${prefix}${maskCurrency(tx.amount)}</td>
-                        <td class="py-3 px-6 text-center">
+                        <td class="py-2.5 px-4 whitespace-nowrap">
+                            <div class="flex items-center gap-2">${selectControl}${badge}</div>
+                        </td>
+                        <td class="py-2.5 px-4">${displayMain}</td>
+                        <td class="py-2.5 px-4 whitespace-nowrap">${txAccount}</td>
+                        <td class="py-2.5 px-4 tx-note-cell">${txNotes}</td>
+                        <td class="py-2.5 px-4 text-right font-bold ${cColor} whitespace-nowrap">${prefix}${maskCurrency(tx.amount)}</td>
+                        <td class="py-2.5 px-4 text-center whitespace-nowrap">
                             <button type="button" onclick="handleEditTxClick(decodeURIComponent('${txId}'))" class="text-indigo-400 mx-1"><i class="fa-solid fa-pen"></i></button>
                             <button type="button" onclick="handleDeleteTxClick(decodeURIComponent('${txId}'))" class="text-rose-400 mx-1"><i class="fa-solid fa-trash"></i></button>
                         </td>
@@ -5107,7 +5163,7 @@ let compareHtml = `
             document.getElementById('allocation-total').innerText = formatCurrency(idealBudget); document.getElementById('allocation-used').innerText = formatCurrency(tot); const allocationDiffEl = document.getElementById('allocation-remaining');
             const allocationDiff = idealBudget - tot;
             allocationDiffEl.innerText = `${allocationDiff >= 0 ? '' : '−'}${formatCurrency(Math.abs(allocationDiff))}`;
-            allocationDiffEl.className = allocationDiff >= 0 ? 'font-bold text-emerald-600 text-base md:text-lg' : 'font-bold text-rose-600 text-base md:text-lg';
+            allocationDiffEl.className = allocationDiff >= 0 ? 'font-bold text-emerald-600 text-xl md:text-2xl font-mono tracking-tight' : 'font-bold text-rose-600 text-xl md:text-2xl font-mono tracking-tight';
             const allocationLabelEl = document.getElementById('allocation-remaining-label');
             if (allocationLabelEl) allocationLabelEl.className = allocationDiff >= 0 ? 'text-[10px] md:text-xs text-emerald-500 font-bold uppercase tracking-wider mb-1' : 'text-[10px] md:text-xs text-rose-500 font-bold uppercase tracking-wider mb-1';
             categories.expense.forEach(cat => {
@@ -5127,7 +5183,7 @@ let compareHtml = `
                 categories[type].forEach(cat => {
                     const safeCat = escapeHTML(cat);
                     const encodedCat = encodeURIComponent(cat);
-                    list.insertAdjacentHTML('beforeend', `<li class="flex justify-between items-center p-3 hover:bg-slate-100 border-b border-slate-50"><div class="flex items-center space-x-3"><div class="bg-${type==='income'?'emerald':'rose'}-100 text-${type==='income'?'emerald':'rose'}-600 p-2 rounded-lg"><i class="fa-solid ${CATEGORY_ICONS[cat] || 'fa-tag'}"></i></div><span class="font-semibold text-slate-700">${safeCat}</span></div><div class="flex space-x-1"><button type="button" onclick="handleEditCategoryClick('${type}', decodeURIComponent('${encodedCat}'))" class="text-slate-400 hover:text-indigo-600 p-2"><i class="fa-solid fa-pencil"></i></button><button type="button" onclick="handleDeleteCategoryClick('${type}', decodeURIComponent('${encodedCat}'))" class="text-slate-400 hover:text-rose-600 p-2"><i class="fa-solid fa-trash-can"></i></button></div></li>`);
+                    list.insertAdjacentHTML('beforeend', `<li class="category-item group flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-100 border-b border-slate-100 last:border-b-0"><div class="category-item-icon bg-${type==='income'?'emerald':'rose'}-100 text-${type==='income'?'emerald':'rose'}-600 w-8 h-8 rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid ${CATEGORY_ICONS[cat] || 'fa-tag'} text-xs"></i></div><span class="category-item-name font-semibold text-slate-700 min-w-0 flex-1 truncate" title="${safeCat}">${safeCat}</span><div class="category-item-actions flex items-center gap-0.5 shrink-0"><button type="button" aria-label="Đổi tên ${safeCat}" onclick="handleEditCategoryClick('${type}', decodeURIComponent('${encodedCat}'))" class="text-slate-400 hover:text-indigo-600 p-1.5 rounded-md"><i class="fa-solid fa-pencil text-xs"></i></button><button type="button" aria-label="Xóa ${safeCat}" onclick="handleDeleteCategoryClick('${type}', decodeURIComponent('${encodedCat}'))" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-md"><i class="fa-solid fa-trash-can text-xs"></i></button></div></li>`);
                 });
             });
         }
