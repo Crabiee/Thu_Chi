@@ -6968,11 +6968,13 @@ let compareHtml = `
                     merged.userAccounts = snapshot.userAccounts;
                     merged.userAccountsMeta = snapshot.userAccountsMeta;
                     merged.accountsUpdatedAt = snapshot.accountsUpdatedAt || new Date().toISOString();
+                    merged.accountsMutationId = snapshot.accountsMutationId || makeMutationId();
                 } else {
                     const mergedAcc = mergeAccountsWithMeta(snapshot.userAccounts, snapshot.userAccountsMeta, remote.userAccounts, remote.userAccountsMeta);
                     merged.userAccounts = mergedAcc.accounts;
                     merged.userAccountsMeta = mergedAcc.meta;
                     merged.accountsUpdatedAt = new Date().toISOString();
+                    merged.accountsMutationId = snapshot.accountsMutationId || remote.accountsMutationId || makeMutationId();
                 }
                 transaction.set(ref, merged, { merge: true });
             });
