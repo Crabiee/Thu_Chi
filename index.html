@@ -1286,27 +1286,6 @@ tbody tr { animation: none !important; }
         .transaction-day-group-row span { font-family:'Space Grotesk','Inter',sans-serif; font-weight:700; }
         .tx-note-cell { max-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
-        .category-list { margin: 0; width:100%; }
-        .category-list-income, .category-list-expense {
-            display:grid;
-            grid-template-columns:repeat(var(--category-cols, 1),minmax(0,1fr));
-            align-content:start;
-            gap:0;
-            background:var(--ui-card);
-        }
-        .category-item { min-height:48px; padding:9px 11px !important; border-bottom:1px solid rgba(148,163,184,.14); }
-        .category-item-actions { opacity:.68; transition:opacity .18s ease; }
-        .category-item:hover .category-item-actions { opacity:1; }
-        .category-item-icon { width:30px !important; height:30px !important; box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
-        .category-item-name { font-size:12px; line-height:1.2; }
-        .category-panel { min-width:0; }
-        .category-panel .category-list { border-radius:12px; overflow:hidden; }
-
-        body.dark-mode .category-list-income, body.dark-mode .category-list-expense { background: var(--fp-surface-2); border-color: var(--fp-border) !important; }
-        body.dark-mode .category-item { border-color: var(--fp-border) !important; }
-        body.dark-mode .category-item:hover { background: var(--fp-surface) !important; }
-        body.dark-mode .category-item-name { color: var(--fp-text) !important; }
-
         @media (min-width: 1280px) {
             #tab-transactions .max-w\[1500px\] { max-width:1500px; }
         }
@@ -1324,9 +1303,6 @@ tbody tr { animation: none !important; }
 
         @media (max-width: 767px) {
             .tx-clear-filters-btn { width:100%; }
-            .category-list-income, .category-list-expense { grid-template-columns:1fr !important; --category-cols:1 !important; }
-            .category-item { min-height:46px; }
-            .category-item-actions { opacity:1; }
         }
 </style>
 </head>
@@ -1789,16 +1765,16 @@ tbody tr { animation: none !important; }
 <h3 class="text-lg md:text-xl font-bold text-slate-900">Quản Lý Danh Mục</h3>
 <p class="text-sm text-slate-500 hidden sm:block">Tùy chỉnh danh mục thu/chi để phân loại chính xác hơn.</p>
 </div>
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
-<div class="lg:col-span-4 self-start space-y-3">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+<div class="space-y-4">
 <h4 class="font-bold text-emerald-600 flex items-center space-x-2 pb-2 border-b border-slate-100"><i class="fa-solid fa-circle-plus"></i><span>Danh Mục Thu Nhập</span></h4>
 <div class="flex space-x-2"><input class="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" id="new-income-cat-input" placeholder="Tên danh mục mới..." type="text"/><button class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 rounded-lg text-sm transition" onclick="handleAddCategory('income')">Thêm</button></div>
-<ul class="category-list category-list-income border border-slate-100 rounded-xl overflow-hidden bg-slate-50 text-sm" id="income-categories-list"></ul>
+<ul class="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden bg-slate-50 text-sm" id="income-categories-list"></ul>
 </div>
-<div class="lg:col-span-8 self-start space-y-3">
+<div class="space-y-4">
 <h4 class="font-bold text-rose-600 flex items-center space-x-2 pb-2 border-b border-slate-100"><i class="fa-solid fa-circle-minus"></i><span>Danh Mục Chi Tiêu</span></h4>
 <div class="flex space-x-2"><input class="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none" id="new-expense-cat-input" placeholder="Tên danh mục mới..." type="text"/><button class="bg-rose-600 hover:bg-rose-700 text-white font-semibold px-4 rounded-lg text-sm transition" onclick="handleAddCategory('expense')">Thêm</button></div>
-<ul class="category-list category-list-expense border border-slate-100 rounded-xl overflow-hidden bg-slate-50 text-sm" id="expense-categories-list"></ul>
+<ul class="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden bg-slate-50 text-sm" id="expense-categories-list"></ul>
 </div>
 </div>
 </div>
@@ -5189,16 +5165,11 @@ let compareHtml = `
         }
         function renderCategoryManager() {
             ['income', 'expense'].forEach(type => {
-                const list = document.getElementById(`${type}-categories-list`);
-                list.innerHTML = '';
-                const count = categories[type].length;
-                const cols = Math.max(1, Math.min(4, Math.ceil(Math.sqrt(count))));
-                list.classList.add('category-list');
-                list.style.setProperty('--category-cols', String(cols));
+                const list = document.getElementById(`${type}-categories-list`); list.innerHTML = '';
                 categories[type].forEach(cat => {
                     const safeCat = escapeHTML(cat);
                     const encodedCat = encodeURIComponent(cat);
-                    list.insertAdjacentHTML('beforeend', `<li class="category-item group flex items-center gap-2 hover:bg-slate-100"><div class="category-item-icon bg-${type==='income'?'emerald':'rose'}-100 text-${type==='income'?'emerald':'rose'}-600 rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid ${CATEGORY_ICONS[cat] || 'fa-tag'} text-xs"></i></div><span class="category-item-name font-semibold text-slate-700 min-w-0 flex-1 truncate" title="${safeCat}">${safeCat}</span><div class="category-item-actions flex items-center gap-0.5 shrink-0"><button type="button" aria-label="Đổi tên ${safeCat}" title="Đổi tên ${safeCat}" onclick="handleEditCategoryClick('${type}', decodeURIComponent('${encodedCat}'))" class="text-slate-400 hover:text-indigo-600 p-1.5 rounded-md"><i class="fa-solid fa-pencil text-xs"></i></button><button type="button" aria-label="Xóa ${safeCat}" title="Xóa ${safeCat}" onclick="handleDeleteCategoryClick('${type}', decodeURIComponent('${encodedCat}'))" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-md"><i class="fa-solid fa-trash-can text-xs"></i></button></div></li>`);
+                    list.insertAdjacentHTML('beforeend', `<li class="flex justify-between items-center p-3 hover:bg-slate-100 border-b border-slate-50"><div class="flex items-center space-x-3"><div class="bg-${type==='income'?'emerald':'rose'}-100 text-${type==='income'?'emerald':'rose'}-600 p-2 rounded-lg"><i class="fa-solid ${CATEGORY_ICONS[cat] || 'fa-tag'}"></i></div><span class="font-semibold text-slate-700">${safeCat}</span></div><div class="flex space-x-1"><button type="button" onclick="handleEditCategoryClick('${type}', decodeURIComponent('${encodedCat}'))" class="text-slate-400 hover:text-indigo-600 p-2"><i class="fa-solid fa-pencil"></i></button><button type="button" onclick="handleDeleteCategoryClick('${type}', decodeURIComponent('${encodedCat}'))" class="text-slate-400 hover:text-rose-600 p-2"><i class="fa-solid fa-trash-can"></i></button></div></li>`);
                 });
             });
         }
