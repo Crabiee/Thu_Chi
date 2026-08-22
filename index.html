@@ -3347,6 +3347,10 @@ tbody tr { animation: none !important; }
         let fbSaveTimer = null;
         let fbSaveRetryTimer = null;
         let fbAuthReady = false;
+        // Settings sync được tách khỏi transaction sync để migration/query giao dịch lỗi
+        // không làm chặn Ví/Tài khoản, Danh mục, Ngân sách và PIN.
+        let settingsSyncReady = false;
+        let fbSettingsUnsubscribe = null;
 
         function openDriveSyncModal() {
             updateSyncStatusUI(isDriveSignedIn() ? 'connected' : 'signed-out');
@@ -3863,7 +3867,7 @@ tbody tr { animation: none !important; }
                 pendingSettingsSync = true;
                 return;
             }
-            if (!firestoreV2Ready || !syncReady) {
+            if (!fbDb || !settingsSyncReady) {
                 pendingSettingsSync = true;
                 return;
             }
@@ -3872,7 +3876,7 @@ tbody tr { animation: none !important; }
         }
 
         async function pushSettingsOnlyToFirestore() {
-            if (!fbCurrentUid || !fbDb || !firestoreV2Ready || !syncReady) {
+            if (!fbCurrentUid || !fbDb || !settingsSyncReady) {
                 if (fbCurrentUid) pendingSettingsSync = true;
                 return;
             }
@@ -3899,7 +3903,7 @@ tbody tr { animation: none !important; }
                 if (settingsPushRequested || pendingSettingsSync) {
                     settingsPushRequested = false;
                     clearTimeout(settingsSaveTimer);
-                    if (syncReady && fbCurrentUid) settingsSaveTimer = setTimeout(() => { void pushSettingsOnlyToFirestore(); }, 100);
+                    if (settingsSyncReady && fbCurrentUid) settingsSaveTimer = setTimeout(() => { void pushSettingsOnlyToFirestore(); }, 100);
                 }
             }
         }
@@ -7053,6 +7057,37 @@ let compareHtml = `
             }
         }
 
+        async function hydrateAndListenSettingsOnly(uid) {
+            if (!uid || !fbDb) return;
+            // Read settings FIRST. This path intentionally does not touch transaction
+            // migration/schema, so a transaction-side problem cannot block settings sync.
+            const settingsSnap = await firestoreSettingsRef(uid).get({ source: 'server' });
+            const settings = settingsSnap.exists ? (settingsSnap.data() || {}) : null;
+            mergeRemoteV2Data([], {}, settings);
+            settingsSyncReady = true;
+            if (fbSettingsUnsubscribe) { try { fbSettingsUnsubscribe(); } catch (_) {} fbSettingsUnsubscribe = null; }
+            const unsub = firestoreSettingsRef(uid).onSnapshot({ includeMetadataChanges: false }, snap => {
+                if (snap.metadata.hasPendingWrites) return;
+                mergeRemoteV2Data([], {}, snap.exists ? (snap.data() || {}) : null);
+                populateAccountSelects();
+                updateDashboard();
+                applyFilters();
+                renderCategoryBudgets();
+                if (typeof renderCategoryManager === 'function') renderCategoryManager();
+            }, err => {
+                console.error('Firestore settings listener error', err);
+                const code = err && err.code ? String(err.code) : 'unknown-error';
+                updateSyncStatusUI('error', `Đồng bộ cài đặt lỗi (${code}).`);
+                settingsSyncReady = false;
+            });
+            // Keep this unsubscribe together with the normal listener set.
+            fbSettingsUnsubscribe = unsub;
+            if (pendingSettingsSync) {
+                clearTimeout(settingsSaveTimer);
+                settingsSaveTimer = setTimeout(() => { void pushSettingsOnlyToFirestore(); }, 100);
+            }
+        }
+
         async function initFirebaseSync() {
             if (!firebaseConfig.apiKey || firebaseConfig.apiKey.indexOf('ĐIỀN_') === 0) {
                 updateSyncStatusUI('error', 'Chưa cấu hình Firebase - điền firebaseConfig trong code');
@@ -7083,22 +7118,19 @@ let compareHtml = `
 
             fbAuth.onAuthStateChanged(async user => {
                 if (!user) {
-                    fbCurrentUid = null; firestoreV2Ready = false; stopV2Listeners();
-                    updateSyncStatusUI('signed-out'); showLoginGate(''); return;
+                    fbCurrentUid = null; firestoreV2Ready = false; syncReady = false; settingsSyncReady = false;
+                    if (fbSettingsUnsubscribe) { try { fbSettingsUnsubscribe(); } catch (_) {} fbSettingsUnsubscribe = null; }
+                    stopV2Listeners(); updateSyncStatusUI('signed-out'); showLoginGate(''); return;
                 }
+                const currentAccount = user.email || user.uid;
                 try {
                     const prevAccount = localStorage.getItem(ACTIVE_ACCOUNT_KEY);
-                    const currentAccount = user.email || user.uid;
                     const hasKnownPreviousAccount = !!prevAccount;
+                    const sameAccount = hasKnownPreviousAccount && prevAccount === currentAccount;
                     if (hasKnownPreviousAccount && prevAccount !== currentAccount) {
                         clearLocalSyncedDataForAccountSwitch();
                         showToast('Đã chuyển sang tài khoản Google khác. Đang tải dữ liệu riêng...', 'fa-right-left', 'text-indigo-400');
                     }
-                    // Không được coi local legacy data là thuộc tài khoản mới khi browser chưa từng
-                    // lưu ACTIVE_ACCOUNT_KEY. Trường hợp này cần ưu tiên dữ liệu server của UID hiện tại
-                    // để tránh vô tình nhập dữ liệu của một người/tài khoản khác vào account mới.
-                    // Legacy local data chỉ được migrate tự động khi đã xác định chắc chắn đây là cùng account.
-                    const sameAccount = hasKnownPreviousAccount && prevAccount === currentAccount;
                     if (!hasKnownPreviousAccount && localStorage.getItem('personal_transactions_v4')) {
                         _origLocalStorageSetItem(LEGACY_LOCAL_TRANSACTIONS_QUARANTINE_KEY, '1');
                     }
@@ -7114,40 +7146,48 @@ let compareHtml = `
                     if (sameAccount) await migrateLegacyPlainPinIfNeeded(true);
                     ensureSettingsTimestamps();
                     hideLoginGate(); updateAccountEmailUI();
-                    updateSyncStatusUI('syncing', 'Đang chuẩn bị dữ liệu cục bộ...');
+                    updateSyncStatusUI('syncing', 'Đang kết nối dữ liệu cài đặt...');
                     stopV2Listeners();
-                    await prepareLocalTransactionsForUid(user.uid, sameAccount);
-                    updateSyncStatusUI('syncing', 'Đang tải dữ liệu đồng bộ mới nhất...');
-                    // Chỉ dùng delta sync khi máy đã có một local dataset hợp lệ.
-                    // Nếu transaction cache local đang trống (ví dụ máy mới, IndexedDB bị xóa,
-                    // cache hỏng hoặc user vừa chuyển tài khoản), phải hydrate toàn bộ từ server;
-                    // nếu không, một cursor cũ có thể khiến app báo xanh nhưng giao diện rỗng.
-                    const hasLocalTransactionDataset = Array.isArray(transactions) && transactions.length > 0;
-                    if (getTxSyncCursor(user.uid) && hasLocalTransactionDataset) await loadV2DeltaState(user.uid);
-                    else await loadV2ServerState(user.uid);
 
-                    // IMPORTANT: hydration can change the in-memory transaction dataset without
-                    // causing mergeRemoteV2Data() to report a logical diff (for example, the
-                    // IndexedDB cache already matches Firestore). The dashboard was rendered
-                    // earlier, before Firebase hydration completed, so it must be rendered again
-                    // explicitly after the authoritative local/server state is ready.
-                    populateAccountSelects();
-                    updateDashboard();
-                    applyFilters();
-                    renderCategoryBudgets();
-                    if (typeof renderCategoryManager === 'function') renderCategoryManager();
-
+                    // CRITICAL: establish settings sync before any transaction migration/schema work.
+                    // This makes Ví/Tài khoản and all editable settings independent from transaction sync.
+                    await hydrateAndListenSettingsOnly(user.uid);
                     firestoreV2Ready = true;
                     syncReady = true;
-                    await startV2Listeners(user.uid);
-                    updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
-                    // Sau hydration, luôn kiểm tra lại settings local. Điều này bảo đảm các thay đổi
-                    // được thực hiện rất sớm trong vòng đời app hoặc khi mạng chập chờn không bị kẹt local.
-                    if (pendingSyncAfterReady || DIRTY_TX_IDS.size || DIRTY_TOMBSTONE_IDS.size) { pendingSyncAfterReady = false; scheduleDriveSync(); }
-                    if (pendingSettingsSync) { clearTimeout(settingsSaveTimer); settingsSaveTimer = setTimeout(() => { void pushSettingsOnlyToFirestore(); }, 100); }
+                    updateSyncStatusUI('connected', 'Đã kết nối - đồng bộ cài đặt real-time');
+
+                    // Transaction sync is intentionally isolated. A problem here must NOT turn off
+                    // settings sync. The app can keep syncing settings while transaction sync retries.
+                    try {
+                        updateSyncStatusUI('syncing', 'Đang tải giao dịch đồng bộ...');
+                        await prepareLocalTransactionsForUid(user.uid, sameAccount);
+                        const hasLocalTransactionDataset = Array.isArray(transactions) && transactions.length > 0;
+                        if (getTxSyncCursor(user.uid) && hasLocalTransactionDataset) await loadV2DeltaState(user.uid);
+                        else await loadV2ServerState(user.uid);
+                        populateAccountSelects(); updateDashboard(); applyFilters(); renderCategoryBudgets();
+                        if (typeof renderCategoryManager === 'function') renderCategoryManager();
+                        await startV2Listeners(user.uid);
+                        updateSyncStatusUI('connected', 'Đã kết nối - đồng bộ real-time');
+                    } catch (txErr) {
+                        console.error('Firestore transaction startup error', txErr);
+                        const code = txErr && txErr.code ? String(txErr.code) : 'unknown-error';
+                        const msg = txErr && txErr.message ? String(txErr.message).split('\n')[0].slice(0, 140) : '';
+                        // Keep settings sync alive; transaction sync error is reported but does not
+                        // disable Ví/Tài khoản/category/budget/PIN syncing.
+                        updateSyncStatusUI('syncing', `Cài đặt đã đồng bộ; giao dịch lỗi (${code}).${msg ? ' ' + msg : ''}`);
+                        setTimeout(() => { if (settingsSyncReady && fbCurrentUid) updateSyncStatusUI('connected', 'Đã kết nối - đồng bộ cài đặt real-time'); }, 2500);
+                    }
+
+                    if (pendingSyncAfterReady || DIRTY_TX_IDS.size || DIRTY_TOMBSTONE_IDS.size) {
+                        pendingSyncAfterReady = false; scheduleDriveSync();
+                    }
+                    if (pendingSettingsSync) {
+                        clearTimeout(settingsSaveTimer);
+                        settingsSaveTimer = setTimeout(() => { void pushSettingsOnlyToFirestore(); }, 100);
+                    }
                 } catch (err) {
-                    firestoreV2Ready = false; syncReady = false;
-                    console.error('Firestore v2 startup error', err);
+                    firestoreV2Ready = false; syncReady = false; settingsSyncReady = false;
+                    console.error('Firestore startup error', err);
                     const errCode = err && err.code ? String(err.code) : 'unknown-error';
                     const errMsg = err && err.message ? String(err.message).split('\n')[0].slice(0, 160) : '';
                     updateSyncStatusUI('error', `Đồng bộ lỗi (${errCode}).${errMsg ? ' ' + errMsg : ''}`);
@@ -7187,7 +7227,7 @@ let compareHtml = `
                 await loadV2DeltaState(fbCurrentUid);
                 const localPending = DIRTY_TX_IDS.size + DIRTY_TOMBSTONE_IDS.size;
                 if (localPending && syncReady) { clearTimeout(fbSaveTimer); void pushLocalDataToFirestore(); }
-                if (pendingSettingsSync && syncReady) { clearTimeout(settingsSaveTimer); void pushSettingsOnlyToFirestore(); }
+                if (pendingSettingsSync && settingsSyncReady) { clearTimeout(settingsSaveTimer); void pushSettingsOnlyToFirestore(); }
                 if (!localPending && !pendingSettingsSync) updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN'));
             } catch (err) { console.warn('visibility sync failed', err); updateSyncStatusUI('error', 'Mất kết nối đồng bộ, đang thử lại...'); }
         });
@@ -7199,7 +7239,7 @@ let compareHtml = `
                 pendingSyncAfterReady = false;
                 scheduleDriveSync();
             }
-            if (pendingSettingsSync) { clearTimeout(settingsSaveTimer); settingsSaveTimer = setTimeout(() => { void pushSettingsOnlyToFirestore(); }, 100); }
+            if (pendingSettingsSync && settingsSyncReady) { clearTimeout(settingsSaveTimer); settingsSaveTimer = setTimeout(() => { void pushSettingsOnlyToFirestore(); }, 100); }
         });
 
         window.addEventListener('pagehide', () => {
