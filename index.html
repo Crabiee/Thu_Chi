@@ -1270,52 +1270,62 @@ tbody tr { animation: none !important; }
 }
 
         /* =========================================================
-           INFORMATION DENSITY PASS — Transactions / Budget / Categories
+           INFORMATION DENSITY V2 — Transactions / Budget / Categories
            ========================================================= */
-        .tx-clear-filters-btn { width:auto; white-space:nowrap; }
-        .transaction-table { table-layout: fixed; }
-        .tx-col-type { width: 108px; }
-        .tx-col-category { width: 26%; }
-        .tx-col-account { width: 18%; }
-        .tx-col-notes { width: 27%; }
-        .tx-col-amount { width: 14%; }
-        .tx-col-actions { width: 92px; }
-        .tx-note-cell { max-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .transaction-data-row td { vertical-align: middle; }
-        .transaction-day-group-row td { padding: 8px 16px !important; }
-        .category-list { margin: 0; }
-        .category-list-expense { display:grid; grid-template-columns: repeat(1, minmax(0,1fr)); }
-        .category-list-income, .category-list-expense { background: var(--ui-card); }
-        .category-item { min-height: 48px; }
-        .category-item-actions { opacity:.72; transition: opacity .18s ease; }
-        .category-item:hover .category-item-actions { opacity:1; }
-        .category-item-icon { box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+        .tx-clear-filters-btn { width:auto; min-width:86px; white-space:nowrap; }
+        .transaction-table { table-layout: fixed; width:100%; }
+        .tx-col-type { width: 10%; min-width: 112px; }
+        .tx-col-category { width: 28%; min-width: 220px; }
+        .tx-col-account { width: 17%; min-width: 150px; }
+        .tx-col-notes { width: 25%; min-width: 200px; }
+        .tx-col-amount { width: 13%; min-width: 150px; }
+        .tx-col-actions { width: 90px; min-width: 90px; }
+        .transaction-table thead th { font-size:12px !important; letter-spacing:.035em; }
+        .transaction-data-row td { vertical-align: middle; padding-top:13px !important; padding-bottom:13px !important; font-size:13px; }
+        .transaction-day-group-row td { padding:11px 16px !important; font-size:13px !important; letter-spacing:.015em; }
+        .transaction-day-group-row span { font-family:'Space Grotesk','Inter',sans-serif; font-weight:700; }
+        .tx-note-cell { max-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
-        @media (min-width: 1200px) {
-            .category-list-expense { grid-template-columns: repeat(2, minmax(0,1fr)); }
-            .category-list-expense .category-item { border-bottom: 1px solid rgba(148,163,184,.14); }
-            .category-list-expense .category-item:nth-child(odd) { border-right: 1px solid rgba(148,163,184,.14); }
-            .category-list-expense .category-item:nth-last-child(-n+2) { border-bottom: 0; }
+        .category-list { margin: 0; width:100%; }
+        .category-list-income, .category-list-expense {
+            display:grid;
+            grid-template-columns:repeat(var(--category-cols, 1),minmax(0,1fr));
+            align-content:start;
+            gap:0;
+            background:var(--ui-card);
         }
+        .category-item { min-height:48px; padding:9px 11px !important; border-bottom:1px solid rgba(148,163,184,.14); }
+        .category-item-actions { opacity:.68; transition:opacity .18s ease; }
+        .category-item:hover .category-item-actions { opacity:1; }
+        .category-item-icon { width:30px !important; height:30px !important; box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+        .category-item-name { font-size:12px; line-height:1.2; }
+        .category-panel { min-width:0; }
+        .category-panel .category-list { border-radius:12px; overflow:hidden; }
 
         body.dark-mode .category-list-income, body.dark-mode .category-list-expense { background: var(--fp-surface-2); border-color: var(--fp-border) !important; }
         body.dark-mode .category-item { border-color: var(--fp-border) !important; }
         body.dark-mode .category-item:hover { background: var(--fp-surface) !important; }
         body.dark-mode .category-item-name { color: var(--fp-text) !important; }
 
+        @media (min-width: 1280px) {
+            #tab-transactions .max-w\[1500px\] { max-width:1500px; }
+        }
+
         @media (min-width: 768px) and (max-width: 1279px) {
-            #tab-transactions > div:first-child { grid-template-columns: repeat(4, minmax(0,1fr)); }
-            #tab-transactions > div:first-child > .col-span-2:first-child { grid-column: span 2; }
-            #tab-transactions > div:first-child > .md\:col-span-1:last-child { grid-column: auto; }
-            .tx-col-category { width: 24%; }
-            .tx-col-account { width: 17%; }
-            .tx-col-notes { width: 25%; }
-            .tx-col-amount { width: 15%; }
+            #tab-transactions > div:first-child { grid-template-columns:repeat(4,minmax(0,1fr)); }
+            #tab-transactions > div:first-child > .col-span-2:first-child { grid-column:span 2; }
+            #tab-transactions > div:first-child > .md\:col-span-1:last-child { grid-column:auto; }
+            .tx-col-type { width:11%; min-width:108px; }
+            .tx-col-category { width:27%; min-width:190px; }
+            .tx-col-account { width:17%; min-width:135px; }
+            .tx-col-notes { width:24%; min-width:180px; }
+            .tx-col-amount { width:13%; min-width:135px; }
         }
 
         @media (max-width: 767px) {
             .tx-clear-filters-btn { width:100%; }
-            .category-item { min-height: 46px; }
+            .category-list-income, .category-list-expense { grid-template-columns:1fr !important; --category-cols:1 !important; }
+            .category-item { min-height:46px; }
             .category-item-actions { opacity:1; }
         }
 </style>
@@ -1712,8 +1722,8 @@ tbody tr { animation: none !important; }
 </div>
 <!-- Chế độ Table cho Desktop -->
 <div class="hidden md:block overflow-x-auto custom-scrollbar">
-<div class="max-w-[1240px] mx-auto">
-<table class="w-full text-left border-collapse min-w-[940px] transaction-table">
+<div class="w-full max-w-[1500px] mx-auto">
+<table class="w-full text-left border-collapse min-w-[1120px] transaction-table">
 <colgroup>
 <col class="tx-col-type"/><col class="tx-col-category"/><col class="tx-col-account"/><col class="tx-col-notes"/><col class="tx-col-amount"/><col class="tx-col-actions"/>
 </colgroup>
@@ -5179,11 +5189,16 @@ let compareHtml = `
         }
         function renderCategoryManager() {
             ['income', 'expense'].forEach(type => {
-                const list = document.getElementById(`${type}-categories-list`); list.innerHTML = '';
+                const list = document.getElementById(`${type}-categories-list`);
+                list.innerHTML = '';
+                const count = categories[type].length;
+                const cols = Math.max(1, Math.min(4, Math.ceil(Math.sqrt(count))));
+                list.classList.add('category-list');
+                list.style.setProperty('--category-cols', String(cols));
                 categories[type].forEach(cat => {
                     const safeCat = escapeHTML(cat);
                     const encodedCat = encodeURIComponent(cat);
-                    list.insertAdjacentHTML('beforeend', `<li class="category-item group flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-100 border-b border-slate-100 last:border-b-0"><div class="category-item-icon bg-${type==='income'?'emerald':'rose'}-100 text-${type==='income'?'emerald':'rose'}-600 w-8 h-8 rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid ${CATEGORY_ICONS[cat] || 'fa-tag'} text-xs"></i></div><span class="category-item-name font-semibold text-slate-700 min-w-0 flex-1 truncate" title="${safeCat}">${safeCat}</span><div class="category-item-actions flex items-center gap-0.5 shrink-0"><button type="button" aria-label="Đổi tên ${safeCat}" onclick="handleEditCategoryClick('${type}', decodeURIComponent('${encodedCat}'))" class="text-slate-400 hover:text-indigo-600 p-1.5 rounded-md"><i class="fa-solid fa-pencil text-xs"></i></button><button type="button" aria-label="Xóa ${safeCat}" onclick="handleDeleteCategoryClick('${type}', decodeURIComponent('${encodedCat}'))" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-md"><i class="fa-solid fa-trash-can text-xs"></i></button></div></li>`);
+                    list.insertAdjacentHTML('beforeend', `<li class="category-item group flex items-center gap-2 hover:bg-slate-100"><div class="category-item-icon bg-${type==='income'?'emerald':'rose'}-100 text-${type==='income'?'emerald':'rose'}-600 rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid ${CATEGORY_ICONS[cat] || 'fa-tag'} text-xs"></i></div><span class="category-item-name font-semibold text-slate-700 min-w-0 flex-1 truncate" title="${safeCat}">${safeCat}</span><div class="category-item-actions flex items-center gap-0.5 shrink-0"><button type="button" aria-label="Đổi tên ${safeCat}" title="Đổi tên ${safeCat}" onclick="handleEditCategoryClick('${type}', decodeURIComponent('${encodedCat}'))" class="text-slate-400 hover:text-indigo-600 p-1.5 rounded-md"><i class="fa-solid fa-pencil text-xs"></i></button><button type="button" aria-label="Xóa ${safeCat}" title="Xóa ${safeCat}" onclick="handleDeleteCategoryClick('${type}', decodeURIComponent('${encodedCat}'))" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-md"><i class="fa-solid fa-trash-can text-xs"></i></button></div></li>`);
                 });
             });
         }
