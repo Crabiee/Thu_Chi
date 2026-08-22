@@ -3082,6 +3082,14 @@ tbody tr { animation: none !important; }
             personal_pin_hash_v1: 'financepro_pin_updated_at'
         };
         const SETTINGS_TIMESTAMP_FIELDS = Object.values(SETTINGS_TIMESTAMP_KEYS);
+        // Metadata riêng cho từng VÍ/TÀI KHOẢN (không phải cho cả object userAccounts).
+        // userAccounts vẫn được merge nguyên khối như 1 nhóm settings (accountsUpdatedAt) để
+        // biết cục bộ có gì mới hơn hay không, NHƯNG khi merge dữ liệu thật, ta merge theo
+        // TỪNG TÊN VÍ dựa vào timestamp riêng của từng ví trong personal_accounts_meta_v4.
+        // Nếu không có bước này, 2 thiết bị cùng sửa 2 ví khác nhau trong cùng một lúc (vd.
+        // máy A đổi tên ví "Tiền mặt", máy B đổi số dư ví "TCB") sẽ khiến bên có timestamp cũ
+        // hơn bị GHI ĐÈ TOÀN BỘ, xóa mất thay đổi không hề liên quan của máy kia.
+        const ACCOUNTS_META_KEY = 'personal_accounts_meta_v4';
         const LEGACY_SETTINGS_TIMESTAMP_KEY = 'financepro_settings_updated_at';
         const _origLocalStorageGetItem = localStorage.getItem.bind(localStorage);
         const _origLocalStorageSetItem = localStorage.setItem.bind(localStorage);
@@ -3096,10 +3104,59 @@ tbody tr { animation: none !important; }
             return uid ? `${TOMBSTONE_UID_STORAGE_PREFIX}${uid}` : 'personal_deleted_tx_v4';
         }
         function scopedSettingsKey(key, uid = fbCurrentUid) {
-            return (uid && (SETTINGS_SYNC_KEYS.includes(key) || SETTINGS_TIMESTAMP_FIELDS.includes(key))) ? `${SETTINGS_UID_PREFIX}${uid}__${key}` : key;
+            return (uid && (SETTINGS_SYNC_KEYS.includes(key) || SETTINGS_TIMESTAMP_FIELDS.includes(key) || key === ACCOUNTS_META_KEY)) ? `${SETTINGS_UID_PREFIX}${uid}__${key}` : key;
         }
         function getScopedSetting(key, uid = fbCurrentUid) {
             return _origLocalStorageGetItem(scopedSettingsKey(key, uid));
+        }
+        // ================== METADATA RIÊNG CHO TỪNG VÍ/TÀI KHOẢN (xem giải thích ở ACCOUNTS_META_KEY) ==================
+        function getAccountsMeta(uid = fbCurrentUid) {
+            return safeParseJSON(_origLocalStorageGetItem(scopedSettingsKey(ACCOUNTS_META_KEY, uid)), null) || {};
+        }
+        function setAccountsMeta(meta, uid = fbCurrentUid) {
+            _origLocalStorageSetItem(scopedSettingsKey(ACCOUNTS_META_KEY, uid), JSON.stringify(meta || {}));
+        }
+        function touchAccountMeta(name, atIso) {
+            if (!name) return;
+            const meta = getAccountsMeta();
+            meta[name] = { updatedAt: atIso || new Date().toISOString(), deleted: false };
+            setAccountsMeta(meta);
+        }
+        function tombstoneAccountMeta(name, atIso) {
+            if (!name) return;
+            const meta = getAccountsMeta();
+            meta[name] = { updatedAt: atIso || new Date().toISOString(), deleted: true };
+            setAccountsMeta(meta);
+        }
+        // Hợp nhất userAccounts theo TỪNG VÍ dựa trên timestamp riêng của ví đó, thay vì so
+        // sánh timestamp của CẢ object rồi ghi đè toàn bộ. Với ví không có metadata (dữ liệu
+        // cũ trước khi có cơ chế này), coi như "đã tồn tại" (mốc thời gian thấp nhất) để bên
+        // có metadata mới hơn luôn thắng, tránh mất ví chỉ tồn tại ở 1 phía.
+        function mergeAccountsWithMeta(localAccounts, localMeta, remoteAccounts, remoteMeta) {
+            localAccounts = localAccounts && typeof localAccounts === 'object' ? localAccounts : {};
+            remoteAccounts = remoteAccounts && typeof remoteAccounts === 'object' ? remoteAccounts : {};
+            localMeta = localMeta && typeof localMeta === 'object' ? localMeta : {};
+            remoteMeta = remoteMeta && typeof remoteMeta === 'object' ? remoteMeta : {};
+            const names = new Set([...Object.keys(localAccounts), ...Object.keys(remoteAccounts), ...Object.keys(localMeta), ...Object.keys(remoteMeta)]);
+            const mergedAccounts = {};
+            const mergedMeta = {};
+            names.forEach(name => {
+                const lm = localMeta[name];
+                const rm = remoteMeta[name];
+                const lt = lm ? firestoreTime(lm.updatedAt) : (Object.prototype.hasOwnProperty.call(localAccounts, name) ? 1 : 0);
+                const rt = rm ? firestoreTime(rm.updatedAt) : (Object.prototype.hasOwnProperty.call(remoteAccounts, name) ? 1 : 0);
+                const remoteWins = rt > lt;
+                const winnerMeta = remoteWins ? rm : lm;
+                const winnerDeleted = !!(winnerMeta && winnerMeta.deleted);
+                const winnerValue = remoteWins ? remoteAccounts[name] : localAccounts[name];
+                if (!winnerDeleted) mergedAccounts[name] = winnerValue !== undefined ? winnerValue : 0;
+                if (winnerMeta) mergedMeta[name] = winnerMeta;
+            });
+            // Không bao giờ để app còn 0 ví (UI luôn cần ít nhất 1 ví để hoạt động).
+            if (Object.keys(mergedAccounts).length === 0) {
+                return { accounts: { ...(Object.keys(localAccounts).length ? localAccounts : remoteAccounts) }, meta: mergedMeta };
+            }
+            return { accounts: mergedAccounts, meta: mergedMeta };
         }
         function setScopedSetting(key, value, uid = fbCurrentUid) {
             const scopedKey = scopedSettingsKey(key, uid);
@@ -3171,6 +3228,7 @@ tbody tr { animation: none !important; }
                 const tsKey = SETTINGS_TIMESTAMP_KEYS[key];
                 if (tsKey) _origLocalStorageRemoveItem(scopedSettingsKey(tsKey, uid));
             });
+            _origLocalStorageRemoveItem(scopedSettingsKey(ACCOUNTS_META_KEY, uid));
         }
         function loadSettingsFromScopedStorage() {
             const savedCats = getScopedSetting('personal_categories_v4');
@@ -3356,6 +3414,7 @@ tbody tr { animation: none !important; }
 
             if (pinActionType === 'create') {
                 await savePinHash(input);
+                triggerSettingsSync();
                 isBalanceHidden = false;
                 updateVisibilityUI();
                 showToast('Đã tạo mã PIN bảo mật', 'fa-shield-check', 'text-emerald-400');
@@ -3384,9 +3443,11 @@ tbody tr { animation: none !important; }
             else if (pinActionType === 'change') {
                 if (input.trim() === '') {
                     localStorage.setItem('personal_pin_hash_v1', '');
+                    triggerSettingsSync();
                     showToast('Đã XÓA bảo vệ bằng mã PIN', 'fa-unlock', 'text-amber-400');
                 } else {
                     await savePinHash(input);
+                    triggerSettingsSync();
                     showToast('Đổi mã PIN thành công', 'fa-check', 'text-emerald-400');
                 }
                 closePinModal();
@@ -3734,8 +3795,14 @@ tbody tr { animation: none !important; }
                 list.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-between p-3 bg-slate-50 border rounded-lg"><div class="min-w-0 flex-1 pr-3"><span class="font-semibold text-slate-700 block truncate">${safeAcc}</span><span class="text-[10px] text-slate-400">Số dư ban đầu</span></div><div class="flex items-center shrink-0"><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" data-account="${encodedAcc}" value="${userAccounts[acc].toLocaleString('vi-VN')}" class="w-24 text-right border rounded-md p-1.5 text-sm font-semibold" style="font-size:16px"><span class="ml-1 text-xs text-slate-500">₫</span><button type="button" title="Đổi tên ví/tài khoản" aria-label="Đổi tên ví/tài khoản ${safeAcc}" onclick="handleRenameAccount(decodeURIComponent('${encodedAcc}'))" class="ml-3 text-indigo-400 hover:text-indigo-600"><i class="fa-solid fa-pen"></i></button><button type="button" title="Xóa ví/tài khoản" aria-label="Xóa ví/tài khoản ${safeAcc}" onclick="handleRemoveAccount(decodeURIComponent('${encodedAcc}'))" class="ml-3 text-rose-400 hover:text-rose-600"><i class="fa-solid fa-trash"></i></button></div></div>`);
             });
         }
-        function persistAccountsAndSync() {
-            setScopedSetting('personal_accounts_v4', JSON.stringify(userAccounts));
+        // Trigger đồng bộ Firestore ngay sau khi BẤT KỲ cài đặt nào (ví/tài khoản, danh mục,
+        // ngân sách theo danh mục, ngân sách tổng, mã PIN) bị thay đổi. Trước đây chỉ riêng
+        // việc đổi tên/thêm/xóa ví gọi hàm này; các cài đặt khác chỉ ghi vào localStorage
+        // và "ăn theo" lần đồng bộ tiếp theo do một hành động khác (vd: thêm giao dịch) kích
+        // hoạt - nếu người dùng chỉ sửa cài đặt rồi tắt app/mất mạng ngay sau đó mà không có
+        // hành động nào khác, thay đổi sẽ kẹt lại cục bộ và không bao giờ tới được thiết bị
+        // khác. Mọi hàm sửa cài đặt phải gọi hàm này ngay sau khi ghi localStorage.
+        function triggerSettingsSync() {
             if (fbCurrentUid && firestoreV2Ready && syncReady) {
                 clearTimeout(fbSaveTimer);
                 void pushLocalDataToFirestore();
@@ -3743,11 +3810,16 @@ tbody tr { animation: none !important; }
                 pendingSyncAfterReady = true;
             }
         }
+        function persistAccountsAndSync() {
+            setScopedSetting('personal_accounts_v4', JSON.stringify(userAccounts));
+            triggerSettingsSync();
+        }
         function handleAddAccount() {
             const n = document.getElementById('new-account-input').value.trim();
             if(!n || Object.prototype.hasOwnProperty.call(userAccounts, n)) return showToast("Không hợp lệ", "fa-xmark", "text-rose-500");
             if (n.length > 200) return showToast("Tên quá dài (tối đa 200 ký tự).", "fa-xmark", "text-rose-500");
             userAccounts[n] = 0;
+            touchAccountMeta(n);
             document.getElementById('new-account-input').value='';
             persistAccountsAndSync();
             populateAccountSelects();
@@ -3773,6 +3845,9 @@ tbody tr { animation: none !important; }
                 const initialBalance = userAccounts[currentName];
                 delete userAccounts[currentName];
                 userAccounts[newName] = initialBalance;
+                const renameAt = new Date().toISOString();
+                tombstoneAccountMeta(currentName, renameAt);
+                touchAccountMeta(newName, renameAt);
 
                 transactions = (transactions || []).map(tx => {
                     let changed = false;
@@ -3807,12 +3882,11 @@ tbody tr { animation: none !important; }
                 applyFilters();
                 renderCategoryBudgets();
 
-                if (fbCurrentUid && firestoreV2Ready && syncReady) {
-                    clearTimeout(fbSaveTimer);
-                    void pushLocalDataToFirestore();
-                } else if (fbCurrentUid) {
-                    pendingSyncAfterReady = true;
-                }
+                // Push lại một lần nữa sau khi các giao dịch liên quan đã được đánh dấu dirty,
+                // để đảm bảo cả tên ví mới lẫn các giao dịch vừa cập nhật account/toAccount đều
+                // được gửi đi trong cùng một lượt (persistAccountsAndSync ở trên chỉ mới push
+                // kịp phần userAccounts vì lúc đó các giao dịch chưa được đánh dấu dirty).
+                triggerSettingsSync();
 
                 const changedCount = affectedTransactionIds.size;
                 showToast(`Đã đổi tên “${currentName}” thành “${newName}”${changedCount ? ` và cập nhật ${changedCount} giao dịch` : ''}.`, 'fa-check', 'text-emerald-400');
@@ -3827,6 +3901,7 @@ tbody tr { animation: none !important; }
             openConfirm("Xóa", `Xóa "${a}"?`, () => {
                 const oldFilterAccount = document.getElementById('filter-account')?.value || 'all';
                 delete userAccounts[a];
+                tombstoneAccountMeta(a);
                 persistAccountsAndSync();
                 populateAccountSelects();
                 const filterAccount = document.getElementById('filter-account');
@@ -3841,7 +3916,10 @@ tbody tr { animation: none !important; }
             // Lưu số dư ban đầu người dùng nhập — không đổi logic, không checkpoint
             document.querySelectorAll('#account-setup-list [data-account]').forEach(e => {
                 const a = decodeURIComponent(e.getAttribute('data-account') || '');
-                if (Object.prototype.hasOwnProperty.call(userAccounts, a)) userAccounts[a] = getRawNumber(e.value);
+                if (Object.prototype.hasOwnProperty.call(userAccounts, a)) {
+                    const nextVal = getRawNumber(e.value);
+                    if (nextVal !== userAccounts[a]) { userAccounts[a] = nextVal; touchAccountMeta(a); }
+                }
             });
             persistAccountsAndSync();
             populateAccountSelects(); updateDashboard(); closeModal('initialBalanceModal');
@@ -5184,7 +5262,13 @@ let compareHtml = `
         }
 
         // ================== BUDGET & CATEGORIES ==================
-        function updateIdealBudget() { idealBudget = getRawNumber(document.getElementById('input-overall-budget').value); localStorage.setItem('personal_ideal_budget_v4', idealBudget); showToast("Lưu mục tiêu tổng", "fa-check", "text-emerald-400"); updateDashboard(); renderCategoryBudgets(); }
+        function updateIdealBudget() { idealBudget = getRawNumber(document.getElementById('input-overall-budget').value); localStorage.setItem('personal_ideal_budget_v4', idealBudget); triggerSettingsSync(); showToast("Lưu mục tiêu tổng", "fa-check", "text-emerald-400"); updateDashboard(); renderCategoryBudgets(); }
+        function updateCategoryBudgetValue(cat, rawValue) {
+            idealCategoryBudgets[cat] = getRawNumber(rawValue);
+            localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets));
+            triggerSettingsSync();
+            renderCategoryBudgets();
+        }
         function renderCategoryBudgets() {
             const c = document.getElementById('category-budgets-container'); c.innerHTML='';
             let tot = 0; categories.expense.forEach(x=>tot+=(idealCategoryBudgets[x]||0));
@@ -5201,7 +5285,7 @@ let compareHtml = `
                 const max = Math.max(0, idealBudget-tot+lim);
                 const safeCat = escapeHTML(cat);
                 const encodedCat = encodeURIComponent(cat);
-                c.insertAdjacentHTML('beforeend', `<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-2"><div class="flex justify-between items-center"><span class="font-bold text-sm flex gap-2"><i class="fa-solid ${CATEGORY_ICONS[cat]||'fa-tag'} w-5 text-slate-400"></i> ${safeCat}</span><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" onchange="idealCategoryBudgets[decodeURIComponent('${encodedCat}')]=getRawNumber(this.value); localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); renderCategoryBudgets();" value="${lim>0?lim.toLocaleString('vi-VN'):''}" placeholder="Chưa đặt mục tiêu" class="budget-category-input w-36 min-w-0 text-right border rounded p-1.5 text-xs focus:ring-1 focus:ring-indigo-500 outline-none" style="font-size:16px"></div><div class="h-2 bg-slate-100 rounded-full w-full"><div class="h-full ${barColor} rounded-full transition-all duration-500" style="width:${lim>0?percent:(spent>0?100:0)}%"></div></div><div class="flex justify-between text-xs text-slate-500 mt-1"><span>Đã chi: <strong>${formatCurrency(spent)}</strong></span><span class="${spent>lim&&lim>0?'text-rose-600 font-bold':''}">${lim>0?percent+'%':''}</span></div></div>`);
+                c.insertAdjacentHTML('beforeend', `<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-2"><div class="flex justify-between items-center"><span class="font-bold text-sm flex gap-2"><i class="fa-solid ${CATEGORY_ICONS[cat]||'fa-tag'} w-5 text-slate-400"></i> ${safeCat}</span><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" onchange="updateCategoryBudgetValue(decodeURIComponent('${encodedCat}'), this.value)" value="${lim>0?lim.toLocaleString('vi-VN'):''}" placeholder="Chưa đặt mục tiêu" class="budget-category-input w-36 min-w-0 text-right border rounded p-1.5 text-xs focus:ring-1 focus:ring-indigo-500 outline-none" style="font-size:16px"></div><div class="h-2 bg-slate-100 rounded-full w-full"><div class="h-full ${barColor} rounded-full transition-all duration-500" style="width:${lim>0?percent:(spent>0?100:0)}%"></div></div><div class="flex justify-between text-xs text-slate-500 mt-1"><span>Đã chi: <strong>${formatCurrency(spent)}</strong></span><span class="${spent>lim&&lim>0?'text-rose-600 font-bold':''}">${lim>0?percent+'%':''}</span></div></div>`);
 
             });
         }
@@ -5215,8 +5299,8 @@ let compareHtml = `
                 });
             });
         }
-        function handleAddCategory(t) { const n = document.getElementById(`new-${t}-cat-input`).value.trim(); if(n&&!categories[t].includes(n)) { categories[t].push(n); localStorage.setItem('personal_categories_v4', JSON.stringify(categories)); document.getElementById(`new-${t}-cat-input`).value=''; renderCategoryManager(); showToast("Đã thêm danh mục!", "fa-check", "text-emerald-400"); } }
-        function handleEditCategoryClick(type, oldName) { openPrompt("Đổi tên danh mục", oldName, (newName) => { const trimmedName = newName.trim(); if (!trimmedName || trimmedName === oldName || categories[type].includes(trimmedName)) return; categories[type][categories[type].indexOf(oldName)] = trimmedName; if (CATEGORY_ICONS[oldName]) CATEGORY_ICONS[trimmedName] = CATEGORY_ICONS[oldName]; let isUpdated = false; transactions.forEach(tx => { if (tx.type === type && tx.category === oldName) { tx.category = trimmedName; tx.updatedAt = new Date().toISOString(); tx.syncVersion = Math.max(1, Number(tx.syncVersion) || 0) + 1; isUpdated = true; } }); if (type === 'expense' && idealCategoryBudgets[oldName] !== undefined) { idealCategoryBudgets[trimmedName] = idealCategoryBudgets[oldName]; delete idealCategoryBudgets[oldName]; localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); } if (isUpdated) { transactions.forEach(tx => { if (tx.type === type && tx.category === trimmedName) { markTransactionDirty(tx.id); } }); if (txStorageUid) queueTxStorageWrite(() => idbReplaceTransactions(txStorageUid, transactions)); else localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions)); } localStorage.setItem('personal_categories_v4', JSON.stringify(categories)); renderCategoryManager(); updateFormCategories(); updateDashboard(); showToast("Đổi tên thành công", "fa-check", "text-emerald-400"); }); }
+        function handleAddCategory(t) { const n = document.getElementById(`new-${t}-cat-input`).value.trim(); if(n&&!categories[t].includes(n)) { categories[t].push(n); localStorage.setItem('personal_categories_v4', JSON.stringify(categories)); triggerSettingsSync(); document.getElementById(`new-${t}-cat-input`).value=''; renderCategoryManager(); showToast("Đã thêm danh mục!", "fa-check", "text-emerald-400"); } }
+        function handleEditCategoryClick(type, oldName) { openPrompt("Đổi tên danh mục", oldName, (newName) => { const trimmedName = newName.trim(); if (!trimmedName || trimmedName === oldName || categories[type].includes(trimmedName)) return; categories[type][categories[type].indexOf(oldName)] = trimmedName; if (CATEGORY_ICONS[oldName]) CATEGORY_ICONS[trimmedName] = CATEGORY_ICONS[oldName]; let isUpdated = false; transactions.forEach(tx => { if (tx.type === type && tx.category === oldName) { tx.category = trimmedName; tx.updatedAt = new Date().toISOString(); tx.syncVersion = Math.max(1, Number(tx.syncVersion) || 0) + 1; isUpdated = true; } }); if (type === 'expense' && idealCategoryBudgets[oldName] !== undefined) { idealCategoryBudgets[trimmedName] = idealCategoryBudgets[oldName]; delete idealCategoryBudgets[oldName]; localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); } if (isUpdated) { transactions.forEach(tx => { if (tx.type === type && tx.category === trimmedName) { markTransactionDirty(tx.id); } }); if (txStorageUid) queueTxStorageWrite(() => idbReplaceTransactions(txStorageUid, transactions)); else localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions)); } localStorage.setItem('personal_categories_v4', JSON.stringify(categories)); triggerSettingsSync(); renderCategoryManager(); updateFormCategories(); updateDashboard(); showToast("Đổi tên thành công", "fa-check", "text-emerald-400"); }); }
         function handleDeleteCategoryClick(type, cat) {
             if (categories[type].length <= 1) return showToast("Phải giữ lại ít nhất 1", "fa-xmark", "text-rose-500");
             const usedCount = transactions.filter(tx => tx.type === type && tx.category === cat).length;
@@ -5225,6 +5309,7 @@ let compareHtml = `
                 categories[type] = categories[type].filter(c => c !== cat);
                 localStorage.setItem('personal_categories_v4', JSON.stringify(categories));
                 if (type === 'expense') { delete idealCategoryBudgets[cat]; localStorage.setItem('personal_ideal_cat_budgets_v4', JSON.stringify(idealCategoryBudgets)); }
+                triggerSettingsSync();
                 renderCategoryManager(); updateFormCategories(); updateDashboard(); showToast("Đã xóa", "fa-trash", "text-rose-400");
             });
         }
@@ -5624,6 +5709,17 @@ let compareHtml = `
                             if (data.userAccounts) localStorage.setItem('personal_accounts_v4', JSON.stringify(data.userAccounts));
                             else if (data.initialBalances) localStorage.setItem('personal_accounts_v4', JSON.stringify(data.initialBalances));
                             else localStorage.setItem('personal_accounts_v4', 'null');
+                            // Restore là lệnh tường minh "khôi phục về đúng như file backup", nên mọi
+                            // ví trong backup phải được coi là vừa cập nhật NGAY BÂY GIỜ (importAt),
+                            // ghi đè bất kỳ metadata cũ nào - nếu không, cơ chế merge theo-từng-ví sẽ
+                            // coi các ví hiện có trên máy khác (chưa restore) là "mới hơn" và làm hỏng
+                            // kết quả phục hồi.
+                            {
+                                const restoredAccountsObj = safeParseJSON(localStorage.getItem('personal_accounts_v4'), {}) || {};
+                                const restoredMeta = {};
+                                Object.keys(restoredAccountsObj).forEach(name => { restoredMeta[name] = { updatedAt: importAt, deleted: false }; });
+                                setAccountsMeta(restoredMeta);
+                            }
 
                             if (data.idealBudget !== undefined) localStorage.setItem('personal_ideal_budget_v4', Number(data.idealBudget) || 0);
                             else localStorage.setItem('personal_ideal_budget_v4', '0');
@@ -6026,6 +6122,7 @@ let compareHtml = `
                 deletedTx: pruneOldTombstones(getStoredJSON('personal_deleted_tx_v4', {})),
                 categories: cat,
                 userAccounts: acc,
+                userAccountsMeta: getAccountsMeta(),
                 idealBudget: budgetRaw ? Number(budgetRaw) : 0,
                 idealCategoryBudgets: catBudgets,
                 pinHash: pinHash || null,
@@ -6128,7 +6225,6 @@ let compareHtml = `
                 ensureSettingsTimestamps();
                 const defs = [
                     { field: 'categories', stateKey: 'categories', storageKey: 'personal_categories_v4', timestampKey: SETTINGS_TIMESTAMP_KEYS.personal_categories_v4 },
-                    { field: 'userAccounts', stateKey: 'userAccounts', storageKey: 'personal_accounts_v4', timestampKey: SETTINGS_TIMESTAMP_KEYS.personal_accounts_v4 },
                     { field: 'idealBudget', stateKey: 'idealBudget', storageKey: 'personal_ideal_budget_v4', timestampKey: SETTINGS_TIMESTAMP_KEYS.personal_ideal_budget_v4 },
                     { field: 'idealCategoryBudgets', stateKey: 'idealCategoryBudgets', storageKey: 'personal_ideal_cat_budgets_v4', timestampKey: SETTINGS_TIMESTAMP_KEYS.personal_ideal_cat_budgets_v4 },
                     { field: 'pinHash', stateKey: 'pinHash', storageKey: 'personal_pin_hash_v1', timestampKey: SETTINGS_TIMESTAMP_KEYS.personal_pin_hash_v1 }
@@ -6144,14 +6240,42 @@ let compareHtml = `
                         if (remoteSettings[def.field]) localStorage.setItem(def.storageKey, String(remoteSettings[def.field])); else localStorage.removeItem(def.storageKey);
                     } else if (def.stateKey === 'categories') {
                         categories = remoteSettings[def.field]; localStorage.setItem(def.storageKey, JSON.stringify(categories));
-                    } else if (def.stateKey === 'userAccounts') {
-                        userAccounts = remoteSettings[def.field]; localStorage.setItem(def.storageKey, JSON.stringify(userAccounts));
                     } else {
                         idealCategoryBudgets = remoteSettings[def.field]; localStorage.setItem(def.storageKey, JSON.stringify(idealCategoryBudgets));
                     }
                     _origLocalStorageSetItem(scopedSettingsKey(def.timestampKey), remoteAt); changed = true;
                 });
-                if (changed) { populateAccountSelects(); updateDashboard(); applyFilters(); renderCategoryBudgets(); renderCategoryManager(); }
+
+                // userAccounts: merge theo TỪNG VÍ (xem giải thích chi tiết ở mergeAccountsWithMeta),
+                // KHÔNG so sánh timestamp của cả object rồi ghi đè toàn bộ như các nhóm settings khác.
+                if (remoteSettings.userAccounts !== undefined || remoteSettings.userAccountsMeta !== undefined) {
+                    const localAccountsNow = getStoredJSON('personal_accounts_v4', userAccounts || null) || {};
+                    const localMetaNow = getAccountsMeta();
+                    const mergedAcc = mergeAccountsWithMeta(localAccountsNow, localMetaNow, remoteSettings.userAccounts, remoteSettings.userAccountsMeta);
+                    if (JSON.stringify(mergedAcc.accounts) !== JSON.stringify(localAccountsNow)) {
+                        userAccounts = mergedAcc.accounts;
+                        localStorage.setItem('personal_accounts_v4', JSON.stringify(userAccounts));
+                        changed = true;
+                    }
+                    setAccountsMeta(mergedAcc.meta);
+                }
+
+                if (changed) {
+                    populateAccountSelects(); updateDashboard(); applyFilters(); renderCategoryBudgets(); renderCategoryManager();
+                    // Các ô input dưới đây chỉ được đổ giá trị 1 lần lúc tải trang / lúc mở modal,
+                    // nên khi cài đặt được cập nhật từ xa (thiết bị khác vừa sửa) phải chủ động
+                    // đồng bộ lại giá trị hiển thị, nếu không UI trên thiết bị này sẽ hiện dữ liệu cũ
+                    // cho tới khi người dùng tự tải lại trang - bug tương tự lỗi đổi tên ví ở trên,
+                    // chỉ khác là ở phía "nhận" thay vì phía "gửi".
+                    const budgetInput = document.getElementById('input-overall-budget');
+                    if (budgetInput && document.activeElement !== budgetInput) {
+                        budgetInput.value = idealBudget > 0 ? idealBudget.toLocaleString('vi-VN') : '';
+                    }
+                    const balanceModal = document.getElementById('initialBalanceModal');
+                    if (balanceModal && !balanceModal.classList.contains('hidden') && typeof renderAccountSetupList === 'function') {
+                        renderAccountSetupList();
+                    }
+                }
             }
             _origLocalStorageSetItem('financepro_last_synced_at', new Date().toISOString());
             return changed;
@@ -6702,7 +6826,6 @@ let compareHtml = `
                 const merged = { schemaVersion: FIRESTORE_SCHEMA_VERSION, savedAt: new Date().toISOString() };
                 const defs = [
                     { field: 'categories', localValue: snapshot.categories, localAt: snapshot.categoriesUpdatedAt },
-                    { field: 'userAccounts', localValue: snapshot.userAccounts, localAt: snapshot.accountsUpdatedAt },
                     { field: 'idealBudget', localValue: snapshot.idealBudget, localAt: snapshot.budgetUpdatedAt },
                     { field: 'idealCategoryBudgets', localValue: snapshot.idealCategoryBudgets, localAt: snapshot.categoryBudgetsUpdatedAt },
                     { field: 'pinHash', localValue: snapshot.pinHash, localAt: snapshot.pinUpdatedAt }
@@ -6718,6 +6841,24 @@ let compareHtml = `
                         merged[def.field + 'UpdatedAt'] = def.localAt || new Date().toISOString();
                     }
                 });
+
+                // userAccounts: merge theo TỪNG VÍ dựa vào metadata riêng, thay vì so sánh
+                // timestamp của cả object rồi ghi đè toàn bộ. Đây là điểm mấu chốt sửa lỗi
+                // "đổi tên ví/tài khoản không đồng bộ": khi push, ta LUÔN đọc dữ liệu userAccounts
+                // + userAccountsMeta mới nhất đang có trên server (trong cùng transaction) rồi
+                // hợp nhất với dữ liệu cục bộ theo từng ví, thay vì để bên có timestamp cũ hơn
+                // ghi đè mất sạch thay đổi của bên kia. Restore (forceRestore) vẫn là lệnh tường
+                // minh "làm cho cloud giống hệt file backup" nên bỏ qua bước merge.
+                if (forceRestore) {
+                    merged.userAccounts = snapshot.userAccounts;
+                    merged.userAccountsMeta = snapshot.userAccountsMeta;
+                    merged.accountsUpdatedAt = snapshot.accountsUpdatedAt || new Date().toISOString();
+                } else {
+                    const mergedAcc = mergeAccountsWithMeta(snapshot.userAccounts, snapshot.userAccountsMeta, remote.userAccounts, remote.userAccountsMeta);
+                    merged.userAccounts = mergedAcc.accounts;
+                    merged.userAccountsMeta = mergedAcc.meta;
+                    merged.accountsUpdatedAt = new Date().toISOString();
+                }
                 transaction.set(ref, merged, { merge: true });
             });
         }
