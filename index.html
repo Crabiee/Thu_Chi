@@ -1288,6 +1288,16 @@ body.dark-mode .finpro-callout-box { background-color: rgba(67,56,202,.20) !impo
 .finpro-callout-box-soft { background-color: rgba(238,242,255,.4); }
 body.dark-mode .finpro-callout-box-soft { background-color: rgba(67,56,202,.16) !important; border-color: rgba(165,180,252,.24) !important; }
 
+/* --- Fix: the "Hiểu Hết Về Tiền" library header uses Tailwind's gradient
+   utilities (bg-gradient-to-r from-indigo-50 to-slate-50), which set
+   background-image, not background-color — completely different property
+   from every rule above, so it was never touched and stayed light while its
+   own title/subtitle text was already recolored light for dark mode. --- */
+body.dark-mode .bg-gradient-to-r.from-indigo-50.to-slate-50 {
+    background-image: none !important;
+    background-color: var(--fp-surface) !important;
+}
+
 /* --- Fix: "Chuyển" (transfer) → "Đến tài khoản" select kept its light-mode
    pale-blue styling untouched in dark mode (only the plain .bg-blue-50 class
    was covered elsewhere, but cascade order/specificity made it unreliable in
