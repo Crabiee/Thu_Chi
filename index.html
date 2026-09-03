@@ -6950,13 +6950,22 @@ let compareHtml = `
                 return;
             }
 
-            fbAuth.onAuthStateChanged(async user => {
-                if (!user) {
-                    fbCurrentUid = null; firestoreV2Ready = false; syncReady = false; settingsSyncReady = false;
-                    if (fbSettingsUnsubscribe) { try { fbSettingsUnsubscribe(); } catch (_) {} fbSettingsUnsubscribe = null; }
-                    stopV2Listeners(); updateSyncStatusUI('signed-out'); showLoginGate(''); return;
-                }
-                const currentAccount = user.email || user.uid;
+           fbAuth.onAuthStateChanged(async user => {
+    if (!user) {
+        const userEl = document.getElementById('sidebar-user-name');
+        if (userEl) userEl.innerText = ''; // Xóa tên khi đăng xuất
+
+        fbCurrentUid = null; firestoreV2Ready = false; syncReady = false; settingsSyncReady = false;
+        if (fbSettingsUnsubscribe) { try { fbSettingsUnsubscribe(); } catch (_) {} fbSettingsUnsubscribe = null; }
+        stopV2Listeners(); updateSyncStatusUI('signed-out'); showLoginGate(''); return;
+    }
+
+    // Tách lấy phần username phía trước @ (ví dụ: a@gmail.com -> a)
+    const userPrefix = user.email ? user.email.split('@')[0] : (user.displayName || 'Người dùng');
+    const userEl = document.getElementById('sidebar-user-name');
+    if (userEl) userEl.innerText = userPrefix;
+
+    const currentAccount = user.email || user.uid;
                 try {
                     const prevAccount = localStorage.getItem(ACTIVE_ACCOUNT_KEY);
                     const hasKnownPreviousAccount = !!prevAccount;
