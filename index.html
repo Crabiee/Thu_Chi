@@ -1259,6 +1259,30 @@ body.dark-mode #subguide-panel-book button.w-full:hover,
 body.dark-mode #subguide-panel-economics button.w-full:hover { background: var(--fp-surface-2) !important; color: var(--fp-text) !important; }
 body.dark-mode .bg-white\/80 { background: rgba(19,19,22,.88) !important; border-color: var(--fp-border) !important; }
 
+/* --- Fix: "Trung gian" (proxy) transaction type — amber checked-state was never
+   given a dark-mode override (only rose/emerald/blue were), so it kept its pale
+   light-mode colors and became unreadable on the dark card. --- */
+body.dark-mode .\[\&\:has\(\:checked\)\]\:bg-amber-50:has(:checked) { background-color: rgba(120,53,15,.32) !important; }
+body.dark-mode .\[\&\:has\(\:checked\)\]\:border-amber-500:has(:checked) { border-color: #fbbf24 !important; }
+body.dark-mode .\[\&\:has\(\:checked\)\]\:text-amber-600:has(:checked) { color: #fcd34d !important; }
+body.dark-mode .\[\&\:has\(\:checked\)\]\:text-amber-700:has(:checked) { color: #fcd34d !important; }
+
+/* --- Fix: proxy-highlighted transaction rows/cards use bg-amber-50/30 and
+   bg-amber-50/40 (opacity-slash utilities), which are literally different
+   CSS classes from bg-amber-50 and were not covered by the bg-amber-50 rule
+   above. --- */
+body.dark-mode .bg-amber-50\/30,
+body.dark-mode .bg-amber-50\/40 { background-color: rgba(120,53,15,.24) !important; }
+
+/* --- Fix: opacity-slash surfaces (bg-color-NN/OO) are distinct classes from
+   their plain bg-color-NN counterparts and were missed by the generic dark-mode
+   background rules above, leaving these callouts pale/light inside dark cards
+   while their text was already recolored light — i.e. light text on a light
+   background ("chữ mờ, chìm vào nền"). Affects: Hướng Dẫn & Mẹo → "Hiểu Hết Về
+   Tiền" (Liên hệ với FinancePro boxes) and Trợ Lý Thông Minh (Đọc tình hình box). --- */
+body.dark-mode .bg-indigo-50\/70,
+body.dark-mode .bg-indigo-50\/40 { background-color: rgba(67,56,202,.16) !important; border-color: rgba(165,180,252,.24) !important; }
+
 /* Decorative motion only: keep essential interaction transitions, remove repeated shimmer/re-entry. */
 #dash-budget-bar::after,
 #category-budgets-container [class*="bg-indigo-600"]::after,
@@ -1517,20 +1541,20 @@ tbody tr { animation: none !important; }
 </section>
 <!-- TAB 2: SMART FINANCIAL ASSISTANT -->
 <section class="hidden space-y-6" id="tab-assistant">
-  <div class="assistant-hero p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-white/10 space-y-5">
+  <div class="assistant-hero p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-5">
     
     <!-- TẦNG 1: HEADER TRỢ LÝ (Tiêu đề bên trái, Sức khỏe & Nút bấm bên phải) -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-100 dark:border-white/10">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-100">
       <div>
-        <h3 class="text-lg md:text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-          <i class="fa-solid fa-robot text-indigo-500 dark:text-indigo-400"></i>
+        <h3 class="text-lg md:text-xl font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-robot text-indigo-500"></i>
           <span>Trợ Lý Tài Chính Thông Minh</span>
         </h3>
         <p class="text-xs md:text-sm text-slate-500 mt-1" id="ai-summary-text">Hiểu hiện tại → dự đoán cuối tháng → xác định nguyên nhân → đưa ra việc có thể làm ngay.</p>
       </div>
       <div class="flex items-center gap-2.5 flex-wrap shrink-0">
         <span 
-          class="ai-chip inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-300 cursor-help" 
+          class="ai-chip inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide border border-amber-500/40 bg-amber-500/10 text-amber-600 cursor-help" 
           id="ai-health-chip" 
           title="Điểm sức khoẻ tài chính (0–100):
 • Điểm khởi đầu: 100
@@ -1542,7 +1566,7 @@ tbody tr { animation: none !important; }
 • Dự báo cuối tháng vượt 105%: -10
 Điểm càng cao thể hiện dòng tiền càng an toàn và dễ kiểm soát."
         >
-          <i class="fa-solid fa-heart-pulse text-amber-500 dark:text-amber-400"></i>
+          <i class="fa-solid fa-heart-pulse text-amber-500"></i>
           <span class="hidden sm:inline">SỨC KHỎE</span>
           <span id="ai-health-score">--/100</span>
         </span>
@@ -1563,7 +1587,7 @@ tbody tr { animation: none !important; }
         <div>
           <p class="text-xs font-bold text-slate-500 uppercase mb-1">Dự báo cuối tháng</p>
           <p class="text-[11px] text-slate-400 mb-2">Nếu giữ nhịp chi hiện tại</p>
-          <div class="text-base font-bold text-slate-800 dark:text-slate-100" id="ai-projection-text">Chưa có dữ liệu.</div>
+          <div class="text-base font-bold text-slate-800" id="ai-projection-text">Chưa có dữ liệu.</div>
           <div class="ai-meter mt-3"><div class="bg-indigo-600" id="ai-projection-meter" style="width:0%"></div></div>
         </div>
         <details class="ai-action-details mt-2">
@@ -1576,7 +1600,7 @@ tbody tr { animation: none !important; }
         <div>
           <p class="text-xs font-bold text-slate-500 uppercase mb-1">Nhịp chi</p>
           <p class="text-[11px] text-slate-400 mb-2">Bạn đang chi nhanh hay chậm hơn tháng trước?</p>
-          <div class="text-sm text-slate-800 dark:text-slate-100 leading-relaxed space-y-2" id="ai-compare-text">Chưa có dữ liệu.</div>
+          <div class="text-sm text-slate-800 leading-relaxed space-y-2" id="ai-compare-text">Chưa có dữ liệu.</div>
         </div>
       </div>
 
@@ -1584,7 +1608,7 @@ tbody tr { animation: none !important; }
         <div>
           <p class="text-xs font-bold text-slate-500 uppercase mb-1">Từ nay đến cuối tháng</p>
           <p class="text-[11px] text-slate-400 mb-2">Một kế hoạch có thể áp dụng ngay</p>
-          <div class="space-y-2 text-sm font-semibold text-slate-800 dark:text-slate-100" id="ai-action-text">Chưa có gợi ý.</div>
+          <div class="space-y-2 text-sm font-semibold text-slate-800" id="ai-action-text">Chưa có gợi ý.</div>
         </div>
       </div>
 
@@ -1592,22 +1616,22 @@ tbody tr { animation: none !important; }
         <div>
           <p class="text-xs font-bold text-slate-500 uppercase mb-1">Tiền giữ lại</p>
           <p class="text-[11px] text-slate-400 mb-2">Thu nhập − chi tiêu đến hiện tại</p>
-          <p class="text-lg font-extrabold text-emerald-600 dark:text-emerald-400" id="ai-retained-amount">--</p>
+          <p class="text-lg font-extrabold text-emerald-600" id="ai-retained-amount">--</p>
           <p class="text-xs text-slate-500 mt-1" id="ai-retained-rate">Chưa đủ dữ liệu.</p>
         </div>
-        <p class="text-xs font-semibold mt-2 text-slate-600 dark:text-slate-300" id="ai-retained-compare">—</p>
+        <p class="text-xs font-semibold mt-2 text-slate-600" id="ai-retained-compare">—</p>
       </div>
     </div>
 
     <!-- TẦNG 3: KHỐI ĐỌC TÌNH HÌNH TOÀN MÀN HÌNH -->
-    <div class="ai-card border-indigo-100 dark:border-indigo-500/20 bg-indigo-50/40 dark:bg-indigo-950/20 p-4 md:p-5 rounded-xl">
+    <div class="ai-card border-indigo-100 bg-indigo-50/40 p-4 md:p-5 rounded-xl">
       <div class="flex items-start gap-3">
-        <div class="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
+        <div class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5">
           <i class="fa-solid fa-compass"></i>
         </div>
         <div class="min-w-0 flex-1">
-          <p class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Đọc tình hình &amp; Hướng xử lý</p>
-          <div class="text-sm text-slate-700 dark:text-slate-200 leading-relaxed space-y-2 mt-2" id="ai-executive-summary"></div>
+          <p class="text-xs font-bold text-indigo-600 uppercase tracking-wide">Đọc tình hình &amp; Hướng xử lý</p>
+          <div class="text-sm text-slate-700 leading-relaxed space-y-2 mt-2" id="ai-executive-summary"></div>
         </div>
       </div>
     </div>
@@ -1617,7 +1641,7 @@ tbody tr { animation: none !important; }
   <!-- BIỂU ĐỒ NHỊP ĐỘ CHI TIÊU -->
   <div class="ai-card">
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-      <h4 class="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+      <h4 class="font-bold text-slate-900 flex items-center gap-2">
         <i class="fa-solid fa-chart-line text-indigo-500"></i>Nhịp độ chi tiêu trong tháng
       </h4>
       <p class="text-xs font-semibold text-slate-500" id="ai-pace-text"></p>
@@ -1631,7 +1655,7 @@ tbody tr { animation: none !important; }
   <!-- BIỂU ĐỒ BIẾN ĐỘNG DANH MỤC -->
   <div class="grid grid-cols-1 gap-6">
     <div class="ai-card">
-      <h4 class="font-bold text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
+      <h4 class="font-bold text-slate-900 mb-3 flex items-center gap-2">
         <i class="fa-solid fa-arrow-trend-up text-rose-500"></i>Danh mục biến động mạnh nhất
       </h4>
       <p class="text-xs text-slate-400 mb-2">So với cùng danh mục ở tháng trước.</p>
@@ -1639,7 +1663,7 @@ tbody tr { animation: none !important; }
         <i class="fa-solid fa-circle-info mr-1"></i>Trục dọc dùng thang log vì có 1 danh mục biến động vượt trội hẳn — số tiền thật vẫn hiện đúng khi rê chuột vào từng cột.
       </p>
       <div class="relative w-full mb-3" style="height:170px;"><canvas id="trendsChart"></canvas></div>
-      <ul class="ai-list text-sm text-slate-600 dark:text-slate-300" id="ai-trends-list"></ul>
+      <ul class="ai-list text-sm text-slate-600" id="ai-trends-list"></ul>
     </div>
   </div>
 </section>
