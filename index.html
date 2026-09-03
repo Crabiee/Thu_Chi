@@ -1274,14 +1274,35 @@ body.dark-mode .\[\&\:has\(\:checked\)\]\:text-amber-700:has(:checked) { color: 
 body.dark-mode .bg-amber-50\/30,
 body.dark-mode .bg-amber-50\/40 { background-color: rgba(120,53,15,.24) !important; }
 
-/* --- Fix: opacity-slash surfaces (bg-color-NN/OO) are distinct classes from
-   their plain bg-color-NN counterparts and were missed by the generic dark-mode
-   background rules above, leaving these callouts pale/light inside dark cards
-   while their text was already recolored light — i.e. light text on a light
-   background ("chữ mờ, chìm vào nền"). Affects: Hướng Dẫn & Mẹo → "Hiểu Hết Về
-   Tiền" (Liên hệ với FinancePro boxes) and Trợ Lý Thông Minh (Đọc tình hình box). --- */
-body.dark-mode .bg-indigo-50\/70,
-body.dark-mode .bg-indigo-50\/40 { background-color: rgba(67,56,202,.16) !important; border-color: rgba(165,180,252,.24) !important; }
+/* --- Fix: these two boxes used Tailwind's opacity-slash utilities
+   (bg-indigo-50/70, bg-indigo-50/40), which are literally different CSS
+   classes from bg-indigo-50 and were never covered by the dark-mode rules
+   above — the box stayed pale/light while its own text was already
+   recolored light for dark mode, i.e. light text on a light background
+   ("khung sáng, chữ cũng sáng"). Replaced with two dedicated classes so the
+   light/dark colors are explicit instead of depending on Tailwind's escaped
+   selector syntax. Affects: Hướng Dẫn & Mẹo → "Hiểu Hết Về Tiền" (mọi khung
+   "Liên hệ với FinancePro") and Trợ Lý Thông Minh (khung "Đọc tình hình"). --- */
+.finpro-callout-box { background-color: rgba(238,242,255,.7); }
+body.dark-mode .finpro-callout-box { background-color: rgba(67,56,202,.20) !important; border-color: rgba(165,180,252,.28) !important; }
+.finpro-callout-box-soft { background-color: rgba(238,242,255,.4); }
+body.dark-mode .finpro-callout-box-soft { background-color: rgba(67,56,202,.16) !important; border-color: rgba(165,180,252,.24) !important; }
+
+/* --- Fix: "Chuyển" (transfer) → "Đến tài khoản" select kept its light-mode
+   pale-blue styling untouched in dark mode (only the plain .bg-blue-50 class
+   was covered elsewhere, but cascade order/specificity made it unreliable in
+   practice), so the box and/or its dropdown list were unreadable. Styled
+   explicitly by ID so it can't be shadowed by other rules. --- */
+body.dark-mode #txToAccount { background-color: rgba(30,58,138,.35) !important; border-color: rgba(96,165,250,.45) !important; color: #eff6ff !important; }
+
+/* --- Fix: the text of <option> items inside a <select> does not reliably
+   inherit dark styling from the <select> itself in every browser — many
+   render the open dropdown list with its own default (often light) surface,
+   which combined with our light text colors made options unreadable. Style
+   <option>/<optgroup> explicitly so every dropdown in the app (accounts,
+   categories, filters, "Đến tài khoản"...) stays legible when opened. --- */
+body.dark-mode select option,
+body.dark-mode select optgroup { background-color: var(--fp-surface) !important; color: var(--fp-text) !important; }
 
 /* Decorative motion only: keep essential interaction transitions, remove repeated shimmer/re-entry. */
 #dash-budget-bar::after,
@@ -1624,7 +1645,7 @@ tbody tr { animation: none !important; }
     </div>
 
     <!-- TẦNG 3: KHỐI ĐỌC TÌNH HÌNH TOÀN MÀN HÌNH -->
-    <div class="ai-card border-indigo-100 bg-indigo-50/40 p-4 md:p-5 rounded-xl">
+    <div class="ai-card border-indigo-100 finpro-callout-box-soft p-4 md:p-5 rounded-xl">
       <div class="flex items-start gap-3">
         <div class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5">
           <i class="fa-solid fa-compass"></i>
@@ -2117,7 +2138,7 @@ tbody tr { animation: none !important; }
 <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform" id="book-p1-icon"></i>
 </button>
 <div class="hidden border-t border-slate-100 px-5 py-5 space-y-5 text-sm text-slate-700 leading-relaxed" id="book-p1">
-<div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-4 text-xs text-indigo-950">
+<div class="finpro-callout-box border border-indigo-100 rounded-xl p-4 text-xs text-indigo-950">
 <p class="font-bold text-indigo-800 mb-1.5"><i class="fa-solid fa-link mr-1.5"></i>Liên hệ với FinancePro</p>
 <p class="leading-relaxed">Hiểu tiền trước khi ghi tiền: <strong>thu, chi, chuyển khoản và số dư tài khoản không phải là cùng một thứ</strong>. Trong app, phần “Chuyển” dùng để dịch chuyển tiền giữa các tài khoản mà không biến nó thành chi tiêu.</p>
 </div>
@@ -2172,7 +2193,7 @@ tbody tr { animation: none !important; }
 <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform" id="book-p2-icon"></i>
 </button>
 <div class="hidden border-t border-slate-100 px-5 py-5 space-y-5 text-sm text-slate-700 leading-relaxed" id="book-p2">
-<div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-4 text-xs text-indigo-950">
+<div class="finpro-callout-box border border-indigo-100 rounded-xl p-4 text-xs text-indigo-950">
 <p class="font-bold text-indigo-800 mb-1.5"><i class="fa-solid fa-link mr-1.5"></i>Liên hệ với FinancePro</p>
 <p class="leading-relaxed">Sách nhấn mạnh <strong>dòng tiền</strong> và cách doanh nghiệp nhìn tiền vào/ra. Ở FinancePro, hãy dùng giao dịch để ghi dòng tiền thực tế và dùng ghi chú rõ ràng để sau này Trợ lý hiểu nguyên nhân chi tiêu.</p>
 </div>
@@ -2220,7 +2241,7 @@ tbody tr { animation: none !important; }
 <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform" id="book-p3-icon"></i>
 </button>
 <div class="hidden border-t border-slate-100 px-5 py-5 space-y-5 text-sm text-slate-700 leading-relaxed" id="book-p3">
-<div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-4 text-xs text-indigo-950">
+<div class="finpro-callout-box border border-indigo-100 rounded-xl p-4 text-xs text-indigo-950">
 <p class="font-bold text-indigo-800 mb-1.5"><i class="fa-solid fa-link mr-1.5"></i>Liên hệ với FinancePro</p>
 <p class="leading-relaxed">Lạm phát và lãi suất làm thay đổi sức mua và chi phí tiền theo thời gian. Vì vậy, ngân sách trong FinancePro nên được xem là <strong>mục tiêu quản lý</strong>, không phải một con số bất biến.</p>
 </div>
@@ -2300,7 +2321,7 @@ tbody tr { animation: none !important; }
 <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform" id="book-p4-icon"></i>
 </button>
 <div class="hidden border-t border-slate-100 px-5 py-5 space-y-5 text-sm text-slate-700 leading-relaxed" id="book-p4">
-<div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-4 text-xs text-indigo-950">
+<div class="finpro-callout-box border border-indigo-100 rounded-xl p-4 text-xs text-indigo-950">
 <p class="font-bold text-indigo-800 mb-1.5"><i class="fa-solid fa-link mr-1.5"></i>Liên hệ với FinancePro</p>
 <p class="leading-relaxed">Sách phân biệt <strong>thu nhập</strong> với <strong>của cải/giá trị ròng</strong>. FinancePro hiện mạnh ở việc theo dõi dòng tiền và chi tiêu; đừng đọc “thu nhập tháng này” như thể đó là toàn bộ mức giàu có của bạn.</p>
 </div>
@@ -2358,7 +2379,7 @@ tbody tr { animation: none !important; }
 <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform" id="book-p5-icon"></i>
 </button>
 <div class="hidden border-t border-slate-100 px-5 py-5 space-y-5 text-sm text-slate-700 leading-relaxed" id="book-p5">
-<div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-4 text-xs text-indigo-950">
+<div class="finpro-callout-box border border-indigo-100 rounded-xl p-4 text-xs text-indigo-950">
 <p class="font-bold text-indigo-800 mb-1.5"><i class="fa-solid fa-link mr-1.5"></i>Liên hệ với FinancePro</p>
 <p class="leading-relaxed">Khi dành tiền cho tiết kiệm hoặc đầu tư, hãy tạo <strong>tài khoản riêng</strong> và dùng “Chuyển” để dịch chuyển vốn. Nhờ vậy báo cáo chi tiêu không bị phình lên chỉ vì bạn chuyển tiền từ tài khoản này sang tài khoản khác.</p>
 </div>
@@ -2437,7 +2458,7 @@ tbody tr { animation: none !important; }
 <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform" id="book-p6-icon"></i>
 </button>
 <div class="hidden border-t border-slate-100 px-5 py-5 space-y-5 text-sm text-slate-700 leading-relaxed" id="book-p6">
-<div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-4 text-xs text-indigo-950">
+<div class="finpro-callout-box border border-indigo-100 rounded-xl p-4 text-xs text-indigo-950">
 <p class="font-bold text-indigo-800 mb-1.5"><i class="fa-solid fa-link mr-1.5"></i>Liên hệ với FinancePro</p>
 <p class="leading-relaxed">Các khái niệm như phân bổ tài sản, DCA và tái cân bằng thuộc lớp <strong>quản lý tài sản</strong>. FinancePro có thể giúp bạn ghi nhận dòng tiền và kỷ luật tích lũy; không nên coi dữ liệu app là khuyến nghị đầu tư.</p>
 </div>
@@ -2505,7 +2526,7 @@ tbody tr { animation: none !important; }
 <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform" id="book-p7-icon"></i>
 </button>
 <div class="hidden border-t border-slate-100 px-5 py-5 space-y-5 text-sm text-slate-700 leading-relaxed" id="book-p7">
-<div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-4 text-xs text-indigo-950">
+<div class="finpro-callout-box border border-indigo-100 rounded-xl p-4 text-xs text-indigo-950">
 <p class="font-bold text-indigo-800 mb-1.5"><i class="fa-solid fa-link mr-1.5"></i>Liên hệ với FinancePro</p>
 <p class="leading-relaxed">Sách giải thích lãi suất, lãi kép và đòn bẩy. FinancePro hiện không phải sổ theo dõi khoản vay chuyên dụng, vì vậy hãy dùng <strong>danh mục + ghi chú</strong> để nhận diện các khoản thanh toán nợ nếu cần.</p>
 </div>
@@ -2581,7 +2602,7 @@ tbody tr { animation: none !important; }
 <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform" id="book-p8-icon"></i>
 </button>
 <div class="hidden border-t border-slate-100 px-5 py-5 space-y-5 text-sm text-slate-700 leading-relaxed" id="book-p8">
-<div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-4 text-xs text-indigo-950">
+<div class="finpro-callout-box border border-indigo-100 rounded-xl p-4 text-xs text-indigo-950">
 <p class="font-bold text-indigo-800 mb-1.5"><i class="fa-solid fa-link mr-1.5"></i>Liên hệ với FinancePro</p>
 <p class="leading-relaxed">Phần này giúp hiểu tiền trong môi trường số và các mô hình mới như crypto, P2P, crowdfunding. Đây là <strong>kiến thức tham khảo</strong>; FinancePro không biến nội dung này thành lời khuyên mua/bán hay đầu tư.</p>
 </div>
