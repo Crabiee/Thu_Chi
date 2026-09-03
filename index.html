@@ -1329,22 +1329,31 @@ tbody tr { animation: none !important; }
            INFORMATION DENSITY V2 — Transactions / Budget / Categories
            ========================================================= */
         .tx-clear-filters-btn { width:auto; min-width:86px; white-space:nowrap; }
-        .transaction-table { table-layout: fixed; width:100%; }
-        .tx-col-type { width: 10%; min-width: 112px; }
-        .tx-col-category { width: 28%; min-width: 220px; }
-        .tx-col-account { width: 17%; min-width: 150px; }
-        .tx-col-notes { width: 25%; min-width: 200px; }
-        .tx-col-amount { width: 13%; min-width: 150px; }
-        .tx-col-actions { width: 90px; min-width: 90px; }
-        .transaction-table thead th { font-size:12px !important; letter-spacing:.035em; }
-        .transaction-data-row td { vertical-align: middle; padding-top:13px !important; padding-bottom:13px !important; font-size:13px; }
-        .transaction-day-group-row td { padding:11px 16px !important; font-size:13px !important; letter-spacing:.015em; }
-        .transaction-day-group-row span { font-family:'Space Grotesk','Inter',sans-serif; font-weight:700; }
-        .tx-note-cell { max-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.transaction-table { table-layout: fixed; width: 100%; }
+.tx-col-type { width: 9%; min-width: 100px; }
+.tx-col-category { width: 26%; min-width: 220px; }
+.tx-col-account { width: 18%; min-width: 160px; }
+.tx-col-notes { width: 29%; min-width: 220px; }
+.tx-col-amount { width: 18%; min-width: 160px; }
+.tx-col-actions { width: 90px; min-width: 90px; }
 
-        @media (min-width: 1280px) {
-            #tab-transactions .max-w\[1500px\] { max-width:1500px; }
-        }
+/* Tăng kích cỡ chữ tiêu đề cột và nội dung dòng */
+.transaction-table thead th { font-size: 13px !important; letter-spacing: .035em; }
+.transaction-data-row td { vertical-align: middle; padding-top: 14px !important; padding-bottom: 14px !important; font-size: 15px !important; }
+.transaction-day-group-row td { padding: 12px 18px !important; font-size: 14px !important; letter-spacing: .015em; }
+.transaction-day-group-row span { font-family: 'Space Grotesk','Inter',sans-serif; font-weight: 700; }
+.tx-note-cell { max-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Tăng cỡ chữ cho các tag Danh mục, Huy hiệu Chi/Thu và Nút luồng chuyển tiền */
+.transaction-table td span,
+.transaction-table td button { font-size: 12.5px !important; }
+.transaction-table .tx-transfer-flow { font-size: 14px !important; }
+.transaction-table .tx-transfer-flow .tx-flow-account { font-size: 14px !important; }
+
+/* Bỏ chặn co hẹp 1500px trên màn hình lớn */
+@media (min-width: 1280px) {
+    #tab-transactions .max-w\[1500px\] { max-width: 100%; }
+}
 
         @media (min-width: 768px) and (max-width: 1279px) {
             #tab-transactions > div:first-child { grid-template-columns:repeat(4,minmax(0,1fr)); }
@@ -1754,7 +1763,7 @@ tbody tr { animation: none !important; }
 </div>
 <!-- Chế độ Table cho Desktop -->
 <div class="hidden md:block overflow-x-auto custom-scrollbar">
-<div class="w-full max-w-[1500px] mx-auto">
+<div class="w-full">
 <table class="w-full text-left border-collapse min-w-[1120px] transaction-table">
 <colgroup>
 <col class="tx-col-type"/><col class="tx-col-category"/><col class="tx-col-account"/><col class="tx-col-notes"/><col class="tx-col-amount"/><col class="tx-col-actions"/>
