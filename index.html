@@ -1373,9 +1373,18 @@ tbody tr { animation: none !important; }
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
 <!-- ========================================================= -->
+<!-- BOOT SPINNER - hiện trong lúc chờ Firebase xác định đã đăng nhập hay chưa -->
+<!-- ========================================================= -->
+<div class="fixed inset-0 z-[1000] flex items-center justify-center p-4" id="authBootSpinner" style="background: linear-gradient(135deg, #0f172a, #1e293b 60%, #0f172a);">
+<div class="flex flex-col items-center gap-4">
+<i class="fa-solid fa-circle-notch fa-spin text-4xl text-indigo-400"></i>
+<p class="text-sm text-slate-300">Đang kiểm tra đăng nhập...</p>
+</div>
+</div>
+<!-- ========================================================= -->
 <!-- GOOGLE LOGIN GATE - bắt buộc đăng nhập trước khi dùng app  -->
 <!-- ========================================================= -->
-<div class="fixed inset-0 z-[999] flex items-center justify-center p-4" id="loginGate" style="background: radial-gradient(circle at 20% 15%, rgba(99,102,241,.35), transparent 40%), radial-gradient(circle at 85% 85%, rgba(14,165,233,.25), transparent 40%), linear-gradient(135deg, #0f172a, #1e293b 60%, #0f172a);">
+<div class="fixed inset-0 z-[999] flex items-center justify-center p-4 hidden" id="loginGate" style="background: radial-gradient(circle at 20% 15%, rgba(99,102,241,.35), transparent 40%), radial-gradient(circle at 85% 85%, rgba(14,165,233,.25), transparent 40%), linear-gradient(135deg, #0f172a, #1e293b 60%, #0f172a);">
 <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center">
 <div class="bg-indigo-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
 <i class="fa-solid fa-wallet text-2xl text-white"></i>
@@ -5767,7 +5776,14 @@ let compareHtml = `
 
         function isDriveSignedIn() { return !!fbCurrentUid; }
 
+        function hideAuthBootSpinner() {
+            const spinner = document.getElementById('authBootSpinner');
+            if (spinner) spinner.classList.add('hidden');
+        }
         function showLoginGate(statusText) {
+            // Auth state đã được Firebase xác định (dù là "chưa đăng nhập" hay lỗi cấu hình),
+            // nên tắt spinner chờ và hiện gate đăng nhập thay vì để spinner quay vô hạn.
+            hideAuthBootSpinner();
             const gate = document.getElementById('loginGate');
             const app = document.getElementById('appRoot');
             if (gate) gate.classList.remove('hidden');
@@ -5776,6 +5792,8 @@ let compareHtml = `
             if (st) st.innerText = statusText || '';
         }
         function hideLoginGate() {
+            // Auth state xác định là "đã đăng nhập" -> tắt spinner, ẩn gate, hiện app.
+            hideAuthBootSpinner();
             const gate = document.getElementById('loginGate');
             const app = document.getElementById('appRoot');
             if (gate) gate.classList.add('hidden');
@@ -5809,6 +5827,17 @@ let compareHtml = `
             const connectedLike = (state === 'connected' || state === 'syncing');
             if (signInBtn) signInBtn.classList.toggle('hidden', connectedLike);
             if (signOutBtn) signOutBtn.classList.toggle('hidden', !connectedLike);
+        }
+
+        // Dùng snapshot.metadata.fromCache để phản ánh đúng trạng thái đồng bộ lên UI:
+        // dữ liệu đọc từ cache cục bộ (chưa chắc mới nhất từ server) vs. đã được server xác nhận.
+        // Không gọi khi hasPendingWrites=true (echo ghi của chính máy này đã bị lọc ở nơi gọi).
+        function reportSnapshotFreshness(snap) {
+            if (snap.metadata.fromCache) {
+                updateSyncStatusUI('syncing', 'Đang đồng bộ (đang dùng dữ liệu cache)...');
+            } else {
+                updateSyncStatusUI('connected', 'Đã đồng bộ real-time lúc ' + new Date().toLocaleTimeString('vi-VN'));
+            }
         }
 
         function firestoreSettingsRef(uid = fbCurrentUid) { return fbDb.collection(FIRESTORE_COLLECTION).doc(uid); }
@@ -6504,8 +6533,9 @@ let compareHtml = `
             stopV2Listeners();
             const cursor = getTxSyncCursor(uid);
             const cursorTs = cursor ? firestoreTimestampFromMs(Math.max(0, firestoreTime(cursor))) : firestoreTimestampFromMs(0);
-            const settingsUnsub = firestoreSettingsRef(uid).onSnapshot({ includeMetadataChanges: false }, snap => {
+            const settingsUnsub = firestoreSettingsRef(uid).onSnapshot({ includeMetadataChanges: true }, snap => {
                 if (snap.metadata.hasPendingWrites) return;
+                reportSnapshotFreshness(snap);
                 mergeRemoteV2Data([], {}, snap.exists ? snap.data() : null);
                 // Settings snapshots can arrive after the first dashboard paint.
                 if (!document.getElementById('tab-dashboard')?.classList.contains('hidden')) {
@@ -6514,8 +6544,9 @@ let compareHtml = `
             }, err => console.error('Firestore settings listener error', err));
 
             const txQuery = firestoreTransactionsRef(uid).where('serverUpdatedAt', '>=', cursorTs);
-            const txUnsub = txQuery.onSnapshot({ includeMetadataChanges: false }, snap => {
+            const txUnsub = txQuery.onSnapshot({ includeMetadataChanges: true }, snap => {
                 if (snap.metadata.hasPendingWrites) return;
+                reportSnapshotFreshness(snap);
                 const changed = [];
                 snap.docChanges().forEach(change => {
                     if (change.type === 'removed') {
@@ -6540,8 +6571,9 @@ let compareHtml = `
             }, err => console.error('Firestore transactions listener error', err));
 
             const tombQuery = firestoreTombstonesRef(uid).where('serverDeletedAt', '>=', cursorTs);
-            const tombUnsub = tombQuery.onSnapshot({ includeMetadataChanges: false }, snap => {
+            const tombUnsub = tombQuery.onSnapshot({ includeMetadataChanges: true }, snap => {
                 if (snap.metadata.hasPendingWrites) return;
+                reportSnapshotFreshness(snap);
                 const changed = {};
                 const locallyChanged = getStoredJSON('personal_deleted_tx_v4', {});
                 let localTombChanged = false;
@@ -6909,8 +6941,9 @@ let compareHtml = `
             mergeRemoteV2Data([], {}, settings);
             settingsSyncReady = true;
             if (fbSettingsUnsubscribe) { try { fbSettingsUnsubscribe(); } catch (_) {} fbSettingsUnsubscribe = null; }
-            const unsub = firestoreSettingsRef(uid).onSnapshot({ includeMetadataChanges: false }, snap => {
+            const unsub = firestoreSettingsRef(uid).onSnapshot({ includeMetadataChanges: true }, snap => {
                 if (snap.metadata.hasPendingWrites) return;
+                reportSnapshotFreshness(snap);
                 mergeRemoteV2Data([], {}, snap.exists ? (snap.data() || {}) : null);
                 populateAccountSelects();
                 updateDashboard();
@@ -7073,7 +7106,12 @@ let compareHtml = `
 
         document.addEventListener('visibilitychange', async () => {
             if (document.visibilityState !== 'visible') return;
-            if (!fbCurrentUid || !fbDb || !firestoreV2Ready) return;
+            if (!fbDb) return;
+            // Trình duyệt mobile hay "đóng băng" kết nối ngầm của tab khi chuyển nền lâu.
+            // enableNetwork() đánh thức Firestore SDK ngay khi tab hiện lại, trước khi
+            // đợi các thao tác đồng bộ khác - phòng trường hợp SDK vẫn nghĩ đang offline.
+            try { await fbDb.enableNetwork(); } catch (_) {}
+            if (!fbCurrentUid || !firestoreV2Ready) return;
             updateSyncStatusUI('syncing', 'Đang đồng bộ...');
             try {
                 await loadV2DeltaState(fbCurrentUid);
@@ -7084,7 +7122,8 @@ let compareHtml = `
             } catch (err) { console.warn('visibility sync failed', err); updateSyncStatusUI('error', 'Mất kết nối đồng bộ, đang thử lại...'); }
         });
 
-        window.addEventListener('online', () => {
+        window.addEventListener('online', async () => {
+            if (fbDb) { try { await fbDb.enableNetwork(); } catch (_) {} }
             if (!fbCurrentUid || !fbDb || !firestoreV2Ready || !syncReady) return;
             clearTimeout(fbSaveRetryTimer);
             if (DIRTY_TX_IDS.size || DIRTY_TOMBSTONE_IDS.size || pendingSyncAfterReady) {
@@ -7092,6 +7131,19 @@ let compareHtml = `
                 scheduleDriveSync();
             }
             if (pendingSettingsSync && settingsSyncReady) { clearTimeout(settingsSaveTimer); settingsSaveTimer = setTimeout(() => { void pushSettingsOnlyToFirestore(); }, 100); }
+        });
+
+        // Safari/Chrome mobile có thể khôi phục trang từ bfcache (back-forward cache) sau khi
+        // đóng băng tab, mà không phát 'visibilitychange'/'online' đáng tin cậy. 'pageshow' với
+        // event.persisted bắt được trường hợp này để đánh thức lại Firestore SDK.
+        window.addEventListener('pageshow', async (event) => {
+            if (!event.persisted || !fbDb) return;
+            try { await fbDb.enableNetwork(); } catch (_) {}
+            if (fbCurrentUid && firestoreV2Ready) {
+                updateSyncStatusUI('syncing', 'Đang đồng bộ...');
+                try { await loadV2DeltaState(fbCurrentUid); updateSyncStatusUI('connected', 'Đã đồng bộ lúc ' + new Date().toLocaleTimeString('vi-VN')); }
+                catch (err) { console.warn('pageshow resync failed', err); updateSyncStatusUI('error', 'Mất kết nối đồng bộ, đang thử lại...'); }
+            }
         });
 
         window.addEventListener('pagehide', () => {
