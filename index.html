@@ -3479,10 +3479,13 @@ tbody tr { animation: none !important; }
             popover.classList.remove('hidden');
 
             // Định vị popover ngay dưới nút bấm (trước đây bị thiếu -> popover trôi xuống cuối trang, ngoài tầm nhìn)
+            // Đọc CHIỀU RỘNG THỰC TẾ đã render (CSS mobile ép width: calc(100vw - 28px) !important,
+            // khác với hằng số 300 giả định trước đây) — nếu lấy sai số này thì phép tính "left"
+            // bên dưới sẽ lệch và popover bị tràn ra ngoài mép phải màn hình trên di động.
             const btn = document.getElementById(`${targetId}-btn`);
             if (btn) {
                 const rect = btn.getBoundingClientRect();
-                const popoverWidth = Math.min(300, window.innerWidth - 24);
+                const popoverWidth = popover.getBoundingClientRect().width || Math.min(300, window.innerWidth - 24);
                 const estimatedHeight = popover.offsetHeight || 320;
                 let left = rect.left;
                 let top = rect.bottom + 8;
