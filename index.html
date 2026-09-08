@@ -1529,14 +1529,14 @@ tbody tr { animation: none !important; }
 </div>
 <h3 class="text-lg md:text-2xl font-bold text-emerald-600 truncate" id="stat-net">0 ₫</h3>
 </div>
-<button type="button" class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between text-left w-full hover:shadow-md transition cursor-pointer" onclick="openTopExpenseTransactions()" title="Xem các giao dịch của danh mục chi nhiều nhất">
+<div role="button" tabindex="0" class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between text-left w-full hover:shadow-md transition cursor-pointer" onclick="openTopExpenseTransactions()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openTopExpenseTransactions();}" title="Xem các giao dịch của danh mục chi nhiều nhất">
 <div class="flex justify-between items-start mb-2">
 <p class="text-xs md:text-sm text-slate-500 font-medium">Chi nhiều nhất</p>
 <div class="bg-amber-50 p-1.5 md:p-2 rounded-lg text-amber-600"><i class="fa-solid fa-fire text-xs md:text-base"></i></div>
 </div>
 <h3 class="text-sm md:text-lg font-bold text-slate-800 truncate" id="stat-top-expense">Chưa có</h3>
 <p class="text-xs text-rose-500 font-semibold mt-1 truncate" id="stat-top-expense-amount">0 ₫</p>
-</button>
+</div>
 </div>
 <!-- VÍ TÀI KHOẢN & TIẾN ĐỘ NGÂN SÁCH -->
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
