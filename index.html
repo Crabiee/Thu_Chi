@@ -1849,7 +1849,7 @@ tbody tr { animation: none !important; }
 <h3 class="text-lg md:text-xl font-bold text-slate-900">Quản Lý Danh Mục</h3>
 <p class="text-sm text-slate-500 hidden sm:block">Tùy chỉnh danh mục thu/chi để phân loại chính xác hơn.</p>
 </div>
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
 <div class="space-y-4">
 <h4 class="font-bold text-emerald-600 flex items-center space-x-2 pb-2 border-b border-slate-100"><i class="fa-solid fa-circle-plus"></i><span>Danh Mục Thu Nhập</span></h4>
 <div class="flex space-x-2"><input class="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" id="new-income-cat-input" placeholder="Tên danh mục mới..." type="text"/><button class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 rounded-lg text-sm transition" onclick="handleAddCategory('income')">Thêm</button></div>
@@ -1859,6 +1859,12 @@ tbody tr { animation: none !important; }
 <h4 class="font-bold text-rose-600 flex items-center space-x-2 pb-2 border-b border-slate-100"><i class="fa-solid fa-circle-minus"></i><span>Danh Mục Chi Tiêu</span></h4>
 <div class="flex space-x-2"><input class="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none" id="new-expense-cat-input" placeholder="Tên danh mục mới..." type="text"/><button class="bg-rose-600 hover:bg-rose-700 text-white font-semibold px-4 rounded-lg text-sm transition" onclick="handleAddCategory('expense')">Thêm</button></div>
 <ul class="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden bg-slate-50 text-sm" id="expense-categories-list"></ul>
+</div>
+<div class="space-y-4">
+<h4 class="font-bold text-amber-600 flex items-center space-x-2 pb-2 border-b border-slate-100"><i class="fa-solid fa-handshake"></i><span>Danh Mục Trung Gian</span></h4>
+<p class="text-xs text-slate-400 -mt-2">Dùng cho các khoản chi/thu hộ người khác (không tính vào Thu/Chi của bạn).</p>
+<div class="flex space-x-2"><input class="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-amber-500 outline-none" id="new-proxy-cat-input" placeholder="Tên danh mục mới..." type="text"/><button class="bg-amber-600 hover:bg-amber-700 text-white font-semibold px-4 rounded-lg text-sm transition" onclick="handleAddCategory('proxy')">Thêm</button></div>
+<ul class="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden bg-slate-50 text-sm" id="proxy-categories-list"></ul>
 </div>
 </div>
 </div>
@@ -2917,12 +2923,23 @@ tbody tr { animation: none !important; }
 <!-- Drive Sync -->
 <div class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[80]" id="driveSyncModal"><div class="bg-white rounded-2xl w-full max-w-md flex flex-col"><div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center rounded-t-2xl"><h3 class="font-bold text-lg"><i class="fa-solid fa-cloud-arrow-up mr-2"></i>Đồng Bộ Dữ Liệu</h3><button onclick="closeModal('driveSyncModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-6 space-y-4"><div class="flex items-center space-x-2 bg-slate-50 border rounded-lg px-3 py-2.5"><span class="w-2.5 h-2.5 rounded-full bg-slate-500" id="drive-status-dot"></span><span class="text-slate-700 font-medium text-sm" id="drive-status-text">Chưa đăng nhập</span></div><div class="hidden flex items-center space-x-2 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2.5" id="drive-account-email-wrap"><i class="fa-solid fa-user-circle text-indigo-400"></i><span class="text-indigo-700 font-medium text-xs truncate" id="drive-account-email"></span></div><div class="flex space-x-2"><button class="flex-1 bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-medium" id="drive-signin-btn" onclick="signInGoogleClick()">Đăng nhập với Google</button><button class="hidden flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-lg text-sm font-medium" id="drive-signout-btn" onclick="signOutGoogle()">Đăng xuất</button></div><button class="w-full bg-emerald-50 text-emerald-700 border border-emerald-200 py-2 rounded-lg text-sm font-medium" onclick="manualSyncNow()"><i class="fa-solid fa-rotate mr-1.5"></i>Đồng bộ ngay</button></div></div></div>
 <!-- Transaction form -->
-<div class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-2 md:p-4 z-[70]" id="transactionModal"><div class="bg-white rounded-2xl w-full max-w-lg flex flex-col max-h-[95vh]"><div class="bg-slate-950 text-white px-4 py-4 md:px-6 flex justify-between items-center rounded-t-2xl"><h3 class="font-bold md:text-lg text-base" id="tx-modal-title">Ghi Chép</h3><button onclick="closeModal('transactionModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-4 md:p-6 overflow-y-auto"><form class="space-y-4" id="transaction-form" onsubmit="handleTransactionSubmit(event)"><div class="grid grid-cols-4 gap-2"><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-rose-500 [&amp;:has(:checked)]:bg-rose-50 [&amp;:has(:checked)]:text-rose-600 transition"><input checked="" class="hidden" name="txType" onchange="updateFormCategories()" type="radio" value="expense"/><i class="fa-solid fa-minus mb-1 text-sm"></i><span>Chi Tiêu</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-emerald-500 [&amp;:has(:checked)]:bg-emerald-50 [&amp;:has(:checked)]:text-emerald-600 transition"><input class="hidden" name="txType" onchange="updateFormCategories()" type="radio" value="income"/><i class="fa-solid fa-plus mb-1 text-sm"></i><span>Thu Nhập</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-blue-500 [&amp;:has(:checked)]:bg-blue-50 [&amp;:has(:checked)]:text-blue-600 transition"><input class="hidden" name="txType" onchange="updateFormCategories()" type="radio" value="transfer"/><i class="fa-solid fa-arrow-right-arrow-left mb-1 text-sm"></i><span>Chuyển</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-amber-500 [&amp;:has(:checked)]:bg-amber-50 [&amp;:has(:checked)]:text-amber-600 transition" title="Ủy thác/trung gian: nhận hoặc chi tiền thay mặt người khác — không tính vào thu nhập/chi tiêu của bạn"><input class="hidden" name="txType" onchange="updateFormCategories()" type="radio" value="proxy"/><i class="fa-solid fa-handshake mb-1 text-sm"></i><span>Trung gian</span></label></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-slate-500 mb-1">SỐ TIỀN</label><input class="w-full bg-slate-50 border rounded-lg p-2.5 text-base font-bold text-indigo-600 outline-none" id="txAmount" inputmode="numeric" oninput="formatNumberInput(this)" required="" type="text"/></div><div><label class="block text-xs font-bold text-slate-500 mb-1">NGÀY</label><input class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm outline-none" id="txDate" required="" type="date"/></div></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-slate-500 mb-1" id="lbl-tx-account">TỪ TÀI KHOẢN</label><select class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm" id="txAccount" required=""></select></div><div id="tx-category-wrapper"><label class="block text-xs font-bold text-slate-500 mb-1" id="tx-category-label">DANH MỤC</label><select class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm" id="txCategory"></select><input class="hidden w-full bg-slate-50 border rounded-lg p-2.5 text-sm outline-none" id="txProxyParty" maxlength="200" placeholder="Tên người / bên ủy thác..." type="text"/></div><div class="hidden" id="tx-to-account-wrapper"><label class="block text-xs font-bold text-blue-600 mb-1">ĐẾN TÀI KHOẢN</label><select class="w-full bg-blue-50 border-blue-200 border rounded-lg p-2.5 text-sm" id="txToAccount"></select></div></div><div class="hidden" id="proxy-dir-wrapper"><label class="block text-xs font-bold text-amber-600 mb-2">CHIỀU TIỀN</label><div class="grid grid-cols-2 gap-2"><label class="cursor-pointer border border-slate-200 rounded-xl p-2.5 text-center flex items-center justify-center gap-2 text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-amber-500 [&amp;:has(:checked)]:bg-amber-50 [&amp;:has(:checked)]:text-amber-700 transition"><input class="hidden" name="proxyDir" type="radio" value="in"/><i class="fa-solid fa-arrow-down-to-bracket text-sm"></i><span>Nhận vào ví (thu hộ)</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2.5 text-center flex items-center justify-center gap-2 text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-amber-500 [&amp;:has(:checked)]:bg-amber-50 [&amp;:has(:checked)]:text-amber-700 transition"><input checked="" class="hidden" name="proxyDir" type="radio" value="out"/><i class="fa-solid fa-arrow-up-from-bracket text-sm"></i><span>Xuất khỏi ví (chi hộ)</span></label></div></div><div><label class="block text-xs font-bold text-slate-500 mb-1">GHI CHÚ</label><input class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm outline-none" id="txNotes" type="text"/></div><div class="pt-4"><button class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl text-sm shadow-md" id="tx-submit-btn" type="submit">Lưu Giao Dịch</button></div></form></div></div></div>
+<div class="hidden fixed inset-0 bg-slate-900/60 flex items-center justify-center p-2 md:p-4 z-[70]" id="transactionModal"><div class="bg-white rounded-2xl w-full max-w-lg flex flex-col max-h-[95vh]"><div class="bg-slate-950 text-white px-4 py-4 md:px-6 flex justify-between items-center rounded-t-2xl"><h3 class="font-bold md:text-lg text-base" id="tx-modal-title">Ghi Chép</h3><button onclick="closeModal('transactionModal')"><i class="fa-solid fa-xmark text-lg"></i></button></div><div class="p-4 md:p-6 overflow-y-auto"><form class="space-y-4" id="transaction-form" onsubmit="handleTransactionSubmit(event)"><div class="grid grid-cols-4 gap-2"><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-rose-500 [&amp;:has(:checked)]:bg-rose-50 [&amp;:has(:checked)]:text-rose-600 transition"><input checked="" class="hidden" name="txType" onchange="updateFormCategories()" type="radio" value="expense"/><i class="fa-solid fa-minus mb-1 text-sm"></i><span>Chi Tiêu</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-emerald-500 [&amp;:has(:checked)]:bg-emerald-50 [&amp;:has(:checked)]:text-emerald-600 transition"><input class="hidden" name="txType" onchange="updateFormCategories()" type="radio" value="income"/><i class="fa-solid fa-plus mb-1 text-sm"></i><span>Thu Nhập</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-blue-500 [&amp;:has(:checked)]:bg-blue-50 [&amp;:has(:checked)]:text-blue-600 transition"><input class="hidden" name="txType" onchange="updateFormCategories()" type="radio" value="transfer"/><i class="fa-solid fa-arrow-right-arrow-left mb-1 text-sm"></i><span>Chuyển</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2 text-center flex flex-col items-center text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-amber-500 [&amp;:has(:checked)]:bg-amber-50 [&amp;:has(:checked)]:text-amber-600 transition" title="Ủy thác/trung gian: nhận hoặc chi tiền thay mặt người khác — không tính vào thu nhập/chi tiêu của bạn"><input class="hidden" name="txType" onchange="updateFormCategories()" type="radio" value="proxy"/><i class="fa-solid fa-handshake mb-1 text-sm"></i><span>Trung gian</span></label></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-slate-500 mb-1">SỐ TIỀN</label><input class="w-full bg-slate-50 border rounded-lg p-2.5 text-base font-bold text-indigo-600 outline-none" id="txAmount" inputmode="numeric" oninput="formatNumberInput(this)" required="" type="text"/></div><div><label class="block text-xs font-bold text-slate-500 mb-1">NGÀY</label><input class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm outline-none" id="txDate" required="" type="date"/></div></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-slate-500 mb-1" id="lbl-tx-account">TỪ TÀI KHOẢN</label><select class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm" id="txAccount" required=""></select></div><div id="tx-category-wrapper"><label class="block text-xs font-bold text-slate-500 mb-1" id="tx-category-label">DANH MỤC</label><select class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm" id="txCategory"></select></div><div class="hidden" id="tx-to-account-wrapper"><label class="block text-xs font-bold text-blue-600 mb-1">ĐẾN TÀI KHOẢN</label><select class="w-full bg-blue-50 border-blue-200 border rounded-lg p-2.5 text-sm" id="txToAccount"></select></div></div><div class="hidden" id="proxy-dir-wrapper"><label class="block text-xs font-bold text-amber-600 mb-2">CHIỀU TIỀN</label><div class="grid grid-cols-2 gap-2"><label class="cursor-pointer border border-slate-200 rounded-xl p-2.5 text-center flex items-center justify-center gap-2 text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-amber-500 [&amp;:has(:checked)]:bg-amber-50 [&amp;:has(:checked)]:text-amber-700 transition"><input class="hidden" name="proxyDir" type="radio" value="in"/><i class="fa-solid fa-arrow-down-to-bracket text-sm"></i><span>Nhận vào ví (thu hộ)</span></label><label class="cursor-pointer border border-slate-200 rounded-xl p-2.5 text-center flex items-center justify-center gap-2 text-slate-600 text-xs font-bold [&amp;:has(:checked)]:border-amber-500 [&amp;:has(:checked)]:bg-amber-50 [&amp;:has(:checked)]:text-amber-700 transition"><input checked="" class="hidden" name="proxyDir" type="radio" value="out"/><i class="fa-solid fa-arrow-up-from-bracket text-sm"></i><span>Xuất khỏi ví (chi hộ)</span></label></div></div><div><label class="block text-xs font-bold text-slate-500 mb-1">GHI CHÚ</label><input class="w-full bg-slate-50 border rounded-lg p-2.5 text-sm outline-none" id="txNotes" type="text"/></div><div class="pt-4"><button class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl text-sm shadow-md" id="tx-submit-btn" type="submit">Lưu Giao Dịch</button></div></form></div></div></div>
 <script>
-        const CATEGORY_ICONS = { "Lương": "fa-briefcase", "Thưởng": "fa-gift", "Đầu tư": "fa-chart-line", "Lãi Đầu tư/Tiết kiệm": "fa-sack-dollar", "Kinh doanh": "fa-store", "Khác": "fa-asterisk", "Ăn uống": "fa-utensils", "Di chuyển": "fa-car", "Nhà cửa": "fa-house", "Mua sắm": "fa-bag-shopping", "Giải trí": "fa-gamepad", "Sức khỏe": "fa-heart-pulse", "Giáo dục": "fa-graduation-cap", "Lỗ Đầu tư/Tất toán sớm": "fa-arrow-trend-down" };
+        const CATEGORY_ICONS = { "Lương": "fa-briefcase", "Thưởng": "fa-gift", "Đầu tư": "fa-chart-line", "Lãi Đầu tư/Tiết kiệm": "fa-sack-dollar", "Kinh doanh": "fa-store", "Khác": "fa-asterisk", "Ăn uống": "fa-utensils", "Di chuyển": "fa-car", "Nhà cửa": "fa-house", "Mua sắm": "fa-bag-shopping", "Giải trí": "fa-gamepad", "Sức khỏe": "fa-heart-pulse", "Giáo dục": "fa-graduation-cap", "Lỗ Đầu tư/Tất toán sớm": "fa-arrow-trend-down", "Ăn uống chung": "fa-utensils", "Mua đồ hộ": "fa-basket-shopping", "Đi lại chung": "fa-car-side", "Quà/Hiếu hỉ chung": "fa-gift" };
+        const DEFAULT_PROXY_CATEGORIES = ["Ăn uống chung", "Mua đồ hộ", "Đi lại chung", "Quà/Hiếu hỉ chung", "Khác"];
+        // Dữ liệu cũ lưu trước khi có danh mục Trung gian sẽ thiếu key "proxy" —
+        // hàm này đảm bảo categories luôn có đủ 3 mảng (income/expense/proxy) dù tải từ
+        // localStorage, Firestore hay file backup cũ.
+        function ensureCategoryShape(cats) {
+            const c = cats && typeof cats === 'object' ? cats : {};
+            if (!Array.isArray(c.income)) c.income = [];
+            if (!Array.isArray(c.expense)) c.expense = [];
+            if (!Array.isArray(c.proxy) || c.proxy.length === 0) c.proxy = [...DEFAULT_PROXY_CATEGORIES];
+            return c;
+        }
 
         let transactions = [];
-        let categories = { income: [], expense: [] };
+        let categories = { income: [], expense: [], proxy: [...DEFAULT_PROXY_CATEGORIES] };
         let userAccounts = {};
         let idealBudget = 0; 
         let idealCategoryBudgets = {}; 
@@ -3140,6 +3157,7 @@ tbody tr { animation: none !important; }
             if (!categories || !Array.isArray(categories.income) || !Array.isArray(categories.expense)) {
                 categories = { income: ["Lương", "Thưởng", "Đầu tư", "Lãi Đầu tư/Tiết kiệm", "Kinh doanh", "Khác"], expense: ["Ăn uống", "Di chuyển", "Nhà cửa", "Mua sắm", "Giải trí", "Sức khỏe", "Giáo dục", "Lỗ Đầu tư/Tất toán sớm", "Khác"] };
             }
+            categories = ensureCategoryShape(categories);
             userAccounts = savedAccs ? safeParseJSON(savedAccs, null) : { "Tiền mặt": 0, "TCB": 0, "TPBank": 0, "Vietinbank": 0 };
             if (!userAccounts || typeof userAccounts !== 'object' || Array.isArray(userAccounts)) userAccounts = { "Tiền mặt": 0, "TCB": 0, "TPBank": 0, "Vietinbank": 0 };
             idealBudget = savedBudget ? Number(savedBudget) || 0 : 0;
@@ -3649,6 +3667,7 @@ tbody tr { animation: none !important; }
                 if (!categories.expense.includes("Lỗ Đầu tư/Tất toán sớm")) { categories.expense.push("Lỗ Đầu tư/Tất toán sớm"); catsMigrated = true; }
                 if (catsMigrated) localStorage.setItem('personal_categories_v4', JSON.stringify(categories));
             }
+            categories = ensureCategoryShape(categories);
             userAccounts = savedAccs ? safeParseJSON(savedAccs, null) : { "Tiền mặt": 0, "TCB": 0, "TPBank": 0, "Vietinbank": 0 };
             if (!userAccounts || typeof userAccounts !== 'object' || Array.isArray(userAccounts)) userAccounts = { "Tiền mặt": 0, "TCB": 0, "TPBank": 0, "Vietinbank": 0 };
             
@@ -3892,13 +3911,12 @@ tbody tr { animation: none !important; }
             document.getElementById('lbl-tx-account').innerText = type==='transfer'?"TỪ TÀI KHOẢN":"TÀI KHOẢN";
             const categoryWrapper = document.getElementById('tx-category-wrapper');
             const categorySelect = document.getElementById('txCategory');
-            const proxyParty = document.getElementById('txProxyParty');
             const categoryLabel = document.getElementById('tx-category-label') || categoryWrapper?.querySelector('label');
 
             categoryWrapper.classList.toggle('hidden', type==='transfer');
             document.getElementById('tx-to-account-wrapper').classList.toggle('hidden', type!=='transfer');
 
-            if (categoryLabel) categoryLabel.innerText = type==='proxy' ? 'BÊN ỦY THÁC / NỘI DUNG TRUNG GIAN' : 'DANH MỤC';
+            if (categoryLabel) categoryLabel.innerText = 'DANH MỤC';
 
             const amtInput = document.getElementById('txAmount');
             amtInput.style.color = type==='proxy' ? '#d97706' : '';
@@ -3908,21 +3926,15 @@ tbody tr { animation: none !important; }
 
             if(type==='transfer') {
                 categorySelect.removeAttribute('required');
-                if (proxyParty) { proxyParty.classList.add('hidden'); proxyParty.removeAttribute('required'); }
                 document.getElementById('txToAccount').setAttribute('required', 'true');
-            } else if(type==='proxy') {
-                document.getElementById('txToAccount').removeAttribute('required');
-                categorySelect.classList.add('hidden');
-                categorySelect.removeAttribute('required');
-                if (proxyParty) { proxyParty.classList.remove('hidden'); proxyParty.removeAttribute('required'); }
-                // Proxy uses free text so custom names/contents are preserved on create + edit.
             } else {
+                // income/expense/proxy đều dùng chung 1 dropdown danh mục — "Trung gian" giờ có
+                // danh mục riêng (categories.proxy) thay vì ô nhập tay tự do như trước.
                 document.getElementById('txToAccount').removeAttribute('required');
                 categorySelect.classList.remove('hidden');
                 categorySelect.setAttribute('required', 'true');
-                if (proxyParty) { proxyParty.classList.add('hidden'); proxyParty.removeAttribute('required'); }
                 categorySelect.innerHTML='';
-                categories[type].forEach(c=>categorySelect.appendChild(new Option(c,c)));
+                (categories[type] || []).forEach(c=>categorySelect.appendChild(new Option(c,c)));
             }
         }
         function openNewTransactionModal() {
@@ -3937,14 +3949,22 @@ tbody tr { animation: none !important; }
             editingTxId = id; document.getElementById('tx-modal-title').innerText = 'Sửa Giao Dịch';
             document.querySelector(`input[name="txType"][value="${tx.type}"]`).checked=true; updateFormCategories();
             document.getElementById('txAmount').value = tx.amount.toLocaleString('vi-VN'); document.getElementById('txDate').value = tx.date; document.getElementById('txAccount').value = tx.account; document.getElementById('txNotes').value = tx.notes;
-            if(tx.type==='transfer') document.getElementById('txToAccount').value = tx.toAccount;
-            else if(tx.type==='proxy') {
-                const proxyParty = document.getElementById('txProxyParty');
-                if (proxyParty) proxyParty.value = tx.category || '';
+            if(tx.type==='transfer') {
+                document.getElementById('txToAccount').value = tx.toAccount;
+            } else {
+                const categorySelect = document.getElementById('txCategory');
+                // Giao dịch "Trung gian" tạo trước khi đổi "Bên ủy thác" thành danh mục cố định
+                // có thể mang tên tự do không còn trong danh sách hiện tại — thêm tạm 1 option để
+                // hiển thị đúng giá trị cũ, thay vì âm thầm nhảy về danh mục đầu tiên trong danh sách.
+                if (tx.category && !Array.from(categorySelect.options).some(o => o.value === tx.category)) {
+                    categorySelect.insertAdjacentHTML('afterbegin', `<option value="${escapeHTML(tx.category)}">${escapeHTML(tx.category)} (cũ)</option>`);
+                }
+                categorySelect.value = tx.category;
+            }
+            if (tx.type === 'proxy') {
                 const pdRadio = document.querySelector(`input[name="proxyDir"][value="${tx.proxyDir||'out'}"]`);
                 if(pdRadio) pdRadio.checked = true;
             }
-            else document.getElementById('txCategory').value = tx.category;
             openModal('transactionModal');
         }
         function handleTransactionSubmit(e) {
@@ -3952,9 +3972,7 @@ tbody tr { animation: none !important; }
             const type = document.querySelector('input[name="txType"]:checked').value, amt = getRawNumber(document.getElementById('txAmount').value);
             if(amt<=0) return showToast("> 0", "fa-xmark", "text-rose-500");
             const acc = document.getElementById('txAccount').value, toAcc = document.getElementById('txToAccount').value;
-            const cat = type === 'proxy'
-                ? (document.getElementById('txProxyParty')?.value.trim() || 'Trung gian')
-                : document.getElementById('txCategory').value;
+            const cat = document.getElementById('txCategory').value;
             if(type==='transfer' && acc===toAcc) return showToast("Khác tài khoản", "fa-xmark", "text-rose-500");
             
             const proxyDir = document.querySelector('input[name="proxyDir"]:checked')?.value || 'out';
@@ -3963,7 +3981,7 @@ tbody tr { animation: none !important; }
             const newId = editingTxId || `tx-${Date.now()}-${Math.random().toString(36).slice(2,10)}`;
             const existingTx = editingTxId ? transactions.find(t => String(t.id) === String(editingTxId)) : null;
             const nextSyncVersion = Math.max(1, Number(existingTx?.syncVersion) || 0) + 1;
-            const newData = { id: newId, type, amount:amt, date:document.getElementById('txDate').value, account:acc, category:type==='transfer'?'Chuyển tiền':(type==='proxy'?(cat||'Trung gian'):cat), toAccount:type==='transfer'?toAcc:"", proxyDir:type==='proxy'?proxyDir:null, notes:document.getElementById('txNotes').value, updatedAt: new Date().toISOString(), syncVersion: nextSyncVersion };
+            const newData = { id: newId, type, amount:amt, date:document.getElementById('txDate').value, account:acc, category:type==='transfer'?'Chuyển tiền':cat, toAccount:type==='transfer'?toAcc:"", proxyDir:type==='proxy'?proxyDir:null, notes:document.getElementById('txNotes').value, updatedAt: new Date().toISOString(), syncVersion: nextSyncVersion };
             if(editingTxId) {
                 const editIndex = transactions.findIndex(t=>t.id===editingTxId);
                 if (editIndex < 0) { editingTxId = null; return showToast("Giao dịch đã thay đổi ở thiết bị khác. Hãy tải lại dữ liệu rồi thử lại.", "fa-triangle-exclamation", "text-amber-500"); }
@@ -5251,12 +5269,14 @@ let compareHtml = `
             });
         }
         function renderCategoryManager() {
-            ['income', 'expense'].forEach(type => {
-                const list = document.getElementById(`${type}-categories-list`); list.innerHTML = '';
-                categories[type].forEach(cat => {
+            const themeColor = { income: 'emerald', expense: 'rose', proxy: 'amber' };
+            ['income', 'expense', 'proxy'].forEach(type => {
+                const list = document.getElementById(`${type}-categories-list`); if (!list) return; list.innerHTML = '';
+                const color = themeColor[type] || 'slate';
+                (categories[type] || []).forEach(cat => {
                     const safeCat = escapeHTML(cat);
                     const encodedCat = encodeURIComponent(cat);
-                    list.insertAdjacentHTML('beforeend', `<li class="flex justify-between items-center p-3 hover:bg-slate-100 border-b border-slate-50"><div class="flex items-center space-x-3"><div class="bg-${type==='income'?'emerald':'rose'}-100 text-${type==='income'?'emerald':'rose'}-600 p-2 rounded-lg"><i class="fa-solid ${CATEGORY_ICONS[cat] || 'fa-tag'}"></i></div><span class="font-semibold text-slate-700">${safeCat}</span></div><div class="flex space-x-1"><button type="button" onclick="handleEditCategoryClick('${type}', decodeURIComponent('${encodedCat}'))" class="text-slate-400 hover:text-indigo-600 p-2"><i class="fa-solid fa-pencil"></i></button><button type="button" onclick="handleDeleteCategoryClick('${type}', decodeURIComponent('${encodedCat}'))" class="text-slate-400 hover:text-rose-600 p-2"><i class="fa-solid fa-trash-can"></i></button></div></li>`);
+                    list.insertAdjacentHTML('beforeend', `<li class="flex justify-between items-center p-3 hover:bg-slate-100 border-b border-slate-50"><div class="flex items-center space-x-3"><div class="bg-${color}-100 text-${color}-600 p-2 rounded-lg"><i class="fa-solid ${CATEGORY_ICONS[cat] || 'fa-tag'}"></i></div><span class="font-semibold text-slate-700">${safeCat}</span></div><div class="flex space-x-1"><button type="button" onclick="handleEditCategoryClick('${type}', decodeURIComponent('${encodedCat}'))" class="text-slate-400 hover:text-indigo-600 p-2"><i class="fa-solid fa-pencil"></i></button><button type="button" onclick="handleDeleteCategoryClick('${type}', decodeURIComponent('${encodedCat}'))" class="text-slate-400 hover:text-rose-600 p-2"><i class="fa-solid fa-trash-can"></i></button></div></li>`);
                 });
             });
         }
@@ -6233,7 +6253,7 @@ let compareHtml = `
                     } else if (def.stateKey === 'pinHash') {
                         if (remoteSettings[def.field]) localStorage.setItem(def.storageKey, String(remoteSettings[def.field])); else localStorage.removeItem(def.storageKey);
                     } else if (def.stateKey === 'categories') {
-                        categories = remoteSettings[def.field]; localStorage.setItem(def.storageKey, JSON.stringify(categories));
+                        categories = ensureCategoryShape(remoteSettings[def.field]); localStorage.setItem(def.storageKey, JSON.stringify(categories));
                     } else {
                         idealCategoryBudgets = remoteSettings[def.field]; localStorage.setItem(def.storageKey, JSON.stringify(idealCategoryBudgets));
                     }
