@@ -1613,6 +1613,12 @@ tbody tr { animation: none !important; }
         <p class="text-xs md:text-sm text-slate-500 mt-1" id="ai-summary-text">Hiểu hiện tại → dự đoán cuối tháng → xác định nguyên nhân → đưa ra việc có thể làm ngay.</p>
       </div>
       <div class="flex items-center gap-2.5 flex-wrap shrink-0">
+        <div class="month-picker-shell">
+        <button class="month-picker-trigger flex bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-900 items-center gap-2 justify-between" id="assistant-month-filter-btn" onclick="openMonthPicker('dashboard-month-filter', 'assistant-month-filter-btn')" title="Chọn tháng để Trợ lý phân tích lại" type="button">
+        <span id="assistant-month-filter-label">Chọn tháng</span>
+        <i class="fa-regular fa-calendar-days text-slate-500"></i>
+        </button>
+        </div>
         <span 
           class="ai-chip inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide border border-amber-500/40 bg-amber-500/10 text-amber-600 cursor-help" 
           id="ai-health-chip" 
@@ -3472,7 +3478,12 @@ tbody tr { animation: none !important; }
         // ================== CUSTOM MONTH-YEAR PICKER ==================
         const MONTH_PICKER_MONTHS = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
         let activeMonthPickerTarget = null;
+        let activeMonthPickerBtnId = null;
         let monthPickerYear = new Date().getFullYear();
+        // Các input dùng chung 1 giá trị nhưng có nhiều nút bấm/nhãn hiển thị khác nhau (VD:
+        // tab Tổng quan và tab Trợ lý cùng đọc "dashboard-month-filter") — khai báo ở đây để
+        // syncMonthPickerDisplay() cập nhật đủ mọi nơi hiển thị khi giá trị đổi.
+        const MONTH_PICKER_MIRROR_LABELS = { 'dashboard-month-filter': ['assistant-month-filter-label'] };
         
         function formatMonthPickerLabel(value, emptyLabel = 'Tất cả') {
             if (!value) return emptyLabel;
@@ -3484,9 +3495,14 @@ tbody tr { animation: none !important; }
         
         function syncMonthPickerDisplay(id) {
             const input = document.getElementById(id);
+            if (!input) return;
+            const text = formatMonthPickerLabel(input.value, id === 'filter-month' ? 'Tất cả' : 'Chọn tháng');
             const label = document.getElementById(`${id}-label`);
-            if (!input || !label) return;
-            label.innerText = formatMonthPickerLabel(input.value, id === 'filter-month' ? 'Tất cả' : 'Chọn tháng');
+            if (label) label.innerText = text;
+            (MONTH_PICKER_MIRROR_LABELS[id] || []).forEach(mirrorId => {
+                const mirrorEl = document.getElementById(mirrorId);
+                if (mirrorEl) mirrorEl.innerText = text;
+            });
         }
         
         function setMonthPickerValue(id, value, triggerChange = true) {
@@ -3497,8 +3513,9 @@ tbody tr { animation: none !important; }
             if (triggerChange) input.dispatchEvent(new Event('change', { bubbles: true }));
         }
 
-        function openMonthPicker(targetId) {
+        function openMonthPicker(targetId, btnId) {
             activeMonthPickerTarget = targetId;
+            activeMonthPickerBtnId = btnId || `${targetId}-btn`;
             const input = document.getElementById(targetId);
             const selectedValue = input ? input.value : '';
             monthPickerYear = selectedValue ? Number(selectedValue.split('-')[0]) : new Date().getFullYear();
@@ -3506,11 +3523,11 @@ tbody tr { animation: none !important; }
             const popover = document.getElementById('monthPickerPopover');
             popover.classList.remove('hidden');
 
-            // Định vị popover ngay dưới nút bấm (trước đây bị thiếu -> popover trôi xuống cuối trang, ngoài tầm nhìn)
-            // Đọc CHIỀU RỘNG THỰC TẾ đã render (CSS mobile ép width: calc(100vw - 28px) !important,
-            // khác với hằng số 300 giả định trước đây) — nếu lấy sai số này thì phép tính "left"
-            // bên dưới sẽ lệch và popover bị tràn ra ngoài mép phải màn hình trên di động.
-            const btn = document.getElementById(`${targetId}-btn`);
+            // Định vị popover ngay dưới nút bấm THỰC SỰ được bấm (activeMonthPickerBtnId) — không
+            // phải lúc nào cũng là `${targetId}-btn`, vì nhiều nút có thể cùng điều khiển 1 input
+            // (VD nút ở tab Trợ lý cũng chỉnh "dashboard-month-filter"). Dùng nhầm nút sẽ lấy toạ
+            // độ (0,0) của nút kia đang bị ẩn, làm popover trôi lên góc trái màn hình.
+            const btn = document.getElementById(activeMonthPickerBtnId);
             if (btn) {
                 const rect = btn.getBoundingClientRect();
                 const popoverWidth = popover.getBoundingClientRect().width || Math.min(300, window.innerWidth - 24);
@@ -3530,6 +3547,7 @@ tbody tr { animation: none !important; }
         function closeMonthPicker() {
             document.getElementById('monthPickerPopover').classList.add('hidden');
             activeMonthPickerTarget = null;
+            activeMonthPickerBtnId = null;
         }
 
         function renderMonthPicker() {
@@ -3567,7 +3585,7 @@ tbody tr { animation: none !important; }
             const popover = document.getElementById('monthPickerPopover');
             if (!popover || popover.classList.contains('hidden')) return;
             const clickedInsidePopover = popover.contains(event.target);
-            const clickedTrigger = activeMonthPickerTarget && document.getElementById(`${activeMonthPickerTarget}-btn`)?.contains(event.target);
+            const clickedTrigger = activeMonthPickerBtnId && document.getElementById(activeMonthPickerBtnId)?.contains(event.target);
             if (!clickedInsidePopover && !clickedTrigger) closeMonthPicker();
         });
 
