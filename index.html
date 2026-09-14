@@ -295,6 +295,12 @@
         .month-picker-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(148,163,184,.24); }
         .month-picker-action { font-size: 12px; font-weight: 800; color: #4f46e5; padding: 8px 10px; border-radius: 10px; }
         .month-picker-action:hover { background: #eef2ff; }
+        .month-picker-chip { font-size: 12px; font-weight: 700; color: #4338ca; padding: 7px 12px; border-radius: 999px; background: #eef2ff; border: 1px solid rgba(99,102,241,.25); }
+        .month-picker-chip:hover { background: #e0e7ff; }
+        .month-picker-chip.is-selected { background: #4f46e5; color: #fff; border-color: #4f46e5; }
+        body.dark-mode .month-picker-chip { background: rgba(124,92,255,.16); color: #cabdff; border-color: rgba(124,92,255,.3); }
+        body.dark-mode .month-picker-chip:hover { background: rgba(124,92,255,.28); }
+        body.dark-mode .month-picker-chip.is-selected { background: #7c5cff; color: #fff; }
         
         .assistant-hero { background: radial-gradient(circle at 10% 0%, rgba(99,102,241,.18), transparent 30%), radial-gradient(circle at 90% 0%, rgba(6,182,212,.12), transparent 28%), rgba(255,255,255,.84); }
         .ai-card { background: rgba(255,255,255,.78); border: 1px solid rgba(148,163,184,.20); border-radius: 18px; padding: 18px; box-shadow: var(--ui-shadow-sm); }
@@ -1744,6 +1750,7 @@ tbody tr { animation: none !important; }
 <span id="filter-month-label">Tất cả</span><i class="fa-regular fa-calendar-days text-slate-500"></i>
 </button>
 </div>
+<button class="text-[11px] font-bold text-indigo-500 hover:text-indigo-700 mt-1" id="filter-month-range-btn" onclick="openMonthRangePicker()" type="button"><i class="fa-solid fa-calendar-week mr-1"></i>Chọn khoảng thời gian</button>
 </div>
 <div>
 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1 md:mb-2">Loại</label>
@@ -2915,10 +2922,19 @@ tbody tr { animation: none !important; }
 <div class="month-picker-year" id="monthPickerYear">2026</div>
 <button class="month-picker-nav" onclick="monthPickerChangeYear(1)" type="button"><i class="fa-solid fa-chevron-right"></i></button>
 </div>
+<div class="hidden" id="monthPickerRangeInfo">
+<p class="text-xs font-bold text-indigo-500 mb-2" id="monthPickerRangeStepLabel">Chọn tháng bắt đầu</p>
+<div class="flex flex-wrap gap-1.5 mb-3" id="monthPickerRangePresets">
+<button class="month-picker-chip" onclick="monthPickerQuickRange(3)" type="button">3 tháng gần đây</button>
+<button class="month-picker-chip" onclick="monthPickerQuickRange(6)" type="button">6 tháng gần đây</button>
+<button class="month-picker-chip" onclick="monthPickerQuickRange('year')" type="button">Năm nay</button>
+</div>
+</div>
 <div class="month-picker-grid" id="monthPickerGrid"></div>
-<div class="month-picker-actions">
-<button class="month-picker-action" onclick="monthPickerClear()" type="button">Xóa</button>
-<button class="month-picker-action" onclick="monthPickerSetToday()" type="button">Tháng này</button>
+<div class="month-picker-actions" id="monthPickerActions">
+<button class="month-picker-action" onclick="monthPickerClear()" type="button" id="monthPickerClearBtn">Xóa</button>
+<button class="month-picker-action" onclick="monthPickerSetToday()" type="button" id="monthPickerTodayBtn">Tháng này</button>
+<button class="hidden month-picker-action" onclick="monthPickerCancelRange()" type="button" id="monthPickerCancelRangeBtn">Hủy</button>
 </div>
 </div>
 <div class="hidden fixed top-5 md:bottom-5 md:top-auto left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:right-5 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center space-x-3 z-[100] w-11/12 md:w-auto max-w-sm justify-center md:justify-start" id="toast"><i class="fa-solid text-emerald-400" id="toast-icon"></i><span class="text-sm font-medium" id="toast-message"></span></div>
@@ -3480,6 +3496,13 @@ tbody tr { animation: none !important; }
         let activeMonthPickerTarget = null;
         let activeMonthPickerBtnId = null;
         let monthPickerYear = new Date().getFullYear();
+        // Trạng thái riêng cho chế độ "chọn khoảng thời gian" — CHỈ được bật qua
+        // openMonthRangePicker() (nút "Chọn khoảng thời gian" ở tab Sổ Giao Dịch).
+        // Dashboard/Trợ lý luôn gọi openMonthPicker() bình thường nên không bao giờ
+        // rơi vào chế độ này -> không ảnh hưởng gì đến 2 nơi đó.
+        let monthPickerRangeMode = false;
+        let monthPickerRangeStep = 1; // 1 = đang chọn tháng bắt đầu, 2 = đang chọn tháng kết thúc
+        let monthPickerRangeFrom = null;
         // Các input dùng chung 1 giá trị nhưng có nhiều nút bấm/nhãn hiển thị khác nhau (VD:
         // tab Tổng quan và tab Trợ lý cùng đọc "dashboard-month-filter") — khai báo ở đây để
         // syncMonthPickerDisplay() cập nhật đủ mọi nơi hiển thị khi giá trị đổi.
@@ -3487,6 +3510,16 @@ tbody tr { animation: none !important; }
         
         function formatMonthPickerLabel(value, emptyLabel = 'Tất cả') {
             if (!value) return emptyLabel;
+            if (value.includes(':')) {
+                const [from, to] = value.split(':');
+                const fromLabel = formatMonthPickerLabel(from, '');
+                const toLabel = formatMonthPickerLabel(to, '');
+                if (!fromLabel || !toLabel) return emptyLabel;
+                const fromYear = from.split('-')[0], toYear = to.split('-')[0];
+                // Cùng năm thì rút gọn phần đầu: "Th7 - Th9 2026" thay vì lặp lại năm 2 lần.
+                if (fromYear === toYear) return `${fromLabel.replace(` ${fromYear}`, '')} - ${toLabel}`;
+                return `${fromLabel} - ${toLabel}`;
+            }
             const [year, month] = value.split('-');
             const monthIndex = Number(month) - 1;
             if (!year || monthIndex < 0 || monthIndex > 11) return emptyLabel;
@@ -3513,41 +3546,99 @@ tbody tr { animation: none !important; }
             if (triggerChange) input.dispatchEvent(new Event('change', { bubbles: true }));
         }
 
+        function positionMonthPickerPopover(btnId) {
+            const popover = document.getElementById('monthPickerPopover');
+            const btn = document.getElementById(btnId);
+            if (!btn || !popover) return;
+            const rect = btn.getBoundingClientRect();
+            const popoverWidth = popover.getBoundingClientRect().width || Math.min(300, window.innerWidth - 24);
+            const estimatedHeight = popover.offsetHeight || 320;
+            let left = rect.left;
+            let top = rect.bottom + 8;
+            if (left + popoverWidth > window.innerWidth - 12) left = window.innerWidth - popoverWidth - 12;
+            if (left < 12) left = 12;
+            if (top + estimatedHeight > window.innerHeight - 12 && rect.top - estimatedHeight > 12) {
+                top = rect.top - estimatedHeight - 8;
+            }
+            popover.style.top = `${Math.max(12, top)}px`;
+            popover.style.left = `${left}px`;
+        }
+
         function openMonthPicker(targetId, btnId) {
+            exitMonthPickerRangeMode();
             activeMonthPickerTarget = targetId;
             activeMonthPickerBtnId = btnId || `${targetId}-btn`;
             const input = document.getElementById(targetId);
             const selectedValue = input ? input.value : '';
-            monthPickerYear = selectedValue ? Number(selectedValue.split('-')[0]) : new Date().getFullYear();
+            monthPickerYear = selectedValue && !selectedValue.includes(':') ? Number(selectedValue.split('-')[0]) : new Date().getFullYear();
             renderMonthPicker();
-            const popover = document.getElementById('monthPickerPopover');
-            popover.classList.remove('hidden');
-
+            document.getElementById('monthPickerPopover').classList.remove('hidden');
             // Định vị popover ngay dưới nút bấm THỰC SỰ được bấm (activeMonthPickerBtnId) — không
             // phải lúc nào cũng là `${targetId}-btn`, vì nhiều nút có thể cùng điều khiển 1 input
             // (VD nút ở tab Trợ lý cũng chỉnh "dashboard-month-filter"). Dùng nhầm nút sẽ lấy toạ
             // độ (0,0) của nút kia đang bị ẩn, làm popover trôi lên góc trái màn hình.
-            const btn = document.getElementById(activeMonthPickerBtnId);
-            if (btn) {
-                const rect = btn.getBoundingClientRect();
-                const popoverWidth = popover.getBoundingClientRect().width || Math.min(300, window.innerWidth - 24);
-                const estimatedHeight = popover.offsetHeight || 320;
-                let left = rect.left;
-                let top = rect.bottom + 8;
-                if (left + popoverWidth > window.innerWidth - 12) left = window.innerWidth - popoverWidth - 12;
-                if (left < 12) left = 12;
-                if (top + estimatedHeight > window.innerHeight - 12 && rect.top - estimatedHeight > 12) {
-                    top = rect.top - estimatedHeight - 8;
-                }
-                popover.style.top = `${Math.max(12, top)}px`;
-                popover.style.left = `${left}px`;
+            positionMonthPickerPopover(activeMonthPickerBtnId);
+        }
+
+        // Mở picker ở CHẾ ĐỘ CHỌN KHOẢNG THỜI GIAN — chỉ dùng riêng cho bộ lọc "Sổ Giao Dịch".
+        // Dashboard và Trợ lý không bao giờ gọi hàm này nên không bị ảnh hưởng.
+        function openMonthRangePicker() {
+            activeMonthPickerTarget = 'filter-month';
+            activeMonthPickerBtnId = 'filter-month-range-btn';
+            monthPickerRangeMode = true;
+            monthPickerRangeStep = 1;
+            monthPickerRangeFrom = null;
+            monthPickerYear = new Date().getFullYear();
+            renderMonthPicker();
+            document.getElementById('monthPickerPopover').classList.remove('hidden');
+            positionMonthPickerPopover(activeMonthPickerBtnId);
+        }
+
+        function exitMonthPickerRangeMode() {
+            monthPickerRangeMode = false;
+            monthPickerRangeStep = 1;
+            monthPickerRangeFrom = null;
+        }
+
+        function handleRangeMonthClick(value) {
+            if (monthPickerRangeStep === 1) {
+                monthPickerRangeFrom = value;
+                monthPickerRangeStep = 2;
+                renderMonthPicker();
+                return;
             }
+            let from = monthPickerRangeFrom, to = value;
+            if (from > to) { const tmp = from; from = to; to = tmp; } // cho phép bấm điểm cuối trước điểm đầu
+            setMonthPickerValue('filter-month', `${from}:${to}`, true);
+            exitMonthPickerRangeMode();
+            closeMonthPicker();
+        }
+
+        function monthPickerCancelRange() {
+            exitMonthPickerRangeMode();
+            closeMonthPicker();
+        }
+
+        // Nút chọn nhanh: n=3/6 (số tháng gần đây, tính cả tháng hiện tại) hoặc 'year' (Th1-Th12 năm nay)
+        function monthPickerQuickRange(n) {
+            const now = new Date();
+            if (n === 'year') {
+                const y = now.getFullYear();
+                setMonthPickerValue('filter-month', `${y}-01:${y}-12`, true);
+            } else {
+                const fromDate = new Date(now.getFullYear(), now.getMonth() - (n - 1), 1);
+                const fromStr = `${fromDate.getFullYear()}-${String(fromDate.getMonth() + 1).padStart(2, '0')}`;
+                setMonthPickerValue('filter-month', `${fromStr}:${getCurrentMonthStr()}`, true);
+            }
+            exitMonthPickerRangeMode();
+            closeMonthPicker();
         }
         
         function closeMonthPicker() {
             document.getElementById('monthPickerPopover').classList.add('hidden');
             activeMonthPickerTarget = null;
             activeMonthPickerBtnId = null;
+            exitMonthPickerRangeMode();
         }
 
         function renderMonthPicker() {
@@ -3555,19 +3646,46 @@ tbody tr { animation: none !important; }
             const grid = document.getElementById('monthPickerGrid');
             const activeInput = activeMonthPickerTarget ? document.getElementById(activeMonthPickerTarget) : null;
             const selectedValue = activeInput ? activeInput.value : '';
-            
+
             if (yearEl) yearEl.innerText = monthPickerYear;
+
+            // Hiện/ẩn phần chip gợi ý nhanh + đổi nhãn bước chọn - chỉ áp dụng khi đang ở chế độ
+            // chọn khoảng (Sổ Giao Dịch); Dashboard/Trợ lý luôn có monthPickerRangeMode=false nên
+            // phần này luôn ẩn với 2 nơi đó, giữ nguyên giao diện/hành vi cũ.
+            const rangeInfo = document.getElementById('monthPickerRangeInfo');
+            if (rangeInfo) rangeInfo.classList.toggle('hidden', !monthPickerRangeMode);
+            const stepLabel = document.getElementById('monthPickerRangeStepLabel');
+            if (stepLabel) {
+                stepLabel.innerText = monthPickerRangeStep === 1
+                    ? 'Chọn tháng bắt đầu'
+                    : `Chọn tháng kết thúc (từ ${formatMonthPickerLabel(monthPickerRangeFrom, '')})`;
+            }
+            document.getElementById('monthPickerClearBtn')?.classList.toggle('hidden', monthPickerRangeMode);
+            document.getElementById('monthPickerTodayBtn')?.classList.toggle('hidden', monthPickerRangeMode);
+            document.getElementById('monthPickerCancelRangeBtn')?.classList.toggle('hidden', !monthPickerRangeMode);
+
             if (!grid) return;
             grid.innerHTML = '';
-            
+
             MONTH_PICKER_MONTHS.forEach((label, index) => {
                 const month = String(index + 1).padStart(2, '0');
                 const value = `${monthPickerYear}-${month}`;
                 const btn = document.createElement('button');
                 btn.type = 'button';
-                btn.className = `month-picker-month${value === selectedValue ? ' is-selected' : ''}`;
+                const isSelected = monthPickerRangeMode ? value === monthPickerRangeFrom : value === selectedValue;
+                btn.className = `month-picker-month${isSelected ? ' is-selected' : ''}`;
                 btn.innerText = label.replace('Tháng ', 'Th');
-                btn.onclick = () => { if (activeMonthPickerTarget) { setMonthPickerValue(activeMonthPickerTarget, value, true); closeMonthPicker(); } };
+                btn.onclick = (e) => {
+                    // Chặn nổi bọt: renderMonthPicker() (gọi bên trong handleRangeMonthClick ở bước
+                    // 1) sẽ xoá và vẽ lại toàn bộ lưới tháng (grid.innerHTML=''), khiến chính nút vừa
+                    // bấm bị gỡ khỏi DOM giữa chừng. Nếu không chặn nổi bọt, listener "bấm ra ngoài
+                    // để đóng" ở document sẽ thấy target không còn nằm trong popover nữa và tưởng là
+                    // click ra ngoài, tự đóng popover ngay sau bước 1 (trước khi kịp chọn bước 2).
+                    e.stopPropagation();
+                    if (!activeMonthPickerTarget) return;
+                    if (monthPickerRangeMode) { handleRangeMonthClick(value); }
+                    else { setMonthPickerValue(activeMonthPickerTarget, value, true); closeMonthPicker(); }
+                };
                 grid.appendChild(btn);
             });
         }
@@ -4159,8 +4277,19 @@ tbody tr { animation: none !important; }
                 a = document.getElementById('filter-account').value,
                 s = document.getElementById('filter-sort').value;
 
+            // "m" có thể là: "" (Tất cả), "YYYY-MM" (đúng 1 tháng), hoặc "YYYY-MM:YYYY-MM"
+            // (khoảng thời gian, chỉ tạo được từ nút "Chọn khoảng thời gian" ở Sổ Giao Dịch).
+            let monthMatch;
+            if (!m) monthMatch = () => true;
+            else if (m.includes(':')) {
+                const [from, to] = m.split(':');
+                monthMatch = (x) => { const ym = x.date.slice(0, 7); return ym >= from && ym <= to; };
+            } else {
+                monthMatch = (x) => x.date.startsWith(m);
+            }
+
             let f = transactions.filter(x =>
-                (!m || x.date.startsWith(m)) &&
+                monthMatch(x) &&
                 (t === 'all' || x.type === t) &&
                 (a === 'all' || x.account === a || (x.type === 'transfer' && x.toAccount === a))
             );
