@@ -1492,7 +1492,7 @@ tbody tr { animation: none !important; }
 <!-- NỘI DUNG CHÍNH -->
 <!-- Safari iOS: position:fixed không hoạt động bên trong overflow:auto/scroll container.
              Bỏ overflow-y-auto ở đây, để body scroll tự nhiên. Bottom nav fixed sẽ hoạt động đúng. -->
-<main class="flex-1 flex flex-col pb-20 md:pb-0 relative">
+<main class="flex-1 flex flex-col pb-20 md:pb-0 relative min-h-0">
 <!-- HEADER -->
 <header class="bg-white border-b border-slate-200 px-4 md:px-6 py-4 flex items-center justify-between sticky top-0 z-10 gap-2">
 <div>
@@ -1512,7 +1512,7 @@ tbody tr { animation: none !important; }
 </button>
 </div>
 </header>
-<div class="p-4 md:p-6 space-y-6 flex-1">
+<div class="p-4 md:p-6 space-y-6 flex-1 min-h-0">
 <!-- TAB 1: DASHBOARD -->
 <section class="space-y-6" id="tab-dashboard">
 <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between">
