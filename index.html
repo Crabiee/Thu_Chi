@@ -33,13 +33,6 @@
         */
         button { -webkit-appearance: none; appearance: none; }
         .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
-        /* KHÔNG dùng position:sticky nữa — sau nhiều lần vá vẫn không dính được trên trình duyệt
-           thực tế của người dùng (rất có thể do 1 phiên bản/loại trình duyệt cụ thể hiện thực
-           sticky không đúng chuẩn trong layout flex lồng nhau của app này, dù đã thử nhiều cách).
-           Thay bằng "fixed" + JS tự tính toán top/left/width khi cuộn (xem updatePinnedFilterBarScroll()) —
-           cách này KHÔNG phụ thuộc vào việc trình duyệt hiện thực sticky đúng hay sai, nên chắc chắn
-           hoạt động giống nhau trên mọi trình duyệt. */
-        .js-stuck { position: fixed !important; z-index: 9; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         
@@ -233,14 +226,6 @@
         body.dark-mode .bg-white, body.dark-mode section > .bg-white, body.dark-mode section .grid > .bg-white,
         body.dark-mode #tab-guide .bg-white, body.dark-mode #tab-budget .bg-white, body.dark-mode #tab-categories .bg-white, body.dark-mode #tab-transactions .bg-white {
             background-color: rgba(15,23,42,.78) !important; color: #e5e7eb; border-color: rgba(148,163,184,.18) !important; box-shadow: 0 18px 45px rgba(0,0,0,.24);
-        }
-        /* Khối lọc khi được GHIM (position:fixed, class .js-stuck) phải có nền ĐẶC, không được
-           trong suốt như rule ở trên (rgba(...,.78)) — vì nó nằm đè lên danh sách giao dịch đang
-           cuộn bên dưới, nền trong suốt sẽ làm chữ/dòng giao dịch bị "lộ" xuyên qua khối lọc, trông
-           như bị lỗi chồng chữ. Selector này cần khớp độ ưu tiên với rule phía trên (có
-           #tab-transactions) để thắng được nó. */
-        body.dark-mode #tab-transactions .js-stuck {
-            background-color: var(--fp-surface) !important;
         }
         body.dark-mode .bg-slate-50, body.dark-mode .bg-slate-100 { background-color: rgba(30,41,59,.72) !important; }
         body.dark-mode .bg-emerald-50, body.dark-mode .bg-emerald-100 { background-color: rgba(6,78,59,.38) !important; border-color: rgba(52,211,153,.28) !important; }
@@ -1491,7 +1476,7 @@ tbody tr { animation: none !important; }
 <!-- NỘI DUNG CHÍNH -->
 <!-- Safari iOS: position:fixed không hoạt động bên trong overflow:auto/scroll container.
              Bỏ overflow-y-auto ở đây, để body scroll tự nhiên. Bottom nav fixed sẽ hoạt động đúng. -->
-<main class="flex-1 flex flex-col pb-20 md:pb-0 relative min-h-0">
+<main class="flex-1 flex flex-col pb-20 md:pb-0 relative">
 <!-- HEADER -->
 <header class="bg-white border-b border-slate-200 px-4 md:px-6 py-4 flex items-center justify-between sticky top-0 z-10 gap-2">
 <div>
@@ -1511,7 +1496,7 @@ tbody tr { animation: none !important; }
 </button>
 </div>
 </header>
-<div class="p-4 md:p-6 space-y-6 flex-1 min-h-0">
+<div class="p-4 md:p-6 space-y-6 flex-1">
 <!-- TAB 1: DASHBOARD -->
 <section class="space-y-6" id="tab-dashboard">
 <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between">
@@ -1756,8 +1741,7 @@ tbody tr { animation: none !important; }
 </section>
 <!-- TAB 3: TRANSACTIONS (Có chế độ hiển thị Card trên Mobile) -->
 <section class="hidden space-y-4 md:space-y-6" id="tab-transactions">
-<div class="relative bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4" id="transaction-filter-bar">
-<button class="absolute -top-2.5 -right-2.5 md:top-2 md:right-2 md:-mt-0 bg-white border border-slate-200 shadow-sm rounded-full w-7 h-7 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-300 transition" id="pin-filter-btn" onclick="toggleFilterPin()" title="Ghim bộ lọc khi cuộn trang" type="button"><i class="fa-solid fa-thumbtack text-xs"></i></button>
+<div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
 <div class="col-span-2 md:col-span-1">
 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1 md:mb-2">Tháng</label>
 <div class="month-picker-shell">
@@ -1786,7 +1770,6 @@ tbody tr { animation: none !important; }
 <button class="tx-clear-filters-btn bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold px-4 py-2 md:py-2.5 rounded-lg text-sm transition" onclick="clearFilters()" title="Xóa các bộ lọc đang chọn"><i class="fa-solid fa-filter-circle-xmark mr-1"></i> Bỏ lọc</button>
 </div>
 </div>
-<div id="transaction-filter-bar-spacer" style="height:0px;"></div>
 <div class="bg-white md:rounded-2xl shadow-sm border border-slate-100 overflow-hidden rounded-xl">
 <div class="p-4 md:p-6 border-b border-slate-100">
 <div class="flex justify-between items-center gap-3">
@@ -3487,7 +3470,6 @@ tbody tr { animation: none !important; }
 
             const actSec = document.getElementById(`tab-${tabName}`);
             if (actSec) actSec.classList.remove('hidden');
-            if (tabName === 'transactions' && filterBarPinned) computeFilterBarTriggerPoint();
             
             const activeBtn = document.getElementById(`btn-${tabName}`);
             if (activeBtn) activeBtn.className = `tab-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition font-medium text-white ${tabName==='guide' ? 'bg-amber-500' : 'bg-indigo-600'}`;
@@ -3732,112 +3714,6 @@ tbody tr { animation: none !important; }
             document.body.classList.toggle('dark-mode', shouldUseDark);
             document.getElementById('dark-mode-icon').className = shouldUseDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
         }
-        // Ghim/bỏ ghim khối lọc ở Sổ Giao Dịch - đây là sở thích hiển thị cá nhân trên THIẾT BỊ
-        // này (giống dark mode), nên chỉ lưu localStorage, không đồng bộ Firestore qua thiết bị khác.
-        //
-        // KHÔNG dùng CSS position:sticky (đã thử, không dính trên một số trình duyệt thực tế của
-        // người dùng dù test kỹ trên Chrome desktop/mobile không tái hiện được lỗi). Thay bằng
-        // JS tự đo vị trí tự nhiên của khối lọc, rồi khi cuộn quá điểm đó thì chuyển sang
-        // position:fixed với top/left/width tính tay — không phụ thuộc bất kỳ hành vi sticky nào
-        // của trình duyệt nên đảm bảo hoạt động giống nhau ở mọi nơi.
-        let filterBarPinned = false;
-        let filterBarStickyTriggerY = null; // vị trí cuộn tại đó bắt đầu "dính"
-        let filterBarNaturalLeft = 0, filterBarNaturalWidth = 0;
-
-        // Trang này có thể cuộn qua window/html (thông thường, desktop) HOẶC qua chính <body>
-        // (bắt buộc trên mobile — 1 rule CSS khác ép body {height:100%; overflow-y:auto} để né 1
-        // lỗi position:fixed riêng trên Safari iOS, khiến body chứ không phải window mới là nơi
-        // thực sự cuộn). Đọc & lắng nghe đúng nguồn đang thực sự cuộn thay vì giả định cứng là
-        // window — đây chính là lý do lần trước code không dính được trên mobile: lắng nghe
-        // 'scroll' trên window trong khi mobile lại cuộn ở body, nên không bao giờ nhận được sự kiện.
-        function getEffectiveScrollY() {
-            return window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-        }
-
-        function computeFilterBarTriggerPoint() {
-            const bar = document.getElementById('transaction-filter-bar');
-            if (!bar || !filterBarPinned) return;
-            const wasStuck = bar.classList.contains('js-stuck');
-            if (wasStuck) unstickFilterBar(); // tạm bỏ fixed để đo đúng vị trí tự nhiên trong luồng
-            const rect = bar.getBoundingClientRect();
-            const headerHeight = document.querySelector('main > header')?.offsetHeight || 0;
-            filterBarStickyTriggerY = getEffectiveScrollY() + rect.top - headerHeight;
-            filterBarNaturalLeft = rect.left;
-            filterBarNaturalWidth = rect.width;
-            if (wasStuck) updatePinnedFilterBarScroll();
-        }
-
-        function stickFilterBar() {
-            const bar = document.getElementById('transaction-filter-bar');
-            const spacer = document.getElementById('transaction-filter-bar-spacer');
-            const headerHeight = document.querySelector('main > header')?.offsetHeight || 0;
-            // Dời hẳn phần tử ra khỏi các lớp cha lồng nhau (main > div.flex-1 > section), đặt làm
-            // sibling ngay sau <main> — đúng vị trí nông giống hệt #mobile-bottom-nav (position:fixed
-            // đã xác nhận hoạt động đúng từ trước). Khi nằm lồng quá sâu trong <body> đang tự cuộn
-            // (mobile, do CSS riêng ở trên), "fixed" không neo đúng theo viewport thật nữa - đây là
-            // cách khắc phục triệt để, không phụ thuộc suy đoán về hành vi fixed của từng trình duyệt.
-            const main = document.querySelector('main');
-            if (main && main.nextSibling !== bar) main.parentNode.insertBefore(bar, main.nextSibling);
-            bar.style.top = `${headerHeight}px`;
-            bar.style.left = `${filterBarNaturalLeft}px`;
-            bar.style.width = `${filterBarNaturalWidth}px`;
-            bar.classList.add('js-stuck');
-            // Đo chiều cao SAU KHI đã áp fixed + width cố định — chiều rộng cố định có thể khiến nội
-            // dung (VD lưới danh mục) xuống dòng khác đi so với lúc còn ở trong luồng bình thường,
-            // nên đo trước đó sẽ ra số sai, làm spacer lệch khỏi chiều cao thật của khối đang ghim.
-            if (spacer) spacer.style.height = `${bar.offsetHeight}px`;
-        }
-        function unstickFilterBar() {
-            const bar = document.getElementById('transaction-filter-bar');
-            const spacer = document.getElementById('transaction-filter-bar-spacer');
-            if (spacer && spacer.parentNode && spacer.previousSibling !== bar) {
-                spacer.parentNode.insertBefore(bar, spacer); // trả về đúng vị trí cũ, ngay trước spacer
-            }
-            if (spacer) spacer.style.height = '0px';
-            bar.classList.remove('js-stuck');
-            bar.style.top = ''; bar.style.left = ''; bar.style.width = '';
-        }
-
-        function updatePinnedFilterBarScroll() {
-            const bar = document.getElementById('transaction-filter-bar');
-            if (!bar || !filterBarPinned || filterBarStickyTriggerY === null) return;
-            const shouldStick = getEffectiveScrollY() >= filterBarStickyTriggerY;
-            const isStuck = bar.classList.contains('js-stuck');
-            if (shouldStick && !isStuck) stickFilterBar();
-            else if (!shouldStick && isStuck) unstickFilterBar();
-        }
-
-        let filterBarScrollTicking = false;
-        function onWindowScrollForFilterBar() {
-            if (!filterBarPinned || filterBarScrollTicking) return;
-            filterBarScrollTicking = true;
-            requestAnimationFrame(() => { updatePinnedFilterBarScroll(); filterBarScrollTicking = false; });
-        }
-
-        function applyFilterPinPreference() {
-            filterBarPinned = localStorage.getItem('financepro_filter_pinned_v1') === '1';
-            const bar = document.getElementById('transaction-filter-bar');
-            const btn = document.getElementById('pin-filter-btn');
-            if (btn) {
-                btn.classList.toggle('text-indigo-600', filterBarPinned);
-                btn.classList.toggle('border-indigo-300', filterBarPinned);
-                btn.title = filterBarPinned ? 'Bỏ ghim bộ lọc' : 'Ghim bộ lọc khi cuộn trang';
-            }
-            if (bar) {
-                if (filterBarPinned) { computeFilterBarTriggerPoint(); updatePinnedFilterBarScroll(); }
-                else unstickFilterBar();
-            }
-        }
-        function toggleFilterPin() {
-            const nextPinned = !filterBarPinned;
-            localStorage.setItem('financepro_filter_pinned_v1', nextPinned ? '1' : '0');
-            applyFilterPinPreference();
-        }
-        window.addEventListener('resize', () => { if (filterBarPinned) computeFilterBarTriggerPoint(); });
-        // Đăng ký lắng nghe 'scroll' trên CẢ window LẪN body — chỉ nguồn nào thực sự đang cuộn mới
-        // bắn sự kiện, nguồn còn lại im lặng vô hại, nên không cần biết trước app đang ở chế độ nào.
-        window.addEventListener('scroll', onWindowScrollForFilterBar, { passive: true });
-        document.body.addEventListener('scroll', onWindowScrollForFilterBar, { passive: true });
         function toggleDarkMode() {
             const nextDark = !document.body.classList.contains('dark-mode');
             document.body.classList.toggle('dark-mode', nextDark);
@@ -3853,20 +3729,6 @@ tbody tr { animation: none !important; }
             const m = String(date.getMonth() + 1).padStart(2, '0');
             const d = String(date.getDate()).padStart(2, '0');
             return `${y}-${m}-${d}`;
-        }
-        // Ô nhập ngày dạng <input type="date"> ở một số trình duyệt/hệ điều hành cho phép GÕ TAY
-        // các số vô lý (VD 99/99/9999) vào từng ô ngày/tháng/năm mà không tự chặn ngay lúc gõ.
-        // Hàm này kiểm tra lại: đúng định dạng YYYY-MM-DD, và là một ngày CÓ THẬT trên lịch (chặn
-        // cả kiểu "lỗi âm thầm" như 2026-02-30 -> JS Date tự động cuộn thành 2026-03-02 nếu không
-        // so khớp lại từng phần). Năm cũng bị giới hạn trong khoảng hợp lý (2000 - năm sau).
-        function isValidDateStr(value) {
-            if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-            const [y, m, d] = value.split('-').map(Number);
-            const maxYear = new Date().getFullYear() + 1;
-            if (y < 2000 || y > maxYear) return false;
-            if (m < 1 || m > 12) return false;
-            const dt = new Date(y, m - 1, d);
-            return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
         }
         function getCurrentMonthStr() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
         function formatCurrency(num) { return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num); }
@@ -3909,7 +3771,6 @@ tbody tr { animation: none !important; }
         // ================== KHỞI TẠO DỮ LIỆU ==================
         window.addEventListener('DOMContentLoaded', () => {
             applyDarkModePreference();
-            applyFilterPinPreference();
             updateVisibilityUI(); // Reset theo isBalanceHidden (Mặc định = true -> giấu số)
 
             const savedTxs = localStorage.getItem('personal_transactions_v4');
@@ -3987,17 +3848,9 @@ tbody tr { animation: none !important; }
         }
 
         function populateAccountSelects() {
-            // Giữ lại lựa chọn hiện tại của từng ô trước khi xoá & vẽ lại toàn bộ option — nếu không,
-            // mọi lần gọi hàm này (kể cả các listener đồng bộ Firestore chạy ngầm sau khi lưu 1 giao
-            // dịch) sẽ làm bộ lọc "Tài khoản" ở Sổ Giao Dịch tự động nhảy về "Tất cả".
             ['txAccount', 'txToAccount', 'filter-account'].forEach(id => {
-                const s = document.getElementById(id);
-                const prevValue = s.value;
-                s.innerHTML = id==='filter-account'?'<option value="all">Tất cả</option>':'';
+                const s = document.getElementById(id); s.innerHTML = id==='filter-account'?'<option value="all">Tất cả</option>':'';
                 Object.keys(userAccounts).forEach(a => s.appendChild(new Option(a,a)));
-                if (prevValue && (prevValue === 'all' || Object.prototype.hasOwnProperty.call(userAccounts, prevValue))) {
-                    s.value = prevValue;
-                }
             });
         }
         function renderAccountSetupList() {
@@ -4223,13 +4076,7 @@ tbody tr { animation: none !important; }
         function openNewTransactionModal() {
             editingTxId = null; document.getElementById('transaction-form').reset();
             document.getElementById('tx-modal-title').innerText = 'Ghi Chép Giao Dịch';
-            const dateInput = document.getElementById('txDate');
-            dateInput.value = getLocalDateStr();
-            // min/max chỉ là lớp chặn ở giao diện gốc của trình duyệt (một số trình duyệt vẫn cho
-            // gõ tay số vô lý bất chấp min/max) — isValidDateStr() trong handleTransactionSubmit()
-            // mới là chốt chặn thật sự, áp dụng cho mọi trình duyệt.
-            dateInput.min = '2000-01-01';
-            dateInput.max = `${new Date().getFullYear() + 1}-12-31`;
+            document.getElementById('txDate').value = getLocalDateStr();
             document.querySelector(`input[name="txType"][value="expense"]`).checked = true;
             updateFormCategories(); openModal('transactionModal');
         }
@@ -4237,10 +4084,7 @@ tbody tr { animation: none !important; }
             const tx = transactions.find(t=>t.id===id); if(!tx) return;
             editingTxId = id; document.getElementById('tx-modal-title').innerText = 'Sửa Giao Dịch';
             document.querySelector(`input[name="txType"][value="${tx.type}"]`).checked=true; updateFormCategories();
-            const dateInput = document.getElementById('txDate');
-            dateInput.min = '2000-01-01';
-            dateInput.max = `${new Date().getFullYear() + 1}-12-31`;
-            document.getElementById('txAmount').value = tx.amount.toLocaleString('vi-VN'); dateInput.value = tx.date; document.getElementById('txAccount').value = tx.account; document.getElementById('txNotes').value = tx.notes;
+            document.getElementById('txAmount').value = tx.amount.toLocaleString('vi-VN'); document.getElementById('txDate').value = tx.date; document.getElementById('txAccount').value = tx.account; document.getElementById('txNotes').value = tx.notes;
             if(tx.type==='transfer') {
                 document.getElementById('txToAccount').value = tx.toAccount;
             } else {
@@ -4263,8 +4107,6 @@ tbody tr { animation: none !important; }
             e.preventDefault();
             const type = document.querySelector('input[name="txType"]:checked').value, amt = getRawNumber(document.getElementById('txAmount').value);
             if(amt<=0) return showToast("> 0", "fa-xmark", "text-rose-500");
-            const dateVal = document.getElementById('txDate').value;
-            if(!isValidDateStr(dateVal)) return showToast("Ngày không hợp lệ", "fa-calendar-xmark", "text-rose-500");
             const acc = document.getElementById('txAccount').value, toAcc = document.getElementById('txToAccount').value;
             const cat = document.getElementById('txCategory').value;
             if(type==='transfer' && acc===toAcc) return showToast("Khác tài khoản", "fa-xmark", "text-rose-500");
