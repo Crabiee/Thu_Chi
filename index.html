@@ -3783,6 +3783,10 @@ tbody tr { animation: none !important; }
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
         // --- Đồng bộ chiều cao header vào biến CSS để filter panel pin đúng vị trí ---
+        // Dùng ResizeObserver để luôn cập nhật đúng, vì chiều cao header có thể
+        // thay đổi sau khi tải xong (font icon, responsive, nội dung header...),
+        // khiến giá trị đo 1 lần lúc DOMContentLoaded bị lệch và làm khối filter
+        // bị header đè lên khi cuộn (lỗi ghim).
         function syncHeaderHeightVar() {
             const headerEl = document.querySelector('header');
             if (headerEl) {
@@ -3790,6 +3794,13 @@ tbody tr { animation: none !important; }
             }
         }
         window.addEventListener('resize', syncHeaderHeightVar);
+        window.addEventListener('load', syncHeaderHeightVar);
+        (function watchHeaderHeight() {
+            const headerEl = document.querySelector('header');
+            if (headerEl && typeof ResizeObserver !== 'undefined') {
+                new ResizeObserver(syncHeaderHeightVar).observe(headerEl);
+            }
+        })();
 
         // --- Bóng đổ nhẹ cho filter panel khi nó đang "dính" lúc cuộn trang ---
         function initTxFilterStickyObserver() {
