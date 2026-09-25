@@ -3897,9 +3897,19 @@ tbody tr { animation: none !important; }
         }
 
         function populateAccountSelects() {
+            // Trước đây hàm này luôn build lại các dropdown và bỏ mất lựa chọn hiện tại,
+            // khiến bộ lọc "Tài khoản" ở tab Sổ Giao Dịch tự nhảy về "Tất cả" bất cứ khi
+            // nào có đồng bộ dữ liệu chạy ngầm (vd: ngay sau khi lưu 1 giao dịch mới, app
+            // đẩy/nhận dữ liệu Firestore rồi gọi lại hàm này). Giờ giữ lại giá trị đang
+            // chọn nếu tài khoản đó vẫn còn tồn tại.
             ['txAccount', 'txToAccount', 'filter-account'].forEach(id => {
-                const s = document.getElementById(id); s.innerHTML = id==='filter-account'?'<option value="all">Tất cả</option>':'';
+                const s = document.getElementById(id);
+                const prevValue = s.value;
+                s.innerHTML = id==='filter-account'?'<option value="all">Tất cả</option>':'';
                 Object.keys(userAccounts).forEach(a => s.appendChild(new Option(a,a)));
+                if (prevValue && Array.from(s.options).some(o => o.value === prevValue)) {
+                    s.value = prevValue;
+                }
             });
         }
         function renderAccountSetupList() {
