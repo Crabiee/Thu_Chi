@@ -1222,11 +1222,11 @@ body.dark-mode .border-violet-100,
 body.dark-mode .border-cyan-100 { border-color: var(--fp-border) !important; }
 
 /* Hover utilities */
-body.dark-mode .hover\\:bg-slate-50:hover,
-body.dark-mode .hover\\:bg-slate-100:hover,
-body.dark-mode .hover\\:bg-slate-200:hover { background: var(--fp-surface-2) !important; color: var(--fp-text) !important; }
-body.dark-mode .hover\\:text-slate-700:hover { color: var(--fp-text) !important; }
-body.dark-mode .hover\\:bg-indigo-700:hover { background: #8f70ff !important; color: #fff !important; }
+body.dark-mode .hover\:bg-slate-50:hover,
+body.dark-mode .hover\:bg-slate-100:hover,
+body.dark-mode .hover\:bg-slate-200:hover { background: var(--fp-surface-2) !important; color: var(--fp-text) !important; }
+body.dark-mode .hover\:text-slate-700:hover { color: var(--fp-text) !important; }
+body.dark-mode .hover\:bg-indigo-700:hover { background: #8f70ff !important; color: #fff !important; }
 
 /* Primary / nav */
 body.dark-mode .bg-indigo-600 { background: var(--fp-accent) !important; color: #fff !important; }
@@ -3736,8 +3736,9 @@ tbody tr { animation: none !important; }
             if (typeof updateDashboard === 'function') updateDashboard();
         }
 
-        function formatNumberInput(input) { let v = input.value.replace(/\D/g, ''); input.value = v === '' ? '' : parseInt(v, 10).toLocaleString('vi-VN'); }
-        function getRawNumber(valueStr) { return !valueStr ? 0 : Number(valueStr.toString().replace(/\./g, '')); }
+        function encAttr(v) { return encodeURIComponent(String(v ?? '')).replace(/'/g, '%27'); }
+        function formatNumberInput(input, allowNegative = false) { const raw = String(input.value); const neg = allowNegative && raw.trim().startsWith('-'); let v = raw.replace(/\D/g, ''); input.value = v === '' ? (neg ? '-' : '') : (neg ? '-' : '') + parseInt(v, 10).toLocaleString('vi-VN'); }
+        function getRawNumber(valueStr) { if (!valueStr) return 0; const t = valueStr.toString().trim(); const neg = t.startsWith('-'); const n = Number(t.replace(/\D/g, '')) || 0; return neg ? -n : n; }
         function getLocalDateStr(date = new Date()) {
             const y = date.getFullYear();
             const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -3912,14 +3913,48 @@ tbody tr { animation: none !important; }
                 }
             });
         }
+        // Khớp số dư thực tế: người dùng nhập số tiền thật đang có trong ví; app tạo 1 giao dịch
+        // "Trung gian" (không tính vào thu/chi) chênh lệch để số dư hiển thị = số dư thực tế.
+        function handleReconcileAccount(acc) {
+            if (!Object.prototype.hasOwnProperty.call(userAccounts, acc)) return;
+            const current = computeCurrentBalances()[acc] || 0;
+            openPrompt(`Khớp số dư "${acc}" (app đang hiện ${current.toLocaleString('vi-VN')}₫) - nhập số dư thực tế`, '', (val) => {
+                const raw = String(val ?? '').trim();
+                if (raw === '' || !/\d/.test(raw)) return showToast("Số dư không hợp lệ", "fa-xmark", "text-rose-500");
+                const real = getRawNumber(raw);
+                const diff = real - current;
+                if (diff === 0) return showToast("Số dư đã khớp, không cần điều chỉnh", "fa-check", "text-emerald-400");
+                const catName = "Điều chỉnh số dư";
+                categories = ensureCategoryShape(categories);
+                if (!categories.proxy.includes(catName)) {
+                    categories.proxy.push(catName);
+                    localStorage.setItem('personal_categories_v4', JSON.stringify(categories));
+                    triggerSettingsSync();
+                }
+                const d = new Date(); const pad = n => String(n).padStart(2, '0');
+                const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+                const newData = { id: `tx-${Date.now()}-${Math.random().toString(36).slice(2,10)}`, type: 'proxy', amount: Math.abs(diff), date: today, account: acc, category: catName, toAccount: "", proxyDir: diff > 0 ? 'in' : 'out', notes: `Khớp số dư thực tế: ${current.toLocaleString('vi-VN')} → ${real.toLocaleString('vi-VN')}`, updatedAt: new Date().toISOString(), syncVersion: 2 };
+                transactions.push(newData);
+                clearTombstone(newData.id);
+                markTransactionDirty(newData.id);
+                if (txStorageUid) queueTxStorageWrite(async () => {
+                    if (txIdbAvailable) await idbPutTransaction(txStorageUid, newData);
+                    else localStorage.setItem('personal_transactions_v4', JSON.stringify(transactions));
+                });
+                showToast(`Đã điều chỉnh ${diff > 0 ? '+' : '-'}${Math.abs(diff).toLocaleString('vi-VN')}₫`, "fa-check", "text-emerald-400");
+                updateDashboard(); applyFilters(); renderCategoryBudgets(); renderAccountSetupList();
+                if (fbCurrentUid && firestoreV2Ready && syncReady) { clearTimeout(fbSaveTimer); void pushLocalDataToFirestore(); }
+                else if (fbCurrentUid) { pendingSyncAfterReady = true; }
+            });
+        }
         function renderAccountSetupList() {
             const list = document.getElementById('account-setup-list'); list.innerHTML = '';
             const cpNote = document.getElementById('balance-checkpoint-note');
             if (cpNote) cpNote.innerHTML = `<i class="fa-solid fa-circle-info text-indigo-400 mr-1"></i>Đây là <strong>số dư ban đầu</strong> dùng làm mốc tính. App sẽ tự cộng/trừ tất cả giao dịch vào số dư này để ra số dư hiện tại.`;
             Object.keys(userAccounts).forEach(acc => {
                 const safeAcc = escapeHTML(acc);
-                const encodedAcc = encodeURIComponent(acc);
-                list.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-between p-3 bg-slate-50 border rounded-lg"><div class="min-w-0 flex-1 pr-3"><span class="font-semibold text-slate-700 block truncate">${safeAcc}</span><span class="text-[10px] text-slate-400">Số dư ban đầu</span></div><div class="flex items-center shrink-0"><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" data-account="${encodedAcc}" value="${userAccounts[acc].toLocaleString('vi-VN')}" class="w-24 text-right border rounded-md p-1.5 text-sm font-semibold" style="font-size:16px"><span class="ml-1 text-xs text-slate-500">₫</span><button type="button" title="Đổi tên ví/tài khoản" aria-label="Đổi tên ví/tài khoản ${safeAcc}" onclick="handleRenameAccount(decodeURIComponent('${encodedAcc}'))" class="ml-3 text-indigo-400 hover:text-indigo-600"><i class="fa-solid fa-pen"></i></button><button type="button" title="Xóa ví/tài khoản" aria-label="Xóa ví/tài khoản ${safeAcc}" onclick="handleRemoveAccount(decodeURIComponent('${encodedAcc}'))" class="ml-3 text-rose-400 hover:text-rose-600"><i class="fa-solid fa-trash"></i></button></div></div>`);
+                const encodedAcc = encAttr(acc);
+                list.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-between p-3 bg-slate-50 border rounded-lg"><div class="min-w-0 flex-1 pr-3"><span class="font-semibold text-slate-700 block truncate">${safeAcc}</span><span class="text-[10px] text-slate-400">Số dư ban đầu</span></div><div class="flex items-center shrink-0"><input type="text" inputmode="numeric" oninput="formatNumberInput(this, true)" data-account="${encodedAcc}" value="${userAccounts[acc].toLocaleString('vi-VN')}" class="w-24 text-right border rounded-md p-1.5 text-sm font-semibold" style="font-size:16px"><span class="ml-1 text-xs text-slate-500">₫</span><button type="button" title="Khớp số dư thực tế" aria-label="Khớp số dư thực tế ${safeAcc}" onclick="handleReconcileAccount(decodeURIComponent('${encodedAcc}'))" class="ml-3 text-emerald-500 hover:text-emerald-700"><i class="fa-solid fa-scale-balanced"></i></button><button type="button" title="Đổi tên ví/tài khoản" aria-label="Đổi tên ví/tài khoản ${safeAcc}" onclick="handleRenameAccount(decodeURIComponent('${encodedAcc}'))" class="ml-3 text-indigo-400 hover:text-indigo-600"><i class="fa-solid fa-pen"></i></button><button type="button" title="Xóa ví/tài khoản" aria-label="Xóa ví/tài khoản ${safeAcc}" onclick="handleRemoveAccount(decodeURIComponent('${encodedAcc}'))" class="ml-3 text-rose-400 hover:text-rose-600"><i class="fa-solid fa-trash"></i></button></div></div>`);
             });
         }
         // Trigger đồng bộ Firestore ngay sau khi BẤT KỲ cài đặt nào (ví/tài khoản, danh mục,
@@ -4439,7 +4474,7 @@ tbody tr { animation: none !important; }
 
                     const proxyNote = '';
 
-                    const txId = encodeURIComponent(String(tx.id));
+                    const txId = encAttr(tx.id);
                     const txCategory = escapeHTML(tx.category || 'Khác');
                     const txAccount = escapeHTML(tx.account || '');
                     const txToAccount = escapeHTML(tx.toAccount || '');
@@ -4452,14 +4487,14 @@ tbody tr { animation: none !important; }
 
                     let displayMain;
                     if (tx.type === 'transfer') {
-                        displayMain = `<button type="button" class="tx-filter-badge tx-transfer-flow" onclick="setTransactionQuickFilter('target', decodeURIComponent('${encodeURIComponent(String(tx.toAccount || ''))}'), 'Đến: ${txToAccount}')">
+                        displayMain = `<button type="button" class="tx-filter-badge tx-transfer-flow" onclick="setTransactionQuickFilter('target', decodeURIComponent('${encAttr(tx.toAccount)}'), decodeURIComponent('${encAttr('Đến: ' + (tx.toAccount || ''))}'))">
                             <span class="tx-flow-account">${txAccount}</span>
                             <i class="fa-solid fa-arrow-right tx-flow-arrow"></i>
                             <span class="tx-flow-account">${txToAccount}</span>
                         </button>`;
                     } else {
                         displayMain = `<button type="button" class="tx-filter-badge inline-flex items-center gap-1 bg-slate-50 text-slate-700 border border-slate-200 px-2 py-0.5 rounded text-[10px] font-semibold"
-                            onclick="setTransactionQuickFilter('category', decodeURIComponent('${encodeURIComponent(String(tx.category || ''))}'), 'Danh mục: ${txCategory}')">
+                            onclick="setTransactionQuickFilter('category', decodeURIComponent('${encAttr(tx.category)}'), decodeURIComponent('${encAttr('Danh mục: ' + (tx.category || 'Khác'))}'))">
                             <i class="fa-solid ${icon} text-slate-400"></i>${txCategory}
                         </button>${proxyNote}`;
                     }
@@ -4479,8 +4514,8 @@ tbody tr { animation: none !important; }
                     </tr>`);
 
                     const mobileTitle = tx.type === 'transfer'
-                        ? `<button type="button" class="font-bold text-slate-800 text-sm text-left whitespace-normal break-words leading-snug max-w-full" onclick="setTransactionQuickFilter('target', decodeURIComponent('${encodeURIComponent(String(tx.toAccount || ''))}'), 'Đến: ${txToAccount}')">${txAccount}<span class="text-blue-500 mx-1">→</span>${txToAccount}</button>`
-                        : `<button type="button" class="font-bold text-slate-800 text-sm text-left whitespace-normal break-words leading-snug max-w-full" onclick="setTransactionQuickFilter('category', decodeURIComponent('${encodeURIComponent(String(tx.category || ''))}'), 'Danh mục: ${txCategory}')">${txCategory}</button>`;
+                        ? `<button type="button" class="font-bold text-slate-800 text-sm text-left whitespace-normal break-words leading-snug max-w-full" onclick="setTransactionQuickFilter('target', decodeURIComponent('${encAttr(tx.toAccount)}'), decodeURIComponent('${encAttr('Đến: ' + (tx.toAccount || ''))}'))">${txAccount}<span class="text-blue-500 mx-1">→</span>${txToAccount}</button>`
+                        : `<button type="button" class="font-bold text-slate-800 text-sm text-left whitespace-normal break-words leading-snug max-w-full" onclick="setTransactionQuickFilter('category', decodeURIComponent('${encAttr(tx.category)}'), decodeURIComponent('${encAttr('Danh mục: ' + (tx.category || 'Khác'))}'))">${txCategory}</button>`;
 
                     cards.insertAdjacentHTML('beforeend', `<div class="transaction-data-card p-4 hover:bg-slate-50 transition active:bg-slate-100 flex items-center justify-between${tx.type === 'proxy' ? ' bg-amber-50/40' : ''}">
                         <div class="flex items-center gap-3 min-w-0 flex-1">
@@ -5469,7 +5504,7 @@ let compareHtml = `
                 let barColor = spent > lim && lim > 0 ? 'bg-rose-600' : (percent > 80 ? 'bg-amber-500' : 'bg-indigo-600');
                 const max = Math.max(0, idealBudget-tot+lim);
                 const safeCat = escapeHTML(cat);
-                const encodedCat = encodeURIComponent(cat);
+                const encodedCat = encAttr(cat);
                 c.insertAdjacentHTML('beforeend', `<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-2"><div class="flex justify-between items-center"><span class="font-bold text-sm flex gap-2"><i class="fa-solid ${CATEGORY_ICONS[cat]||'fa-tag'} w-5 text-slate-400"></i> ${safeCat}</span><input type="text" inputmode="numeric" oninput="formatNumberInput(this)" onchange="updateCategoryBudgetValue(decodeURIComponent('${encodedCat}'), this.value)" value="${lim>0?lim.toLocaleString('vi-VN'):''}" placeholder="Chưa đặt mục tiêu" class="budget-category-input w-36 min-w-0 text-right border rounded p-1.5 text-xs focus:ring-1 focus:ring-indigo-500 outline-none" style="font-size:16px"></div><div class="h-2 bg-slate-100 rounded-full w-full"><div class="h-full ${barColor} rounded-full transition-all duration-500" style="width:${lim>0?percent:(spent>0?100:0)}%"></div></div><div class="flex justify-between text-xs text-slate-500 mt-1"><span>Đã chi: <strong>${formatCurrency(spent)}</strong></span><span class="${spent>lim&&lim>0?'text-rose-600 font-bold':''}">${lim>0?percent+'%':''}</span></div></div>`);
 
             });
@@ -5481,7 +5516,7 @@ let compareHtml = `
                 const color = themeColor[type] || 'slate';
                 (categories[type] || []).forEach(cat => {
                     const safeCat = escapeHTML(cat);
-                    const encodedCat = encodeURIComponent(cat);
+                    const encodedCat = encAttr(cat);
                     list.insertAdjacentHTML('beforeend', `<li class="flex justify-between items-center p-3 hover:bg-slate-100 border-b border-slate-50"><div class="flex items-center space-x-3"><div class="bg-${color}-100 text-${color}-600 p-2 rounded-lg"><i class="fa-solid ${CATEGORY_ICONS[cat] || 'fa-tag'}"></i></div><span class="font-semibold text-slate-700">${safeCat}</span></div><div class="flex space-x-1"><button type="button" onclick="handleEditCategoryClick('${type}', decodeURIComponent('${encodedCat}'))" class="text-slate-400 hover:text-indigo-600 p-2"><i class="fa-solid fa-pencil"></i></button><button type="button" onclick="handleDeleteCategoryClick('${type}', decodeURIComponent('${encodedCat}'))" class="text-slate-400 hover:text-rose-600 p-2"><i class="fa-solid fa-trash-can"></i></button></div></li>`);
                 });
             });
@@ -5702,7 +5737,7 @@ let compareHtml = `
             if (!accountNames.length) return { ok: false, message: 'Backup phải có ít nhất 1 tài khoản.' };
             for (const [accountName, balance] of Object.entries(accounts)) {
                 if (typeof accountName !== 'string' || !accountName.trim() || accountName.length > 200) return { ok: false, message: 'Tên tài khoản không hợp lệ.' };
-                if (!Number.isFinite(Number(balance)) || Number(balance) < 0) return { ok: false, message: `Số dư tài khoản "${accountName}" không hợp lệ.` };
+                if (!Number.isFinite(Number(balance)) || Number(balance) < -1e15) return { ok: false, message: `Số dư tài khoản "${accountName}" không hợp lệ.` };
             }
 
             for (let i = 0; i < data.transactions.length; i++) {
