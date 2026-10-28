@@ -1399,6 +1399,35 @@ tbody tr { animation: none !important; }
         body.dark-mode .tx-filter-sticky.is-stuck {
             box-shadow: 0 10px 24px rgba(0,0,0,.35);
         }
+
+/* ===== MOBILE PERFORMANCE / TOUCH FIX =====
+   Trên điện thoại: bỏ blur nền, bỏ transform/animation giữ lại (fill-mode both) trên section & modal,
+   bỏ hover-lift dính (sticky hover) - các nguyên nhân gây giật, treo, bấm không ăn. */
+@media (max-width: 767px), (hover: none) {
+  .bg-white, header, .fixed.inset-0, #mobileMenuModal {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  section:not(.hidden), .subguide-panel:not(.hidden),
+  .fixed.inset-0:not(.hidden), .fixed.inset-0:not(.hidden) > div {
+    animation: none !important;
+  }
+  button:not(:disabled), label.cursor-pointer { transform: none !important; }
+  button:not(:disabled):hover, label.cursor-pointer:hover,
+  section > .bg-white:hover, section .grid > .bg-white:hover, #tab-dashboard .grid > div.bg-white:hover {
+    transform: none !important;
+  }
+  input, select, textarea, button { transition: none !important; }
+  input:hover, select:hover { box-shadow: none; }
+  button, a, select, label, input { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+}
+
+/* ===== LAYOUT ALIGNMENT FIX ===== */
+aside .tab-btn { justify-content: flex-start !important; text-align: left !important; border: 1px solid transparent; box-sizing: border-box; }
+aside .tab-btn > span { flex: 1 1 auto; min-width: 0; text-align: left !important; line-height: 1.25; }
+aside .tab-btn > i { flex: 0 0 1.25rem; width: 1.25rem; text-align: center; }
+.tx-clear-filters-btn { white-space: nowrap; }
+@media (min-width: 768px) { #tx-filter-panel .month-picker-trigger, #tx-filter-panel select { min-height: 2.75rem; } .tx-clear-filters-btn { min-height: 2.75rem; } }
 </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
@@ -1755,7 +1784,7 @@ tbody tr { animation: none !important; }
 </section>
 <!-- TAB 3: TRANSACTIONS (Có chế độ hiển thị Card trên Mobile) -->
 <section class="hidden space-y-4 md:space-y-6" id="tab-transactions">
-<div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4 tx-filter-sticky" id="tx-filter-panel">
+<div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 grid grid-cols-2 md:grid-cols-5 items-start gap-3 md:gap-4 tx-filter-sticky" id="tx-filter-panel">
 <div class="col-span-2 md:col-span-1">
 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1 md:mb-2">Tháng</label>
 <div class="month-picker-shell">
@@ -1780,7 +1809,8 @@ tbody tr { animation: none !important; }
 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1 md:mb-2">Sắp xếp</label>
 <select class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 md:p-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500" id="filter-sort" onchange="applyFilters()"><option value="desc">Mới nhất</option><option value="asc">Cũ nhất</option></select>
 </div>
-<div class="flex items-end col-span-2 md:col-span-1 md:justify-start">
+<div class="flex flex-col col-span-2 md:col-span-1 md:justify-start">
+<span class="hidden md:block text-xs font-semibold uppercase mb-2 invisible select-none" aria-hidden="true">.</span>
 <button class="tx-clear-filters-btn bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold px-4 py-2 md:py-2.5 rounded-lg text-sm transition" onclick="clearFilters()" title="Xóa các bộ lọc đang chọn"><i class="fa-solid fa-filter-circle-xmark mr-1"></i> Bỏ lọc</button>
 </div>
 </div>
@@ -3449,14 +3479,17 @@ tbody tr { animation: none !important; }
         }
 
         // ================== MOBILE MENU & TABS ==================
+        let mobileMenuTimer = null;
         function openMobileMenuModal() {
             const modal = document.getElementById('mobileMenuModal');
             const sheet = document.getElementById('mobileMenuSheet');
+            // Huỷ lệnh "ẩn" đang chờ của lần đóng trước, tránh menu vừa mở đã bị ẩn (kẹt overlay chặn cảm ứng)
+            clearTimeout(mobileMenuTimer);
             modal.classList.remove('hidden');
-            setTimeout(() => {
+            requestAnimationFrame(() => requestAnimationFrame(() => {
                 modal.classList.remove('opacity-0');
                 sheet.classList.remove('translate-y-full');
-            }, 10);
+            }));
         }
 
         function closeMobileMenuModal() {
@@ -3464,7 +3497,8 @@ tbody tr { animation: none !important; }
             const sheet = document.getElementById('mobileMenuSheet');
             modal.classList.add('opacity-0');
             sheet.classList.add('translate-y-full');
-            setTimeout(() => modal.classList.add('hidden'), 300);
+            clearTimeout(mobileMenuTimer);
+            mobileMenuTimer = setTimeout(() => modal.classList.add('hidden'), 300);
         }
 
         function switchTab(tabName) {
@@ -3903,14 +3937,25 @@ tbody tr { animation: none !important; }
             // nào có đồng bộ dữ liệu chạy ngầm (vd: ngay sau khi lưu 1 giao dịch mới, app
             // đẩy/nhận dữ liệu Firestore rồi gọi lại hàm này). Giờ giữ lại giá trị đang
             // chọn nếu tài khoản đó vẫn còn tồn tại.
+            // iOS Safari bị treo nếu option của <select> đang mở bị thay đổi (vd: đồng bộ nền gọi lại hàm này).
+            // Vì vậy: (1) chỉ dựng lại khi danh sách thật sự đổi, (2) nếu select đang được chọn thì hoãn tới khi đóng.
             ['txAccount', 'txToAccount', 'filter-account'].forEach(id => {
                 const s = document.getElementById(id);
-                const prevValue = s.value;
-                s.innerHTML = id==='filter-account'?'<option value="all">Tất cả</option>':'';
-                Object.keys(userAccounts).forEach(a => s.appendChild(new Option(a,a)));
-                if (prevValue && Array.from(s.options).some(o => o.value === prevValue)) {
-                    s.value = prevValue;
+                if (!s) return;
+                const wanted = (id === 'filter-account' ? ['all'] : []).concat(Object.keys(userAccounts));
+                const current = Array.from(s.options).map(o => o.value);
+                if (wanted.length === current.length && wanted.every((v, i) => v === current[i])) return;
+                if (document.activeElement === s) {
+                    if (!s.dataset.deferRebuild) {
+                        s.dataset.deferRebuild = '1';
+                        s.addEventListener('blur', () => { delete s.dataset.deferRebuild; populateAccountSelects(); }, { once: true });
+                    }
+                    return;
                 }
+                const prevValue = s.value;
+                s.innerHTML = id === 'filter-account' ? '<option value="all">Tất cả</option>' : '';
+                Object.keys(userAccounts).forEach(a => s.appendChild(new Option(a, a)));
+                if (prevValue && Array.from(s.options).some(o => o.value === prevValue)) s.value = prevValue;
             });
         }
         // Khớp số dư thực tế: người dùng nhập số tiền thật đang có trong ví; app tạo 1 giao dịch
