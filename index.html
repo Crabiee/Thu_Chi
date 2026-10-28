@@ -1432,6 +1432,22 @@ aside .tab-btn > i { flex: 0 0 1.25rem; width: 1.25rem; text-align: center; }
 /* ===== FAB "+" polish (mobile bottom nav) ===== */
 #mobile-bottom-nav button[aria-label="Thêm giao dịch mới"] { width: 3.75rem; height: 3.75rem; border-color: #fff; }
 body.dark-mode #mobile-bottom-nav button[aria-label="Thêm giao dịch mới"] { border-color: rgba(10,10,14,.96); box-shadow: 0 8px 24px rgba(99,102,241,.45); }
+
+/* ===== GUIDE TAB: không để trang bị tràn ngang ===== */
+main.flex-1, main.flex-1 > div { min-width: 0; max-width: 100%; }
+main.flex-1 { overflow-x: clip; }
+#tab-guide, #tab-guide > div, #tab-guide .subguide-panel, #tab-guide .grid > * { min-width: 0; max-width: 100%; }
+#tab-guide { overflow-x: clip; }
+@media (min-width: 768px) {
+  /* Desktop/tablet: các tab tự xuống dòng thay vì phải kéo thanh cuộn ngang */
+  #subguide-tabs { flex-wrap: wrap; overflow-x: visible; gap: .25rem .5rem; }
+  #subguide-tabs > .subguide-btn { margin: 0; }
+}
+@media (max-width: 767px) {
+  #subguide-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  #subguide-tabs::-webkit-scrollbar { display: none; }
+}
+#tab-guide img, #tab-guide table, #tab-guide pre { max-width: 100%; }
 </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
@@ -1937,7 +1953,7 @@ body.dark-mode #mobile-bottom-nav button[aria-label="Thêm giao dịch mới"] {
 <h3 class="text-xl font-bold text-slate-900 flex items-center"><i class="fa-solid fa-lightbulb text-amber-500 mr-2"></i>Cẩm Nang Tài Chính &amp; Phương Pháp Chi Tiêu</h3>
 <p class="text-sm text-slate-500 mt-1">Các quy tắc, thói quen và tư duy dòng tiền từ chuyên gia tài chính hàng đầu.</p>
 </div>
-<div class="flex space-x-2 border-b border-slate-200 overflow-x-auto pb-px custom-scrollbar">
+<div id="subguide-tabs" class="flex space-x-2 border-b border-slate-200 overflow-x-auto pb-px custom-scrollbar">
 <button class="subguide-btn py-2.5 px-4 text-sm font-semibold border-b-2 border-indigo-600 text-indigo-600 whitespace-nowrap transition-all duration-200" id="subguide-btn-demo" onclick="switchSubGuide('demo')"><i class="fa-solid fa-play mr-2"></i>1. Mô Phỏng Dòng Tiền</button>
 <button class="subguide-btn py-2.5 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap transition-all duration-200" id="subguide-btn-rules" onclick="switchSubGuide('rules')"><i class="fa-solid fa-chart-pie mr-2"></i>2. Phân Bổ Ngân Sách</button>
 <button class="subguide-btn py-2.5 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap transition-all duration-200" id="subguide-btn-savings" onclick="switchSubGuide('savings')"><i class="fa-solid fa-piggy-bank mr-2"></i>3. Tiết Kiệm &amp; Chi Tiêu</button>
