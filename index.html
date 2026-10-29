@@ -10,11 +10,11 @@
 <meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"/>
 <title>Quản lý Chi tiêu &amp; Dashboard Tài chính</title>
 <!-- Tailwind CSS -->
-<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
 <!-- FontAwesome Icons -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
 <!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <!-- Firebase (miễn phí - gói Spark): Auth để đăng nhập Google, Firestore để lưu & đồng bộ real-time -->
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -1448,6 +1448,85 @@ main.flex-1 { overflow-x: clip; }
   #subguide-tabs::-webkit-scrollbar { display: none; }
 }
 #tab-guide img, #tab-guide table, #tab-guide pre { max-width: 100%; }
+
+/* ===== DARK MODE POLISH V3 (lớp tinh chỉnh cuối: tương phản, phân lớp, màu ngữ nghĩa) ===== */
+html:has(body.dark-mode) { color-scheme: dark; background: #0a0a0c; }
+body.dark-mode {
+  --fp-text-dim: #a8a8b1;
+  --fp-text-faint: #8a8a94;
+  --fp-border: rgba(255,255,255,.10);
+  --fp-border-strong: rgba(255,255,255,.18);
+}
+body.dark-mode ::selection { background: rgba(124,92,255,.45); color: #fff; }
+
+/* Chữ phụ: đủ tương phản (>= 4.5:1) trên nền tối */
+body.dark-mode .text-slate-300, body.dark-mode .text-slate-400 { color: #a8a8b1 !important; }
+body.dark-mode .text-slate-500, body.dark-mode .text-gray-500 { color: #9a9aa4 !important; }
+body.dark-mode .text-slate-600, body.dark-mode .text-slate-700 { color: #cfcfd6 !important; }
+body.dark-mode .text-slate-800, body.dark-mode .text-slate-900 { color: #f4f4f5 !important; }
+body.dark-mode input::placeholder, body.dark-mode textarea::placeholder { color: #7d7d87 !important; }
+
+/* Phân lớp: nền < thẻ < thẻ nổi (modal, menu) */
+body.dark-mode .bg-white { background-color: var(--fp-surface) !important; }
+body.dark-mode .fixed.inset-0 { background-color: rgba(0,0,0,.72) !important; }
+body.dark-mode .fixed.inset-0 > .bg-white,
+body.dark-mode #mobileMenuSheet {
+  background-color: #17171b !important;
+  border: 1px solid var(--fp-border-strong) !important;
+  box-shadow: 0 24px 60px rgba(0,0,0,.6) !important;
+}
+body.dark-mode .bg-slate-50, body.dark-mode .bg-gray-50 { background-color: var(--fp-sunken) !important; }
+body.dark-mode .bg-slate-100 { background-color: #1d1d22 !important; }
+body.dark-mode .bg-slate-200 { background-color: #2a2a31 !important; }
+body.dark-mode .border-slate-100, body.dark-mode .border-slate-200, body.dark-mode .border-slate-300 { border-color: var(--fp-border) !important; }
+body.dark-mode .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+body.dark-mode .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color: var(--fp-border) !important; }
+
+/* Ô nhập: rõ viền, focus theo màu nhấn */
+body.dark-mode input, body.dark-mode select, body.dark-mode textarea { border-color: var(--fp-border-strong) !important; }
+body.dark-mode input:focus, body.dark-mode select:focus, body.dark-mode textarea:focus {
+  border-color: var(--fp-accent) !important;
+  box-shadow: 0 0 0 3px rgba(124,92,255,.28) !important;
+}
+body.dark-mode button:focus-visible, body.dark-mode a:focus-visible { outline: 2px solid var(--fp-accent) !important; outline-offset: 2px; }
+body.dark-mode button:disabled { opacity: .45; }
+
+/* Thẻ/nhãn màu ngữ nghĩa: nền trong mờ, chữ sáng đủ đọc */
+body.dark-mode .bg-indigo-50, body.dark-mode .bg-indigo-100 { background-color: rgba(124,92,255,.14) !important; border-color: rgba(124,92,255,.30) !important; }
+body.dark-mode .bg-emerald-50, body.dark-mode .bg-emerald-100 { background-color: rgba(53,214,142,.11) !important; border-color: rgba(53,214,142,.28) !important; }
+body.dark-mode .bg-rose-50, body.dark-mode .bg-rose-100 { background-color: rgba(251,113,133,.12) !important; border-color: rgba(251,113,133,.30) !important; }
+body.dark-mode .bg-amber-50, body.dark-mode .bg-amber-100 { background-color: rgba(245,181,68,.12) !important; border-color: rgba(245,181,68,.30) !important; }
+body.dark-mode .bg-blue-50, body.dark-mode .bg-blue-100 { background-color: rgba(96,165,250,.12) !important; border-color: rgba(96,165,250,.30) !important; }
+body.dark-mode .bg-purple-50, body.dark-mode .bg-purple-100 { background-color: rgba(167,139,250,.12) !important; border-color: rgba(167,139,250,.30) !important; }
+body.dark-mode .text-indigo-500, body.dark-mode .text-indigo-600, body.dark-mode .text-indigo-700, body.dark-mode .text-indigo-800, body.dark-mode .text-indigo-900 { color: #b4a2ff !important; }
+body.dark-mode .text-emerald-500, body.dark-mode .text-emerald-600, body.dark-mode .text-emerald-700, body.dark-mode .text-emerald-800, body.dark-mode .text-emerald-900 { color: #5ee0a4 !important; }
+body.dark-mode .text-rose-500, body.dark-mode .text-rose-600, body.dark-mode .text-rose-700, body.dark-mode .text-rose-800, body.dark-mode .text-rose-900 { color: #fd8fa0 !important; }
+body.dark-mode .text-amber-500, body.dark-mode .text-amber-600, body.dark-mode .text-amber-700, body.dark-mode .text-amber-800, body.dark-mode .text-amber-900 { color: #f7c262 !important; }
+body.dark-mode .text-blue-600, body.dark-mode .text-blue-700, body.dark-mode .text-blue-800, body.dark-mode .text-blue-900 { color: #8fc0ff !important; }
+body.dark-mode .text-purple-600, body.dark-mode .text-purple-700, body.dark-mode .text-purple-800, body.dark-mode .text-purple-900 { color: #c4b5fd !important; }
+
+/* Nút nhấn chính giữ chữ trắng, không bị các quy tắc màu chữ ở trên ghi đè */
+body.dark-mode .bg-indigo-600, body.dark-mode .bg-indigo-500 { background-color: #6d4df2 !important; color: #fff !important; }
+body.dark-mode .bg-indigo-600 *, body.dark-mode .bg-indigo-500 * { color: inherit !important; }
+body.dark-mode .bg-indigo-600:hover { background-color: #7c5cff !important; }
+
+/* Bảng giao dịch */
+body.dark-mode table thead tr { background: var(--fp-sunken) !important; }
+body.dark-mode table th { color: #a8a8b1 !important; }
+body.dark-mode tbody tr { border-color: var(--fp-border) !important; }
+body.dark-mode tbody tr:hover { background: rgba(255,255,255,.03) !important; box-shadow: inset 3px 0 0 var(--fp-accent); }
+
+/* Thanh tiến độ: rãnh nhìn thấy được */
+body.dark-mode #dash-budget-bar, body.dark-mode .bg-slate-200.rounded-full, body.dark-mode .bg-slate-100.rounded-full { background-color: #26262c !important; }
+
+/* Thanh cuộn */
+body.dark-mode * { scrollbar-color: #3a3a42 transparent; }
+body.dark-mode .custom-scrollbar::-webkit-scrollbar-thumb { background: #3a3a42; }
+
+/* Thanh điều hướng dưới (di động) */
+body.dark-mode #mobile-bottom-nav { background: rgba(14,14,17,.97) !important; border-top: 1px solid var(--fp-border) !important; }
+body.dark-mode #mobile-bottom-nav .text-slate-400 { color: #8f8f99 !important; }
+body.dark-mode #mobile-bottom-nav .text-indigo-600 { color: #b4a2ff !important; }
 </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
@@ -1753,6 +1832,11 @@ main.flex-1 { overflow-x: clip; }
           <p class="text-[11px] text-slate-400 mb-2">Thu nhập − chi tiêu đến hiện tại</p>
           <p class="text-lg font-extrabold text-emerald-600" id="ai-retained-amount">--</p>
           <p class="text-xs text-slate-500 mt-1" id="ai-retained-rate">Chưa đủ dữ liệu.</p>
+          <div class="grid grid-cols-2 gap-2 mt-3 text-xs">
+            <div><p class="text-slate-400">Thu</p><p class="font-bold text-emerald-600" id="ai-retained-income">--</p></div>
+            <div><p class="text-slate-400">Chi</p><p class="font-bold text-rose-600" id="ai-retained-expense">--</p></div>
+          </div>
+          <p class="text-xs text-slate-500 mt-2" id="ai-retained-insight"></p>
         </div>
         <p class="text-xs font-semibold mt-2 text-slate-600" id="ai-retained-compare">—</p>
       </div>
@@ -1790,6 +1874,10 @@ main.flex-1 { overflow-x: clip; }
   <!-- BIỂU ĐỒ BIẾN ĐỘNG DANH MỤC -->
   <div class="grid grid-cols-1 gap-6">
     <div class="ai-card">
+      <h4 class="font-bold text-slate-900 mb-3 flex items-center gap-2">
+        <i class="fa-solid fa-ranking-star text-indigo-500"></i>Chi nhiều nhất tháng này
+      </h4>
+      <ul class="ai-list text-sm text-slate-600 mb-5" id="ai-causes-list"></ul>
       <h4 class="font-bold text-slate-900 mb-3 flex items-center gap-2">
         <i class="fa-solid fa-arrow-trend-up text-rose-500"></i>Danh mục biến động mạnh nhất
       </h4>
