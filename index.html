@@ -1517,7 +1517,7 @@ body.dark-mode tbody tr { border-color: var(--fp-border) !important; }
 body.dark-mode tbody tr:hover { background: rgba(255,255,255,.03) !important; box-shadow: inset 3px 0 0 var(--fp-accent); }
 
 /* Thanh tiến độ: rãnh nhìn thấy được */
-body.dark-mode #dash-budget-bar, body.dark-mode .bg-slate-200.rounded-full, body.dark-mode .bg-slate-100.rounded-full { background-color: #26262c !important; }
+body.dark-mode .bg-slate-200.rounded-full, body.dark-mode .bg-slate-100.rounded-full { background-color: #26262c !important; }
 
 /* Thanh cuộn */
 body.dark-mode * { scrollbar-color: #3a3a42 transparent; }
@@ -1527,6 +1527,19 @@ body.dark-mode .custom-scrollbar::-webkit-scrollbar-thumb { background: #3a3a42;
 body.dark-mode #mobile-bottom-nav { background: rgba(14,14,17,.97) !important; border-top: 1px solid var(--fp-border) !important; }
 body.dark-mode #mobile-bottom-nav .text-slate-400 { color: #8f8f99 !important; }
 body.dark-mode #mobile-bottom-nav .text-indigo-600 { color: #b4a2ff !important; }
+
+/* ===== DARK: sửa tương phản các nút màu đặc & tab đang chọn ===== */
+body.dark-mode .bg-emerald-600 { background-color: #047857 !important; color: #fff !important; }
+body.dark-mode .bg-emerald-600:hover { background-color: #059669 !important; }
+body.dark-mode .bg-amber-600 { background-color: #b45309 !important; color: #fff !important; }
+body.dark-mode .bg-amber-600:hover { background-color: #d97706 !important; }
+body.dark-mode .bg-rose-600 { background-color: #be123c !important; color: #fff !important; }
+body.dark-mode .calc-mode-btn.active { color: #c4b5fd !important; }
+
+/* ===== Quản lý danh mục: ô nhập không đẩy nút "Thêm" tràn khỏi cột ===== */
+#tab-categories .flex > input[type="text"] { min-width: 0; width: 100%; }
+#tab-categories .flex > button { flex-shrink: 0; }
+#tab-categories .grid > div { min-width: 0; }
 </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
@@ -5677,7 +5690,7 @@ let compareHtml = `
             if (allocationLabelEl) allocationLabelEl.className = allocationDiff >= 0 ? 'text-[10px] md:text-xs text-emerald-500 font-bold uppercase tracking-wider mb-1' : 'text-[10px] md:text-xs text-rose-500 font-bold uppercase tracking-wider mb-1';
             categories.expense.forEach(cat => {
                 const lim = idealCategoryBudgets[cat]||0; const spent = getMonthStats(document.getElementById('dashboard-month-filter').value).categoryBreakdown[cat] || 0;
-                const percent = lim > 0 ? Math.min(Math.round((spent / lim) * 100), 100) : (spent > 0 ? 100 : 0);
+                const percent = lim > 0 ? Math.min(Math.round((spent / lim) * 100), 100) : 0; // chưa đặt hạn mức: không hiện thanh 100% gây hiểu nhầm
                 let barColor = spent > lim && lim > 0 ? 'bg-rose-600' : (percent > 80 ? 'bg-amber-500' : 'bg-indigo-600');
                 const max = Math.max(0, idealBudget-tot+lim);
                 const safeCat = escapeHTML(cat);
